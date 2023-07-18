@@ -1,0 +1,43 @@
+[workspace]
+members = [
+    "api",
+    "api/shared",
+    "front",
+]
+
+[patch.crates-io]
+mercat = { version = "1.1.0", git = "https://github.com/PolymeshAssociation/cryptography", branch = "mercat_polymesh_v6.0" }
+confidential_identity_core = { version = "1.1", git = "https://github.com/PolymeshAssociation/cryptography", branch = "mercat_polymesh_v6.0" }
+bulletproofs = { version = "4.0.0", git = "https://github.com/PolymeshAssociation/bulletproofs", branch = "polymesh" }
+
+[workspace.dependencies]
+# internal
+mercat-api-shared = { path = "./api/shared/" }
+mercat-api = { path = "./api/" }
+
+# Mercat
+mercat = { version = "1.1", default-features = false, features = ["balance_64"] }
+confidential_identity_core = { version = "1.0.0", default_features = false }
+rand = { version = "0.8", default-features = false, features = ["alloc"] }
+
+# encoding
+hex = { version = "0.4", default-features = false, features = ["alloc"] }
+codec = { package = "parity-scale-codec", version = "3.0.0", default-features = false, features = ["derive"] }
+serde = { version = "1", default-features = false, features = ["alloc", "derive"] }
+serde_json = { version = "1.0", default-features = false, features = ["alloc"] }
+serde_bytes = { version = "0.11", default-features = false, features = ["alloc"] }
+
+# actix
+actix-cors = "0.6"
+actix-web = "4.3"
+actix-web-lab = "0.19"
+
+# types
+uuid = { version = "1.2", features = ["serde", "v4"] }
+chrono = { version = "0.4", features = ["serde"] }
+rust_decimal = { version = "1.29", features = ["serde-with-arbitrary-precision"] }
+rust_decimal_macros = "1.29"
+
+# sql
+sqlx = { version = "0.7", features = ["runtime-tokio", "tls-native-tls", "sqlite", "chrono", "uuid"] }
+
