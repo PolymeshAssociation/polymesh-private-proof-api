@@ -27,7 +27,7 @@ create_account() {
 }
 
 create_account_balance() {
-	curl_post "/accounts/$1/balances/$2" "{}"
+	curl_post "/accounts/$1/balances" "{ \"asset_id\": $2 }"
 }
 
 create_user "Test1"

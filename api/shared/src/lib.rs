@@ -17,6 +17,7 @@ use mercat::{
         curve25519_dalek::scalar::Scalar,
     },
     Account as MercatAccount, EncryptionKeys, EncryptionSecKey, EncryptionPubKey, SecAccount,
+    PubAccountTx,
 };
 
 #[cfg(not(feature = "backend"))]
@@ -45,7 +46,6 @@ pub struct User {
     pub updated_at: chrono::NaiveDateTime,
 }
 
-#[cfg_attr(feature = "backend", derive(sqlx::FromRow))]
 #[derive(Clone, Debug, Default, Deserialize, Serialize, PartialEq, Eq, PartialOrd, Ord)]
 pub struct CreateUser {
     pub username: String,
@@ -61,7 +61,6 @@ pub struct Asset {
     pub updated_at: chrono::NaiveDateTime,
 }
 
-#[cfg_attr(feature = "backend", derive(sqlx::FromRow))]
 #[derive(Clone, Debug, Default, Deserialize, Serialize, PartialEq, Eq, PartialOrd, Ord)]
 pub struct CreateAsset {
     pub ticker: String,
@@ -89,15 +88,10 @@ pub struct AccountWithSecret {
     pub public_key: Vec<u8>,
     #[serde(skip)]
     pub secret_key: Vec<u8>,
-
-    #[zeroize(skip)]
-    pub created_at: chrono::NaiveDateTime,
-    #[zeroize(skip)]
-    pub updated_at: chrono::NaiveDateTime,
 }
 
+#[cfg(feature = "backend")]
 impl AccountWithSecret {
-    #[cfg(feature = "backend")]
     pub fn encryption_keys(&self) -> Option<EncryptionKeys> {
         Some(EncryptionKeys {
           public: EncryptionPubKey::decode(&mut self.public_key.as_slice()).ok()?,
@@ -105,18 +99,23 @@ impl AccountWithSecret {
         })
     }
 
-    #[cfg(feature = "backend")]
     pub fn sec_account(&self) -> Option<SecAccount> {
         self.encryption_keys().map(SecAccount::from)
     }
 
-    #[cfg(feature = "backend")]
     pub fn account(&self) -> Option<MercatAccount> {
         self.encryption_keys().map(MercatAccount::from)
     }
+
+    pub fn init_balance_tx(&self) -> Option<PubAccountTx> {
+        self.sec_account().and_then(|account| {
+            use mercat::{account::AccountCreator, AccountCreatorInitializer};
+            let mut rng = rand::thread_rng();
+            AccountCreator.create(&account, &mut rng).ok()
+        })
+    }
 }
 
-#[cfg_attr(feature = "backend", derive(sqlx::FromRow))]
 #[derive(Clone, Debug, Default, Deserialize, Serialize, PartialEq, Eq, PartialOrd, Ord)]
 #[derive(Zeroize, ZeroizeOnDrop)]
 pub struct CreateAccount {
@@ -161,29 +160,48 @@ pub struct AccountBalance {
 
     pub created_at: chrono::NaiveDateTime,
     pub updated_at: chrono::NaiveDateTime,
-
-    // From `accounts`.
-    //#[serde(skip)]
-    //pub enc_keys: Vec<u8>,
 }
 
+#[cfg(feature = "backend")]
 impl AccountBalance {
-    #[cfg(feature = "backend")]
     pub fn enc_balance(&self) -> Option<CipherText> {
         CipherText::decode(&mut self.enc_balance.as_slice()).ok()
     }
-
-    pub fn balance(&self) -> Decimal {
-        from_balance(self.balance as Balance)
-    }
 }
 
-#[cfg_attr(feature = "backend", derive(sqlx::FromRow))]
 #[derive(Clone, Debug, Default, Deserialize, Serialize, PartialEq, Eq, PartialOrd, Ord)]
 pub struct CreateAccountBalance {
+    #[serde(default)]
     pub account_id: i64,
     pub asset_id: i64,
 
+    #[serde(default)]
     pub balance: Balance,
+    #[serde(default)]
     pub enc_balance: Vec<u8>,
+}
+
+#[cfg(feature = "backend")]
+impl CreateAccountBalance {
+    pub fn init_balance(&mut self, tx: &PubAccountTx) {
+        self.balance = 0;
+        self.enc_balance = tx.initial_balance.encode();
+    }
+}
+
+#[derive(Clone, Debug, Default, Deserialize, Serialize, PartialEq, Eq, PartialOrd, Ord)]
+pub struct AccountBalanceWithInitTx {
+    pub account_balance: AccountBalance,
+    #[serde(with = "SerHexSeq::<StrictPfx>")]
+    pub init_tx: Vec<u8>,
+}
+
+#[cfg(feature = "backend")]
+impl AccountBalanceWithInitTx {
+    pub fn new(account_balance: AccountBalance, init_tx: PubAccountTx) -> Self {
+        Self {
+            account_balance,
+            init_tx: init_tx.encode(),
+        }
+    }
 }

@@ -104,7 +104,7 @@ impl MercatRepository for SqliteMercatRepository {
     async fn get_account_with_secret(&self, account_id: i64) -> MercatRepoResult<AccountWithSecret> {
         sqlx::query_as!(
             AccountWithSecret,
-            r#"SELECT * FROM accounts WHERE account_id = ?"#,
+            r#"SELECT account_id, public_key, secret_key FROM accounts WHERE account_id = ?"#,
             account_id
         )
         .fetch_one(&self.pool)
