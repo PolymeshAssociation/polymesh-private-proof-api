@@ -1,7 +1,7 @@
 use async_trait::async_trait;
 use mercat_api_shared::{
   CreateUser, CreateAsset, CreateAccount, CreateAccountBalance,
-  User, Asset, Account, AccountBalance,
+  User, Asset, Account, AccountWithSecret, AccountBalance,
 };
 
 mod sqlite;
@@ -16,17 +16,18 @@ pub type MercatRepoResult<T> = Result<T, MercatRepoError>;
 pub trait MercatRepository: Send + Sync + 'static {
     // Users
     async fn get_users(&self) -> MercatRepoResult<Vec<User>>;
-    async fn get_user(&self, id: i64) -> MercatRepoResult<User>;
+    async fn get_user(&self, user_id: i64) -> MercatRepoResult<User>;
     async fn create_user(&self, user: &CreateUser) -> MercatRepoResult<User>;
 
     // Assets
     async fn get_assets(&self) -> MercatRepoResult<Vec<Asset>>;
-    async fn get_asset(&self, id: i64) -> MercatRepoResult<Asset>;
+    async fn get_asset(&self, asset_id: i64) -> MercatRepoResult<Asset>;
     async fn create_asset(&self, asset: &CreateAsset) -> MercatRepoResult<Asset>;
 
     // Accounts
     async fn get_accounts(&self) -> MercatRepoResult<Vec<Account>>;
-    async fn get_account(&self, id: i64) -> MercatRepoResult<Account>;
+    async fn get_account(&self, account_id: i64) -> MercatRepoResult<Account>;
+    async fn get_account_with_secret(&self, account_id: i64) -> MercatRepoResult<AccountWithSecret>;
     async fn create_account(&self, account: &CreateAccount) -> MercatRepoResult<Account>;
 
     // Account balances

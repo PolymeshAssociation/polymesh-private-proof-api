@@ -1,6 +1,6 @@
 CREATE TABLE IF NOT EXISTS assets
 (
-    id             INTEGER PRIMARY KEY NOT NULL,
+    asset_id       INTEGER PRIMARY KEY NOT NULL,
     ticker         TEXT UNIQUE NOT NULL,
 
     created_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,

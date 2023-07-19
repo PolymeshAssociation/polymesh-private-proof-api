@@ -6,50 +6,28 @@ edition = "2021"
 [features]
 default = ["std", "simd_backend", "discrete_log"]
 
-backend = [
-	"std",
-	"sqlx",
-	"mercat",
-	"confidential_identity_core",
-	"rand",
-	"codec"
-]
+backend = ["std", "sqlx", "mercat", "confidential_identity_core", "rand", "codec"]
 
-u64_backend = [
-	"mercat?/u64_backend",
-	"confidential_identity_core?/u64_backend",
-]
-avx2_backend = [
-	"mercat?/avx2_backend",
-	"confidential_identity_core?/avx2_backend",
-]
-simd_backend = [
-	"mercat?/simd_backend",
-	"confidential_identity_core?/simd_backend",
-]
+u64_backend = ["mercat?/u64_backend", "confidential_identity_core?/u64_backend"]
+avx2_backend = ["mercat?/avx2_backend", "confidential_identity_core?/avx2_backend"]
+simd_backend = ["mercat?/simd_backend", "confidential_identity_core?/simd_backend"]
 
-discrete_log = [
-	"confidential_identity_core?/rayon",
-	"confidential_identity_core?/discrete_log",
-]
+discrete_log = ["confidential_identity_core?/rayon", "confidential_identity_core?/discrete_log"]
 
-std = [
-	"mercat?/std",
-	"confidential_identity_core?/std",
-	"rand?/std",
-	"codec?/std",
-]
+std = ["mercat?/std", "confidential_identity_core?/std", "rand?/std", "codec?/std"]
 
 [dependencies]
 # Mercat crypto
 mercat = { workspace = true, default-features = false, features = ["balance_64"], optional = true }
 confidential_identity_core = { workspace = true, default_features = false, optional = true }
 rand = { workspace = true, default-features = false, features = ["alloc"], optional = true }
+zeroize = { workspace = true }
 
 # encoding
 hex = { workspace = true, default-features = false, features = ["alloc"] }
 codec = { workspace = true, default-features = false, features = ["derive"], optional = true }
 serde = { workspace = true }
+serde-hex = { workspace = true }
 
 # Sqlx, only when the backend add this as dependency is compiled
 sqlx = { workspace = true, optional = true }

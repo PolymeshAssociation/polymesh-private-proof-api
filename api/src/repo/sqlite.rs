@@ -1,7 +1,7 @@
 use async_trait::async_trait;
 use mercat_api_shared::{
   CreateUser, CreateAsset, CreateAccount, CreateAccountBalance,
-  User, Asset, Account, AccountBalance,
+  User, Asset, Account, AccountWithSecret, AccountBalance,
 };
 
 use super::{MercatRepository, MercatRepoResult};
@@ -28,7 +28,7 @@ impl MercatRepository for SqliteMercatRepository {
     async fn get_user(&self, user_id: i64) -> MercatRepoResult<User> {
         sqlx::query_as!(
             User,
-            r#"SELECT * FROM users WHERE id = ?"#,
+            r#"SELECT * FROM users WHERE user_id = ?"#,
             user_id
         )
         .fetch_one(&self.pool)
@@ -39,11 +39,11 @@ impl MercatRepository for SqliteMercatRepository {
     async fn create_user(&self, user: &CreateUser) -> MercatRepoResult<User> {
         sqlx::query_as!(User,
             r#"
-      INSERT INTO users (name)
+      INSERT INTO users (username)
       VALUES (?)
-      RETURNING id, name, created_at, updated_at
+      RETURNING user_id, username, created_at, updated_at
       "#,
-        user.name,
+        user.username,
         )
         .fetch_one(&self.pool)
         .await
@@ -60,7 +60,7 @@ impl MercatRepository for SqliteMercatRepository {
     async fn get_asset(&self, asset_id: i64) -> MercatRepoResult<Asset> {
         sqlx::query_as!(
             Asset,
-            r#"SELECT * FROM assets WHERE id = ?"#,
+            r#"SELECT * FROM assets WHERE asset_id = ?"#,
             asset_id
         )
         .fetch_one(&self.pool)
@@ -73,7 +73,7 @@ impl MercatRepository for SqliteMercatRepository {
             r#"
       INSERT INTO assets (ticker)
       VALUES (?)
-      RETURNING id, ticker, created_at, updated_at
+      RETURNING asset_id, ticker, created_at, updated_at
       "#,
         asset.ticker,
         )
@@ -83,7 +83,8 @@ impl MercatRepository for SqliteMercatRepository {
     }
 
     async fn get_accounts(&self) -> MercatRepoResult<Vec<Account>> {
-        sqlx::query_as!(Account, r#"SELECT * FROM accounts"#,)
+        sqlx::query_as!(Account,
+          r#"SELECT account_id, public_key, created_at, updated_at FROM accounts"#,)
             .fetch_all(&self.pool)
             .await
             .map_err(|e| e.to_string())
@@ -92,7 +93,18 @@ impl MercatRepository for SqliteMercatRepository {
     async fn get_account(&self, account_id: i64) -> MercatRepoResult<Account> {
         sqlx::query_as!(
             Account,
-            r#"SELECT * FROM accounts WHERE id = ?"#,
+            r#"SELECT account_id, public_key, created_at, updated_at FROM accounts WHERE account_id = ?"#,
+            account_id
+        )
+        .fetch_one(&self.pool)
+        .await
+        .map_err(|e| e.to_string())
+    }
+
+    async fn get_account_with_secret(&self, account_id: i64) -> MercatRepoResult<AccountWithSecret> {
+        sqlx::query_as!(
+            AccountWithSecret,
+            r#"SELECT * FROM accounts WHERE account_id = ?"#,
             account_id
         )
         .fetch_one(&self.pool)
@@ -103,12 +115,12 @@ impl MercatRepository for SqliteMercatRepository {
     async fn create_account(&self, account: &CreateAccount) -> MercatRepoResult<Account> {
         sqlx::query_as!(Account,
             r#"
-      INSERT INTO accounts (public_key, enc_keys)
+      INSERT INTO accounts (public_key, secret_key)
       VALUES (?, ?)
-      RETURNING id, public_key, enc_keys, created_at, updated_at
+      RETURNING account_id, public_key, created_at, updated_at
       "#,
         account.public_key,
-        account.enc_keys,
+        account.secret_key,
         )
         .fetch_one(&self.pool)
         .await
@@ -118,7 +130,7 @@ impl MercatRepository for SqliteMercatRepository {
     async fn get_account_balances(&self, account_id: i64) -> MercatRepoResult<Vec<AccountBalance>> {
         sqlx::query_as!(
             AccountBalance,
-            r#"SELECT * FROM account_balances WHERE id = ?"#,
+            r#"SELECT * FROM account_balances WHERE account_id = ?"#,
             account_id
         )
         .fetch_all(&self.pool)
@@ -143,7 +155,7 @@ impl MercatRepository for SqliteMercatRepository {
             r#"
       INSERT INTO account_balances (account_id, asset_id, balance, enc_balance)
       VALUES (?, ?, ?, ?)
-      RETURNING id, account_id, asset_id, balance, enc_balance, created_at, updated_at
+      RETURNING account_balance_id, account_id, asset_id, balance, enc_balance, created_at, updated_at
       "#,
         account_balance.account_id,
         account_balance.asset_id,
