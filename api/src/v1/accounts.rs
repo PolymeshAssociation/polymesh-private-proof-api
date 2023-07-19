@@ -7,14 +7,14 @@ use actix_web::{
 use mercat_api_shared::CreateAccount;
 
 use crate::repo::MercatRepository;
-use super::account_balances;
+use super::account_assets;
 
 fn account_service<R: MercatRepository>(cfg: &mut web::ServiceConfig) {
     cfg.service(
         web::scope("/{account_id}")
             // GET
             .route("", web::get().to(get::<R>))
-            .configure(account_balances::service::<R>)
+            .configure(account_assets::service::<R>)
     );
 }
 

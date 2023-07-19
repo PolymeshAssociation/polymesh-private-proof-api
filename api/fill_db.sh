@@ -26,8 +26,8 @@ create_account() {
 	curl_post "/accounts" "{}"
 }
 
-create_account_balance() {
-	curl_post "/accounts/$1/balances" "{ \"asset_id\": $2 }"
+init_account_asset() {
+	curl_post "/accounts/$1/assets" "{ \"asset_id\": $2 }"
 }
 
 create_user "Test1"
@@ -49,15 +49,15 @@ create_account
 create_account
 create_account
 
-create_account_balance 1 1
-create_account_balance 1 2
-create_account_balance 1 3
-create_account_balance 1 4
-create_account_balance 1 5
+init_account_asset 1 1
+init_account_asset 1 2
+init_account_asset 1 3
+init_account_asset 1 4
+init_account_asset 1 5
 
-create_account_balance 2 1
-create_account_balance 2 2
-create_account_balance 2 3
-create_account_balance 2 4
-create_account_balance 2 5
+init_account_asset 2 1
+init_account_asset 2 2
+init_account_asset 2 3
+init_account_asset 2 4
+init_account_asset 2 5
 

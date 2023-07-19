@@ -1,7 +1,7 @@
 use async_trait::async_trait;
 use mercat_api_shared::{
-  CreateUser, CreateAsset, CreateAccount, CreateAccountBalance,
-  User, Asset, Account, AccountWithSecret, AccountBalance,
+  CreateUser, CreateAsset, CreateAccount, CreateAccountAsset,
+  User, Asset, Account, AccountWithSecret, AccountAsset,
 };
 
 use super::{MercatRepository, MercatRepoResult};
@@ -127,10 +127,10 @@ impl MercatRepository for SqliteMercatRepository {
         .map_err(|e| e.to_string())
     }
 
-    async fn get_account_balances(&self, account_id: i64) -> MercatRepoResult<Vec<AccountBalance>> {
+    async fn get_account_assets(&self, account_id: i64) -> MercatRepoResult<Vec<AccountAsset>> {
         sqlx::query_as!(
-            AccountBalance,
-            r#"SELECT * FROM account_balances WHERE account_id = ?"#,
+            AccountAsset,
+            r#"SELECT * FROM account_assets WHERE account_id = ?"#,
             account_id
         )
         .fetch_all(&self.pool)
@@ -138,10 +138,10 @@ impl MercatRepository for SqliteMercatRepository {
         .map_err(|e| e.to_string())
     }
 
-    async fn get_account_balance(&self, account_id: i64, asset_id: i64) -> MercatRepoResult<AccountBalance> {
+    async fn get_account_asset(&self, account_id: i64, asset_id: i64) -> MercatRepoResult<AccountAsset> {
         sqlx::query_as!(
-            AccountBalance,
-            r#"SELECT * FROM account_balances WHERE account_id = ? AND asset_id = ?"#,
+            AccountAsset,
+            r#"SELECT * FROM account_assets WHERE account_id = ? AND asset_id = ?"#,
             account_id, asset_id,
         )
         .fetch_one(&self.pool)
@@ -149,18 +149,18 @@ impl MercatRepository for SqliteMercatRepository {
         .map_err(|e| e.to_string())
     }
 
-    async fn create_account_balance(&self, account_balance: &CreateAccountBalance) -> MercatRepoResult<AccountBalance> {
-        let balance = account_balance.balance as i64;
-        sqlx::query_as!(AccountBalance,
+    async fn create_account_asset(&self, account_asset: &CreateAccountAsset) -> MercatRepoResult<AccountAsset> {
+        let balance = account_asset.balance as i64;
+        sqlx::query_as!(AccountAsset,
             r#"
-      INSERT INTO account_balances (account_id, asset_id, balance, enc_balance)
+      INSERT INTO account_assets (account_id, asset_id, balance, enc_balance)
       VALUES (?, ?, ?, ?)
-      RETURNING account_balance_id, account_id, asset_id, balance, enc_balance, created_at, updated_at
+      RETURNING account_asset_id, account_id, asset_id, balance, enc_balance, created_at, updated_at
       "#,
-        account_balance.account_id,
-        account_balance.asset_id,
+        account_asset.account_id,
+        account_asset.asset_id,
         balance,
-        account_balance.enc_balance,
+        account_asset.enc_balance,
         )
         .fetch_one(&self.pool)
         .await

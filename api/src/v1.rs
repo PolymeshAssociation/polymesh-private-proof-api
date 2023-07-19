@@ -5,7 +5,7 @@ use crate::repo::MercatRepository;
 mod users;
 mod assets;
 mod accounts;
-mod account_balances;
+mod account_assets;
 
 pub fn service<R: MercatRepository>(cfg: &mut web::ServiceConfig) {
     cfg.service(

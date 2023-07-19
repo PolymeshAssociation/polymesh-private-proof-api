@@ -4,13 +4,13 @@ use actix_web::{
     Responder, Result,
 };
 
-use mercat_api_shared::{CreateAccountBalance, AccountBalanceWithInitTx};
+use mercat_api_shared::{CreateAccountAsset, AccountAssetWithInitTx};
 
 use crate::repo::MercatRepository;
 
 pub fn service<R: MercatRepository>(cfg: &mut web::ServiceConfig) {
     cfg.service(
-        web::scope("/balances")
+        web::scope("/assets")
             // GET
             .route("", web::get().to(get_all::<R>))
             .route("/{asset_id}", web::get().to(get::<R>))
@@ -20,23 +20,23 @@ pub fn service<R: MercatRepository>(cfg: &mut web::ServiceConfig) {
 }
 
 async fn get_all<R: MercatRepository>(account_id: web::Path<i64>, repo: web::Data<R>) -> Result<impl Responder> {
-    Ok(match repo.get_account_balances(*account_id).await {
-        Ok(account_balances) => HttpResponse::Ok().json(account_balances),
+    Ok(match repo.get_account_assets(*account_id).await {
+        Ok(account_assets) => HttpResponse::Ok().json(account_assets),
         Err(e) => HttpResponse::NotFound().body(format!("Internal server error: {:?}", e)),
     })
 }
 
 async fn get<R: MercatRepository>(path: web::Path<(i64, i64)>, repo: web::Data<R>) -> HttpResponse {
     let (account_id, asset_id) = path.into_inner();
-    match repo.get_account_balance(account_id, asset_id).await {
-        Ok(account_balance) => HttpResponse::Ok().json(account_balance),
+    match repo.get_account_asset(account_id, asset_id).await {
+        Ok(account_asset) => HttpResponse::Ok().json(account_asset),
         Err(_) => HttpResponse::NotFound().body("Not found"),
     }
 }
 
 async fn post<R: MercatRepository>(
     account_id: web::Path<i64>,
-    mut create_balance: web::Json<CreateAccountBalance>,
+    mut create_balance: web::Json<CreateAccountAsset>,
     repo: web::Data<R>,
 ) -> HttpResponse {
     // Get the account's secret key.
@@ -58,14 +58,14 @@ async fn post<R: MercatRepository>(
     // Save initialize account balance.
     create_balance.account_id = account.account_id;
     create_balance.init_balance(&init_tx);
-    let account_balance = match repo.create_account_balance(&create_balance).await {
-        Ok(account_balance) => account_balance,
+    let account_asset = match repo.create_account_asset(&create_balance).await {
+        Ok(account_asset) => account_asset,
         Err(e) => {
             return HttpResponse::InternalServerError().body(format!("Internal server error: {:?}", e));
         }
     };
 
-    // Return account_balance with init tx.
-    let balance_with_tx = AccountBalanceWithInitTx::new(account_balance, init_tx);
+    // Return account_asset with init tx.
+    let balance_with_tx = AccountAssetWithInitTx::new(account_asset, init_tx);
     HttpResponse::Ok().json(balance_with_tx)
 }

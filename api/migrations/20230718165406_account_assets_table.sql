@@ -1,6 +1,6 @@
-CREATE TABLE IF NOT EXISTS account_balances
+CREATE TABLE IF NOT EXISTS account_assets
 (
-    account_balance_id  INTEGER PRIMARY KEY NOT NULL,
+    account_asset_id  INTEGER PRIMARY KEY NOT NULL,
     account_id     INTEGER NOT NULL,
     asset_id       INTEGER NOT NULL,
 

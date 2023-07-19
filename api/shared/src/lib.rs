@@ -3,10 +3,6 @@ use serde_hex::{SerHexSeq,StrictPfx};
 
 use zeroize::{Zeroize, ZeroizeOnDrop};
 
-use rust_decimal::prelude::ToPrimitive;
-use rust_decimal::Decimal;
-use rust_decimal_macros::dec;
-
 #[cfg(feature = "backend")]
 use codec::{Decode, Encode};
 
@@ -22,19 +18,6 @@ use mercat::{
 
 #[cfg(not(feature = "backend"))]
 pub type Balance = u64;
-
-pub const TOKEN_SCALE: Decimal = dec!(1_000_000);
-pub const MAXIMUM_DECRYPT_RANGE: Decimal = dec!(1_000_000.0);
-
-pub fn to_balance(val: Decimal) -> Option<Balance> {
-    (val * TOKEN_SCALE)
-        .to_u64()
-        .and_then(|val| val.try_into().ok())
-}
-
-pub fn from_balance(val: Balance) -> Decimal {
-    Decimal::from(val) / TOKEN_SCALE
-}
 
 #[cfg_attr(feature = "backend", derive(sqlx::FromRow))]
 #[derive(Clone, Debug, Default, Deserialize, Serialize, PartialEq, Eq, PartialOrd, Ord)]
@@ -149,8 +132,8 @@ impl CreateAccount {
 
 #[cfg_attr(feature = "backend", derive(sqlx::FromRow))]
 #[derive(Clone, Debug, Default, Deserialize, Serialize, PartialEq, Eq, PartialOrd, Ord)]
-pub struct AccountBalance {
-    pub account_balance_id: i64,
+pub struct AccountAsset {
+    pub account_asset_id: i64,
     pub account_id: i64,
     pub asset_id: i64,
 
@@ -163,14 +146,14 @@ pub struct AccountBalance {
 }
 
 #[cfg(feature = "backend")]
-impl AccountBalance {
+impl AccountAsset {
     pub fn enc_balance(&self) -> Option<CipherText> {
         CipherText::decode(&mut self.enc_balance.as_slice()).ok()
     }
 }
 
 #[derive(Clone, Debug, Default, Deserialize, Serialize, PartialEq, Eq, PartialOrd, Ord)]
-pub struct CreateAccountBalance {
+pub struct CreateAccountAsset {
     #[serde(default)]
     pub account_id: i64,
     pub asset_id: i64,
@@ -182,7 +165,7 @@ pub struct CreateAccountBalance {
 }
 
 #[cfg(feature = "backend")]
-impl CreateAccountBalance {
+impl CreateAccountAsset {
     pub fn init_balance(&mut self, tx: &PubAccountTx) {
         self.balance = 0;
         self.enc_balance = tx.initial_balance.encode();
@@ -190,17 +173,17 @@ impl CreateAccountBalance {
 }
 
 #[derive(Clone, Debug, Default, Deserialize, Serialize, PartialEq, Eq, PartialOrd, Ord)]
-pub struct AccountBalanceWithInitTx {
-    pub account_balance: AccountBalance,
+pub struct AccountAssetWithInitTx {
+    pub account_asset: AccountAsset,
     #[serde(with = "SerHexSeq::<StrictPfx>")]
     pub init_tx: Vec<u8>,
 }
 
 #[cfg(feature = "backend")]
-impl AccountBalanceWithInitTx {
-    pub fn new(account_balance: AccountBalance, init_tx: PubAccountTx) -> Self {
+impl AccountAssetWithInitTx {
+    pub fn new(account_asset: AccountAsset, init_tx: PubAccountTx) -> Self {
         Self {
-            account_balance,
+            account_asset,
             init_tx: init_tx.encode(),
         }
     }

@@ -1,7 +1,7 @@
 use async_trait::async_trait;
 use mercat_api_shared::{
-  CreateUser, CreateAsset, CreateAccount, CreateAccountBalance,
-  User, Asset, Account, AccountWithSecret, AccountBalance,
+  CreateUser, CreateAsset, CreateAccount, CreateAccountAsset,
+  User, Asset, Account, AccountWithSecret, AccountAsset,
 };
 
 mod sqlite;
@@ -31,7 +31,7 @@ pub trait MercatRepository: Send + Sync + 'static {
     async fn create_account(&self, account: &CreateAccount) -> MercatRepoResult<Account>;
 
     // Account balances
-    async fn get_account_balances(&self, account_id: i64) -> MercatRepoResult<Vec<AccountBalance>>;
-    async fn get_account_balance(&self, account_id: i64, asset_id: i64) -> MercatRepoResult<AccountBalance>;
-    async fn create_account_balance(&self, account_balance: &CreateAccountBalance) -> MercatRepoResult<AccountBalance>;
+    async fn get_account_assets(&self, account_id: i64) -> MercatRepoResult<Vec<AccountAsset>>;
+    async fn get_account_asset(&self, account_id: i64, asset_id: i64) -> MercatRepoResult<AccountAsset>;
+    async fn create_account_asset(&self, account_asset: &CreateAccountAsset) -> MercatRepoResult<AccountAsset>;
 }
