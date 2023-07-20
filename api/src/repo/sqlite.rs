@@ -1,7 +1,8 @@
 use async_trait::async_trait;
 use mercat_api_shared::{
-  CreateUser, CreateAsset, CreateAccount, CreateAccountAsset,
+  CreateUser, CreateAsset, CreateAccount, UpdateAccountAsset,
   User, Asset, Account, AccountWithSecret, AccountAsset,
+  AccountAssetWithSecret,
 };
 
 use super::{MercatRepository, MercatRepoResult};
@@ -149,8 +150,24 @@ impl MercatRepository for SqliteMercatRepository {
         .map_err(|e| e.to_string())
     }
 
-    async fn create_account_asset(&self, account_asset: &CreateAccountAsset) -> MercatRepoResult<AccountAsset> {
+    async fn get_account_asset_with_secret(&self, account_id: i64, asset_id: i64) -> MercatRepoResult<AccountAssetWithSecret> {
+        sqlx::query_as(r#"
+          SELECT aa.account_asset_id, aa.asset_id, aa.balance, aa.enc_balance,
+            acc.account_id, acc.public_key, acc.secret_key
+          FROM account_assets as aa
+          JOIN accounts as acc using(account_id)
+          WHERE aa.account_id = ? AND aa.asset_id = ?
+        "#)
+        .bind(account_id)
+        .bind(asset_id)
+        .fetch_one(&self.pool)
+        .await
+        .map_err(|e| e.to_string())
+    }
+
+    async fn create_account_asset(&self, account_asset: &UpdateAccountAsset) -> MercatRepoResult<AccountAsset> {
         let balance = account_asset.balance as i64;
+        let enc_balance = account_asset.enc_balance();
         sqlx::query_as!(AccountAsset,
             r#"
       INSERT INTO account_assets (account_id, asset_id, balance, enc_balance)
@@ -160,7 +177,7 @@ impl MercatRepository for SqliteMercatRepository {
         account_asset.account_id,
         account_asset.asset_id,
         balance,
-        account_asset.enc_balance,
+        enc_balance,
         )
         .fetch_one(&self.pool)
         .await

@@ -680,7 +680,7 @@ dependencies = [
 [[package]]
 name = "confidential_identity_core"
 version = "1.1.2"
-source = "git+https://github.com/PolymeshAssociation/cryptography?branch=mercat_polymesh_v6.0#fccf2870f898ba9b8e1afda709b3b2a354b19e98"
+source = "git+https://github.com/PolymeshAssociation/cryptography?branch=mercat_polymesh_v6.0#ce7d9616bb0f0ea8b094fdf12791d9372fac6efd"
 dependencies = [
  "bincode",
  "blake2",
@@ -1649,7 +1649,7 @@ dependencies = [
 [[package]]
 name = "mercat"
 version = "1.1.2"
-source = "git+https://github.com/PolymeshAssociation/cryptography?branch=mercat_polymesh_v6.0#fccf2870f898ba9b8e1afda709b3b2a354b19e98"
+source = "git+https://github.com/PolymeshAssociation/cryptography?branch=mercat_polymesh_v6.0#ce7d9616bb0f0ea8b094fdf12791d9372fac6efd"
 dependencies = [
  "byteorder",
  "confidential_identity_core",

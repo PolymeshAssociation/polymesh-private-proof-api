@@ -4,7 +4,7 @@ use actix_web::{
     Responder, Result,
 };
 
-use mercat_api_shared::{CreateAccountAsset, AccountAssetWithInitTx};
+use mercat_api_shared::{CreateAccountAsset, AccountAssetWithInitTx, AccountMintAsset, AccountAssetWithMintTx};
 
 use crate::repo::MercatRepository;
 
@@ -16,6 +16,7 @@ pub fn service<R: MercatRepository>(cfg: &mut web::ServiceConfig) {
             .route("/{asset_id}", web::get().to(get::<R>))
             // POST
             .route("", web::post().to(post::<R>))
+            .route("/{asset_id}/mint", web::post().to(post_mint::<R>))
     );
 }
 
@@ -36,7 +37,7 @@ async fn get<R: MercatRepository>(path: web::Path<(i64, i64)>, repo: web::Data<R
 
 async fn post<R: MercatRepository>(
     account_id: web::Path<i64>,
-    mut create_balance: web::Json<CreateAccountAsset>,
+    create_account_asset: web::Json<CreateAccountAsset>,
     repo: web::Data<R>,
 ) -> HttpResponse {
     // Get the account's secret key.
@@ -48,7 +49,7 @@ async fn post<R: MercatRepository>(
     };
 
     // Generate Account initialization proof.
-    let init_tx = match account.init_balance_tx() {
+    let (create, init_tx) = match account.init_balance_tx(create_account_asset.asset_id) {
         Some(tx) => tx,
         None => {
             return HttpResponse::InternalServerError().body("Failed to generate account initialization proof");
@@ -56,9 +57,7 @@ async fn post<R: MercatRepository>(
     };
 
     // Save initialize account balance.
-    create_balance.account_id = account.account_id;
-    create_balance.init_balance(&init_tx);
-    let account_asset = match repo.create_account_asset(&create_balance).await {
+    let account_asset = match repo.create_account_asset(&create).await {
         Ok(account_asset) => account_asset,
         Err(e) => {
             return HttpResponse::InternalServerError().body(format!("Internal server error: {:?}", e));
@@ -67,5 +66,40 @@ async fn post<R: MercatRepository>(
 
     // Return account_asset with init tx.
     let balance_with_tx = AccountAssetWithInitTx::new(account_asset, init_tx);
+    HttpResponse::Ok().json(balance_with_tx)
+}
+
+async fn post_mint<R: MercatRepository>(
+    path: web::Path<(i64, i64)>,
+    account_mint_asset: web::Json<AccountMintAsset>,
+    repo: web::Data<R>,
+) -> HttpResponse {
+    let (account_id, asset_id) = path.into_inner();
+    // Get the account asset with account secret key.
+    let account_asset = match repo.get_account_asset_with_secret(account_id, asset_id).await {
+        Ok(account_asset) => account_asset,
+        Err(_) => {
+            return HttpResponse::NotFound().body("Account Asset not found");
+        }
+    };
+
+    // Generate Asset mint proof.
+    let (update, mint_tx) = match account_asset.create_mint_tx(account_mint_asset.amount) {
+        Some(tx) => tx,
+        None => {
+            return HttpResponse::InternalServerError().body("Failed to generate account initialization proof");
+        }
+    };
+
+    // Update account balance.
+    let account_asset = match repo.create_account_asset(&update).await {
+        Ok(account_asset) => account_asset,
+        Err(e) => {
+            return HttpResponse::InternalServerError().body(format!("Internal server error: {:?}", e));
+        }
+    };
+
+    // Return account_asset with mint tx.
+    let balance_with_tx = AccountAssetWithMintTx::new(account_asset, mint_tx);
     HttpResponse::Ok().json(balance_with_tx)
 }
