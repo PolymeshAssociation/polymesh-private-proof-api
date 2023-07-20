@@ -13,8 +13,8 @@ use mercat::{
         curve25519_dalek::scalar::Scalar,
     },
     Account as MercatAccount, EncryptionKeys, EncryptionSecKey, EncryptionPubKey, SecAccount,
-    EncryptedAmount,
-    InitializedAssetTx, PubAccountTx,
+    EncryptedAmount, PubAccount,
+    InitializedAssetTx, InitializedTransferTx, PubAccountTx,
 };
 
 #[cfg(not(feature = "backend"))]
@@ -103,6 +103,38 @@ impl AccountWithSecret {
                 (update, tx)
             }).ok()
         })
+    }
+
+    pub fn mediator_verify_tx(&self, req: &MediatorVerifyRequest) -> Result<bool, String> {
+        use mercat::{transaction::CtxMediator, AmountSource, TransferTransactionMediator};
+
+        // Decode MercatAccount from database.
+        let mediator = self.encryption_keys()
+            .ok_or_else(|| format!("Failed to get account from database."))?;
+
+        // Decode request.
+        let sender_proof = req.sender_proof()?;
+        let sender = req.sender()?;
+        let sender_enc_balance = req.sender_enc_balance()?;
+        let receiver = req.receiver()?;
+        let amount = match req.amount {
+            Some(amount) => AmountSource::Amount(amount),
+            None => AmountSource::Encrypted(&mediator),
+        };
+
+        let mut rng = rand::thread_rng();
+        CtxMediator
+            .justify_transaction(
+                &sender_proof,
+                amount,
+                &sender,
+                &sender_enc_balance,
+                &receiver,
+                &[],
+                &mut rng,
+            )
+            .map_err(|e| format!("Failed to verify sender proof: {e:?}"))?;
+        Ok(true)
     }
 }
 
@@ -200,6 +232,58 @@ impl AccountAssetWithSecret {
 
         Some((update, mint_tx))
     }
+
+    pub fn create_send_tx(&self, req: &SenderProofRequest) -> Result<(UpdateAccountAsset, InitializedTransferTx), String> {
+        use mercat::{transaction::CtxSender, TransferTransactionSender};
+        // Decode MercatAccount from database.
+        let sender = self.account.account()
+            .ok_or_else(|| format!("Failed to get account from database."))?;
+        // Decode `req`.
+        let enc_balance = req.encrypted_balance()?
+            .or_else(|| self.enc_balance())
+            .ok_or_else(|| format!("No encrypted balance."))?;
+        let receiver = req.receiver()?;
+        let mediator = req.mediator()?
+            .map(|k| k.owner_enc_pub_key);
+
+        let mut rng = rand::thread_rng();
+        let sender_balance = self.balance as Balance;
+        let tx = CtxSender
+            .create_transaction(
+                &sender,
+                &enc_balance,
+                sender_balance,
+                &receiver,
+                mediator.as_ref(),
+                &[],
+                req.amount,
+                &mut rng,
+            )
+            .map_err(|e| format!("Failed to generate proof: {e:?}"))?;
+        // Update account balance.
+        let update = UpdateAccountAsset {
+            account_id: self.account.account_id,
+            asset_id: self.asset_id,
+            balance: (self.balance as u64) - req.amount,
+            enc_balance: enc_balance - tx.memo.enc_amount_using_sender,
+        };
+
+        Ok((update, tx))
+    }
+
+    pub fn receiver_verify_tx(&self, req: &ReceiverVerifyRequest) -> Result<bool, String> {
+        use mercat::{transaction::CtxReceiver, TransferTransactionReceiver};
+        // Decode MercatAccount from database.
+        let receiver = self.account.account()
+            .ok_or_else(|| format!("Failed to get account from database."))?;
+
+        // Decode request.
+        let sender_proof = req.sender_proof()?;
+        CtxReceiver
+            .finalize_transaction(&sender_proof, receiver, req.amount)
+            .map_err(|e| format!("Failed to verify sender proof: {e:?}"))?;
+        Ok(true)
+    }
 }
 
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]
@@ -225,40 +309,125 @@ impl UpdateAccountAsset {
 }
 
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]
-pub struct AccountAssetWithInitTx {
-    pub account_asset: AccountAsset,
-    #[serde(with = "SerHexSeq::<StrictPfx>")]
-    pub init_tx: Vec<u8>,
-}
-
-#[cfg(feature = "backend")]
-impl AccountAssetWithInitTx {
-    pub fn new(account_asset: AccountAsset, init_tx: PubAccountTx) -> Self {
-        Self {
-            account_asset,
-            init_tx: init_tx.encode(),
-        }
-    }
-}
-
-#[derive(Clone, Debug, Default, Deserialize, Serialize)]
 pub struct AccountMintAsset {
     pub amount: Balance,
 }
 
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]
-pub struct AccountAssetWithMintTx {
+pub struct AccountAssetWithTx {
     pub account_asset: AccountAsset,
     #[serde(with = "SerHexSeq::<StrictPfx>")]
-    pub mint_tx: Vec<u8>,
+    pub tx: Vec<u8>,
 }
 
 #[cfg(feature = "backend")]
-impl AccountAssetWithMintTx {
-    pub fn new(account_asset: AccountAsset, mint_tx: InitializedAssetTx) -> Self {
+impl AccountAssetWithTx {
+    pub fn new_init_tx(account_asset: AccountAsset, tx: PubAccountTx) -> Self {
         Self {
             account_asset,
-            mint_tx: mint_tx.encode(),
+            tx: tx.encode(),
         }
+    }
+    pub fn new_mint_tx(account_asset: AccountAsset, tx: InitializedAssetTx) -> Self {
+        Self {
+            account_asset,
+            tx: tx.encode(),
+        }
+    }
+
+    pub fn new_send_tx(account_asset: AccountAsset, tx: InitializedTransferTx) -> Self {
+        Self {
+            account_asset,
+            tx: tx.encode(),
+        }
+    }
+}
+
+#[derive(Clone, Serialize, Deserialize)]
+pub struct SenderProofRequest {
+    #[serde(default, with = "SerHexSeq::<StrictPfx>")]
+    encrypted_balance: Vec<u8>,
+    #[serde(with = "SerHexSeq::<StrictPfx>")]
+    receiver: Vec<u8>,
+    #[serde(default, with = "SerHexSeq::<StrictPfx>")]
+    mediator: Vec<u8>,
+    amount: Balance,
+}
+
+#[cfg(feature = "backend")]
+impl SenderProofRequest {
+    pub fn encrypted_balance(&self) -> Result<Option<EncryptedAmount>, String> {
+        Ok(if self.encrypted_balance.is_empty() {
+            None
+        } else {
+            Some(EncryptedAmount::decode(&mut self.encrypted_balance.as_slice())
+                .map_err(|e| format!("Failed to decode 'encrypted_balance': {e:?}"))?)
+        })
+    }
+
+    pub fn receiver(&self) -> Result<PubAccount, String> {
+        PubAccount::decode(&mut self.receiver.as_slice())
+            .map_err(|e| format!("Failed to decode 'receiver': {e:?}"))
+    }
+
+    pub fn mediator(&self) -> Result<Option<PubAccount>, String> {
+        Ok(if self.mediator.is_empty() {
+            None
+        } else {
+            Some(PubAccount::decode(&mut self.mediator.as_slice())
+                .map_err(|e| format!("Failed to decode 'mediator': {e:?}"))?)
+        })
+    }
+}
+
+#[derive(Clone, Serialize, Deserialize)]
+pub struct MediatorVerifyRequest {
+    #[serde(with = "SerHexSeq::<StrictPfx>")]
+    sender_proof: Vec<u8>,
+    #[serde(with = "SerHexSeq::<StrictPfx>")]
+    sender: Vec<u8>,
+    #[serde(default, with = "SerHexSeq::<StrictPfx>")]
+    sender_enc_balance: Vec<u8>,
+    #[serde(with = "SerHexSeq::<StrictPfx>")]
+    receiver: Vec<u8>,
+    #[serde(default)]
+    amount: Option<Balance>,
+}
+
+#[cfg(feature = "backend")]
+impl MediatorVerifyRequest {
+    pub fn sender_proof(&self) -> Result<InitializedTransferTx, String> {
+        InitializedTransferTx::decode(&mut self.sender_proof.as_slice())
+            .map_err(|e| format!("Failed to decode 'sender_proof': {e:?}"))
+    }
+
+    pub fn sender(&self) -> Result<PubAccount, String> {
+        PubAccount::decode(&mut self.sender.as_slice())
+            .map_err(|e| format!("Failed to decode 'sender': {e:?}"))
+    }
+
+    pub fn sender_enc_balance(&self) -> Result<EncryptedAmount, String> {
+        EncryptedAmount::decode(&mut self.sender_enc_balance.as_slice())
+                .map_err(|e| format!("Failed to decode 'sender_enc_balance': {e:?}"))
+    }
+
+    pub fn receiver(&self) -> Result<PubAccount, String> {
+        PubAccount::decode(&mut self.receiver.as_slice())
+            .map_err(|e| format!("Failed to decode 'receiver': {e:?}"))
+    }
+}
+
+#[derive(Clone, Serialize, Deserialize)]
+pub struct ReceiverVerifyRequest {
+    #[serde(with = "SerHexSeq::<StrictPfx>")]
+    sender_proof: Vec<u8>,
+    amount: Balance,
+}
+
+#[cfg(feature = "backend")]
+impl ReceiverVerifyRequest {
+    pub fn sender_proof(&self) -> Result<InitializedTransferTx, String> {
+        InitializedTransferTx::decode(&mut self.sender_proof.as_slice())
+            .map_err(|e| format!("Failed to decode 'sender_proof': {e:?}"))
     }
 }

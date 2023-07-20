@@ -4,7 +4,11 @@ use actix_web::{
     Responder, Result,
 };
 
-use mercat_api_shared::{CreateAccountAsset, AccountAssetWithInitTx, AccountMintAsset, AccountAssetWithMintTx};
+use mercat_api_shared::{
+    CreateAccountAsset, AccountMintAsset, AccountAssetWithTx,
+    SenderProofRequest,
+    ReceiverVerifyRequest,
+};
 
 use crate::repo::MercatRepository;
 
@@ -17,6 +21,8 @@ pub fn service<R: MercatRepository>(cfg: &mut web::ServiceConfig) {
             // POST
             .route("", web::post().to(post::<R>))
             .route("/{asset_id}/mint", web::post().to(post_mint::<R>))
+            .route("/{asset_id}/send", web::post().to(request_sender_proof::<R>))
+            .route("/{asset_id}/receiver_verify", web::post().to(receiver_verify_request::<R>))
     );
 }
 
@@ -65,7 +71,7 @@ async fn post<R: MercatRepository>(
     };
 
     // Return account_asset with init tx.
-    let balance_with_tx = AccountAssetWithInitTx::new(account_asset, init_tx);
+    let balance_with_tx = AccountAssetWithTx::new_init_tx(account_asset, init_tx);
     HttpResponse::Ok().json(balance_with_tx)
 }
 
@@ -87,7 +93,7 @@ async fn post_mint<R: MercatRepository>(
     let (update, mint_tx) = match account_asset.create_mint_tx(account_mint_asset.amount) {
         Some(tx) => tx,
         None => {
-            return HttpResponse::InternalServerError().body("Failed to generate account initialization proof");
+            return HttpResponse::InternalServerError().body("Failed to generate asset mint proof");
         }
     };
 
@@ -103,6 +109,89 @@ async fn post_mint<R: MercatRepository>(
     };
 
     // Return account_asset with mint tx.
-    let balance_with_tx = AccountAssetWithMintTx::new(account_asset, mint_tx);
+    let balance_with_tx = AccountAssetWithTx::new_mint_tx(account_asset, mint_tx);
     HttpResponse::Ok().json(balance_with_tx)
+}
+
+async fn request_sender_proof<R: MercatRepository>(
+    path: web::Path<(i64, i64)>,
+    req: web::Json<SenderProofRequest>,
+    repo: web::Data<R>,
+) -> HttpResponse {
+    let (account_id, asset_id) = path.into_inner();
+    // Get the account asset with account secret key.
+    let account_asset = match repo.get_account_asset_with_secret(account_id, asset_id).await {
+        Ok(account_asset) => account_asset,
+        Err(_) => {
+            return HttpResponse::NotFound().body("Account Asset not found");
+        }
+    };
+
+    // Generate sender proof.
+    let (update, tx) = match account_asset.create_send_tx(&req) {
+        Ok(tx) => tx,
+        Err(e) => {
+            return HttpResponse::InternalServerError()
+                .body(format!("Failed to generate sender proof: {e:?}"));
+        }
+    };
+
+    // Update account balance.
+    let account_asset = match repo.update_account_asset(&update).await {
+        Ok(Some(account_asset)) => account_asset,
+        Ok(None) => {
+            return HttpResponse::InternalServerError().body("Internal server error: Failed to updated account asset.");
+        }
+        Err(e) => {
+            return HttpResponse::InternalServerError().body(format!("Internal server error: {:?}", e));
+        }
+    };
+
+    // Return account_asset with sender proof.
+    let balance_with_tx = AccountAssetWithTx::new_send_tx(account_asset, tx);
+    HttpResponse::Ok().json(balance_with_tx)
+}
+
+async fn receiver_verify_request<R: MercatRepository>(
+    path: web::Path<(i64, i64)>,
+    req: web::Json<ReceiverVerifyRequest>,
+    repo: web::Data<R>,
+) -> HttpResponse {
+    let (account_id, asset_id) = path.into_inner();
+    // Get the account asset with account secret key.
+    let account_asset = match repo.get_account_asset_with_secret(account_id, asset_id).await {
+        Ok(account_asset) => account_asset,
+        Err(_) => {
+            return HttpResponse::NotFound().body("Account Asset not found");
+        }
+    };
+
+    // Verify the sender's proof.
+    match account_asset.receiver_verify_tx(&req) {
+        Ok(is_valid) => {
+            return HttpResponse::Ok().json(is_valid);
+        },
+        Err(e) => {
+            return HttpResponse::InternalServerError()
+                .body(format!("Sender proof verification failed: {e:?}"));
+        }
+    }
+
+    /*
+    // TODO: Update receiver balance?
+    // Update account balance.
+    let account_asset = match repo.update_account_asset(&update).await {
+        Ok(Some(account_asset)) => account_asset,
+        Ok(None) => {
+            return HttpResponse::InternalServerError().body("Internal server error: Failed to updated account asset.");
+        }
+        Err(e) => {
+            return HttpResponse::InternalServerError().body(format!("Internal server error: {:?}", e));
+        }
+    };
+
+    // Return account_asset with sender proof.
+    let balance_with_tx = AccountAssetWithTx::new_send_tx(account_asset, tx);
+    HttpResponse::Ok().json(balance_with_tx)
+    */
 }

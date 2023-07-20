@@ -4,7 +4,10 @@ use actix_web::{
     Responder, Result,
 };
 
-use mercat_api_shared::CreateAccount;
+use mercat_api_shared::{
+    CreateAccount,
+    MediatorVerifyRequest,
+};
 
 use crate::repo::MercatRepository;
 use super::account_assets;
@@ -14,6 +17,8 @@ fn account_service<R: MercatRepository>(cfg: &mut web::ServiceConfig) {
         web::scope("/{account_id}")
             // GET
             .route("", web::get().to(get::<R>))
+            // POST
+            .route("/mediator_verify", web::post().to(mediator_verify_request::<R>))
             .configure(account_assets::service::<R>)
     );
 }
@@ -51,6 +56,31 @@ async fn post<R: MercatRepository>(
         Ok(account) => HttpResponse::Ok().json(account),
         Err(e) => {
             HttpResponse::InternalServerError().body(format!("Internal server error: {:?}", e))
+        }
+    }
+}
+
+async fn mediator_verify_request<R: MercatRepository>(
+    account_id: web::Path<i64>,
+    req: web::Json<MediatorVerifyRequest>,
+    repo: web::Data<R>,
+) -> HttpResponse {
+    // Get the account with secret key.
+    let account = match repo.get_account_with_secret(*account_id).await {
+        Ok(account) => account,
+        Err(_) => {
+            return HttpResponse::NotFound().body("Account not found");
+        }
+    };
+
+    // Verify the sender's proof.
+    match account.mediator_verify_tx(&req) {
+        Ok(is_valid) => {
+            return HttpResponse::Ok().json(is_valid);
+        },
+        Err(e) => {
+            return HttpResponse::InternalServerError()
+                .body(format!("Sender proof verification failed: {e:?}"));
         }
     }
 }
