@@ -183,4 +183,24 @@ impl MercatRepository for SqliteMercatRepository {
         .await
         .map_err(|e| e.to_string())
     }
+
+    async fn update_account_asset(&self, account_asset: &UpdateAccountAsset) -> MercatRepoResult<Option<AccountAsset>> {
+        let balance = account_asset.balance as i64;
+        let enc_balance = account_asset.enc_balance();
+        sqlx::query_as!(AccountAsset,
+            r#"
+      UPDATE account_assets SET balance = ?, enc_balance = ?, updated_at = CURRENT_TIMESTAMP
+      WHERE account_id = ? AND asset_id = ?
+      RETURNING account_asset_id as "account_asset_id!", account_id, asset_id,
+        balance, enc_balance, created_at, updated_at
+      "#,
+        balance,
+        enc_balance,
+        account_asset.account_id,
+        account_asset.asset_id,
+        )
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(|e| e.to_string())
+    }
 }

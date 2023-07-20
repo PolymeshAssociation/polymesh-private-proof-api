@@ -92,8 +92,11 @@ async fn post_mint<R: MercatRepository>(
     };
 
     // Update account balance.
-    let account_asset = match repo.create_account_asset(&update).await {
-        Ok(account_asset) => account_asset,
+    let account_asset = match repo.update_account_asset(&update).await {
+        Ok(Some(account_asset)) => account_asset,
+        Ok(None) => {
+            return HttpResponse::InternalServerError().body("Internal server error: Failed to updated account asset.");
+        }
         Err(e) => {
             return HttpResponse::InternalServerError().body(format!("Internal server error: {:?}", e));
         }

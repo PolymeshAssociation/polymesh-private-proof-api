@@ -36,4 +36,5 @@ pub trait MercatRepository: Send + Sync + 'static {
     async fn get_account_asset(&self, account_id: i64, asset_id: i64) -> MercatRepoResult<AccountAsset>;
     async fn get_account_asset_with_secret(&self, account_id: i64, asset_id: i64) -> MercatRepoResult<AccountAssetWithSecret>;
     async fn create_account_asset(&self, account_asset: &UpdateAccountAsset) -> MercatRepoResult<AccountAsset>;
+    async fn update_account_asset(&self, account_asset: &UpdateAccountAsset) -> MercatRepoResult<Option<AccountAsset>>;
 }
