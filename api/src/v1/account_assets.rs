@@ -4,7 +4,7 @@ use actix_web::{
     Responder, Result,
 };
 
-use mercat_api_shared::{
+use confidential_assets_api_shared::{
     CreateAccountAsset, AccountMintAsset, AccountAssetWithTx,
     SenderProofRequest,
     ReceiverVerifyRequest,
@@ -55,24 +55,18 @@ async fn post<R: MercatRepository>(
     };
 
     // Generate Account initialization proof.
-    let (create, init_tx) = match account.init_balance_tx(create_account_asset.asset_id) {
-        Some(tx) => tx,
-        None => {
-            return HttpResponse::InternalServerError().body("Failed to generate account initialization proof");
-        }
-    };
+    let init = account.init_balance(create_account_asset.asset_id);
 
     // Save initialize account balance.
-    let account_asset = match repo.create_account_asset(&create).await {
+    let account_asset = match repo.create_account_asset(&init).await {
         Ok(account_asset) => account_asset,
         Err(e) => {
             return HttpResponse::InternalServerError().body(format!("Internal server error: {:?}", e));
         }
     };
 
-    // Return account_asset with init tx.
-    let balance_with_tx = AccountAssetWithTx::new_init_tx(account_asset, init_tx);
-    HttpResponse::Ok().json(balance_with_tx)
+    // Return account_asset.
+    HttpResponse::Ok().json(account_asset)
 }
 
 async fn post_mint<R: MercatRepository>(
@@ -89,9 +83,9 @@ async fn post_mint<R: MercatRepository>(
         }
     };
 
-    // Generate Asset mint proof.
-    let (update, mint_tx) = match account_asset.create_mint_tx(account_mint_asset.amount) {
-        Some(tx) => tx,
+    // Mint asset.
+    let update = match account_asset.mint(account_mint_asset.amount) {
+        Some(update) => update,
         None => {
             return HttpResponse::InternalServerError().body("Failed to generate asset mint proof");
         }
@@ -108,9 +102,8 @@ async fn post_mint<R: MercatRepository>(
         }
     };
 
-    // Return account_asset with mint tx.
-    let balance_with_tx = AccountAssetWithTx::new_mint_tx(account_asset, mint_tx);
-    HttpResponse::Ok().json(balance_with_tx)
+    // Return account_asset.
+    HttpResponse::Ok().json(account_asset)
 }
 
 async fn request_sender_proof<R: MercatRepository>(

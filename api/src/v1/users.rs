@@ -4,7 +4,7 @@ use actix_web::{
     Responder, Result,
 };
 
-use mercat_api_shared::CreateUser;
+use confidential_assets_api_shared::CreateUser;
 
 use crate::repo::MercatRepository;
 

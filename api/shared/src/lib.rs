@@ -7,14 +7,13 @@ use zeroize::{Zeroize, ZeroizeOnDrop};
 use codec::{Decode, Encode};
 
 #[cfg(feature = "backend")]
-use mercat::{
-    confidential_identity_core::{
-        asset_proofs::Balance,
-        curve25519_dalek::scalar::Scalar,
-    },
-    Account as MercatAccount, EncryptionKeys, EncryptionSecKey, EncryptionPubKey, SecAccount,
-    EncryptedAmount, PubAccount,
-    InitializedAssetTx, InitializedTransferTx, PubAccountTx,
+use std::collections::BTreeMap;
+
+#[cfg(feature = "backend")]
+use confidential_assets::{
+    elgamal::CipherText,
+    transaction::{AuditorId, ConfidentialTransferProof},
+    Balance, ElgamalKeys, ElgamalPublicKey, ElgamalSecretKey, Scalar,
 };
 
 #[cfg(not(feature = "backend"))]
@@ -74,66 +73,35 @@ pub struct AccountWithSecret {
 
 #[cfg(feature = "backend")]
 impl AccountWithSecret {
-    pub fn encryption_keys(&self) -> Option<EncryptionKeys> {
-        Some(EncryptionKeys {
-          public: EncryptionPubKey::decode(&mut self.public_key.as_slice()).ok()?,
-          secret: EncryptionSecKey::decode(&mut self.secret_key.as_slice()).ok()?,
+    pub fn encryption_keys(&self) -> Option<ElgamalKeys> {
+        Some(ElgamalKeys {
+          public: ElgamalPublicKey::decode(&mut self.public_key.as_slice()).ok()?,
+          secret: ElgamalSecretKey::decode(&mut self.secret_key.as_slice()).ok()?,
         })
     }
 
-    pub fn sec_account(&self) -> Option<SecAccount> {
-        self.encryption_keys().map(SecAccount::from)
-    }
-
-    pub fn account(&self) -> Option<MercatAccount> {
-        self.encryption_keys().map(MercatAccount::from)
-    }
-
-    pub fn init_balance_tx(&self, asset_id: i64) -> Option<(UpdateAccountAsset, PubAccountTx)> {
-        self.sec_account().and_then(|account| {
-            use mercat::{account::AccountCreator, AccountCreatorInitializer};
-            let mut rng = rand::thread_rng();
-            AccountCreator.create(&account, &mut rng).map(|tx| {
-                let update = UpdateAccountAsset {
-                    account_id: self.account_id,
-                    asset_id,
-                    balance: 0,
-                    enc_balance: tx.initial_balance,
-                };
-                (update, tx)
-            }).ok()
-        })
+    pub fn init_balance(&self, asset_id: i64) -> UpdateAccountAsset {
+        UpdateAccountAsset {
+            account_id: self.account_id,
+            asset_id,
+            balance: 0,
+            enc_balance: CipherText::zero(),
+        }
     }
 
     pub fn mediator_verify_tx(&self, req: &MediatorVerifyRequest) -> Result<bool, String> {
-        use mercat::{transaction::CtxMediator, AmountSource, TransferTransactionMediator};
-
         // Decode MercatAccount from database.
         let mediator = self.encryption_keys()
             .ok_or_else(|| format!("Failed to get account from database."))?;
 
         // Decode request.
         let sender_proof = req.sender_proof()?;
-        let sender = req.sender()?;
-        let sender_enc_balance = req.sender_enc_balance()?;
-        let receiver = req.receiver()?;
-        let amount = match req.amount {
-            Some(amount) => AmountSource::Amount(amount),
-            None => AmountSource::Encrypted(&mediator),
-        };
 
-        let mut rng = rand::thread_rng();
-        CtxMediator
-            .justify_transaction(
-                &sender_proof,
-                amount,
-                &sender,
-                &sender_enc_balance,
-                &receiver,
-                &[],
-                &mut rng,
-            )
+        let amount = sender_proof.auditor_verify(AuditorId(0), &mediator)
             .map_err(|e| format!("Failed to verify sender proof: {e:?}"))?;
+        if amount != req.amount {
+            return Err(format!("Failed to verify sender proof: Invalid transaction amount").into());
+        }
         Ok(true)
     }
 }
@@ -149,11 +117,11 @@ pub struct CreateAccount {
 
 #[cfg(feature = "backend")]
 impl CreateAccount {
-    fn create_secret_account() -> EncryptionKeys {
+    fn create_secret_account() -> ElgamalKeys {
         let mut rng = rand::thread_rng();
-        let secret = EncryptionSecKey::new(Scalar::random(&mut rng));
+        let secret = ElgamalSecretKey::new(Scalar::random(&mut rng));
         let public = secret.get_public_key();
-        EncryptionKeys {
+        ElgamalKeys {
             public,
             secret,
         }
@@ -186,8 +154,8 @@ pub struct AccountAsset {
 
 #[cfg(feature = "backend")]
 impl AccountAsset {
-    pub fn enc_balance(&self) -> Option<EncryptedAmount> {
-        EncryptedAmount::decode(&mut self.enc_balance.as_slice()).ok()
+    pub fn enc_balance(&self) -> Option<CipherText> {
+        CipherText::decode(&mut self.enc_balance.as_slice()).ok()
     }
 }
 
@@ -207,55 +175,41 @@ pub struct AccountAssetWithSecret {
 
 #[cfg(feature = "backend")]
 impl AccountAssetWithSecret {
-    pub fn enc_balance(&self) -> Option<EncryptedAmount> {
-        EncryptedAmount::decode(&mut self.enc_balance.as_slice()).ok()
+    pub fn enc_balance(&self) -> Option<CipherText> {
+        CipherText::decode(&mut self.enc_balance.as_slice()).ok()
     }
 
-    pub fn create_mint_tx(&self, amount: Balance) -> Option<(UpdateAccountAsset, InitializedAssetTx)> {
-        use mercat::{asset::AssetIssuer, AssetTransactionIssuer};
+    pub fn mint(&self, amount: Balance) -> Option<UpdateAccountAsset> {
         // Decode `enc_balance`.
         let enc_balance = self.enc_balance()?;
-        // Decode MercatAccount from database.
-        let account = self.account.account()?;
-        // Generate Asset mint proof.
-        let mut rng = rand::thread_rng();
-        let mint_tx = AssetIssuer
-            .initialize_asset_transaction(&account, &[], amount, &mut rng)
-            .ok()?;
         // Update account balance.
-        let update = UpdateAccountAsset {
+        Some(UpdateAccountAsset {
             account_id: self.account.account_id,
             asset_id: self.asset_id,
             balance: (self.balance as u64) + amount,
-            enc_balance: enc_balance + mint_tx.memo.enc_issued_amount,
-        };
-
-        Some((update, mint_tx))
+            enc_balance: enc_balance + CipherText::value(amount.into()),
+        })
     }
 
-    pub fn create_send_tx(&self, req: &SenderProofRequest) -> Result<(UpdateAccountAsset, InitializedTransferTx), String> {
-        use mercat::{transaction::CtxSender, TransferTransactionSender};
+    pub fn create_send_tx(&self, req: &SenderProofRequest) -> Result<(UpdateAccountAsset, ConfidentialTransferProof), String> {
         // Decode MercatAccount from database.
-        let sender = self.account.account()
+        let sender = self.account.encryption_keys()
             .ok_or_else(|| format!("Failed to get account from database."))?;
         // Decode `req`.
         let enc_balance = req.encrypted_balance()?
             .or_else(|| self.enc_balance())
             .ok_or_else(|| format!("No encrypted balance."))?;
         let receiver = req.receiver()?;
-        let mediator = req.mediator()?
-            .map(|k| k.owner_enc_pub_key);
+        let mediator = req.mediator()?;
 
         let mut rng = rand::thread_rng();
         let sender_balance = self.balance as Balance;
-        let tx = CtxSender
-            .create_transaction(
+        let tx = ConfidentialTransferProof::new(
                 &sender,
                 &enc_balance,
                 sender_balance,
                 &receiver,
-                mediator.as_ref(),
-                &[],
+                &BTreeMap::from([(AuditorId(0), mediator)]),
                 req.amount,
                 &mut rng,
             )
@@ -265,22 +219,20 @@ impl AccountAssetWithSecret {
             account_id: self.account.account_id,
             asset_id: self.asset_id,
             balance: (self.balance as u64) - req.amount,
-            enc_balance: enc_balance - tx.memo.enc_amount_using_sender,
+            enc_balance: enc_balance - tx.sender_amount(),
         };
 
         Ok((update, tx))
     }
 
     pub fn receiver_verify_tx(&self, req: &ReceiverVerifyRequest) -> Result<bool, String> {
-        use mercat::{transaction::CtxReceiver, TransferTransactionReceiver};
         // Decode MercatAccount from database.
-        let receiver = self.account.account()
+        let receiver = self.account.encryption_keys()
             .ok_or_else(|| format!("Failed to get account from database."))?;
 
         // Decode request.
         let sender_proof = req.sender_proof()?;
-        CtxReceiver
-            .finalize_transaction(&sender_proof, receiver, req.amount)
+        sender_proof.receiver_verify(receiver, req.amount)
             .map_err(|e| format!("Failed to verify sender proof: {e:?}"))?;
         Ok(true)
     }
@@ -298,7 +250,7 @@ pub struct UpdateAccountAsset {
     pub asset_id: i64,
 
     pub balance: Balance,
-    pub enc_balance: EncryptedAmount,
+    pub enc_balance: CipherText,
 }
 
 #[cfg(feature = "backend")]
@@ -322,20 +274,7 @@ pub struct AccountAssetWithTx {
 
 #[cfg(feature = "backend")]
 impl AccountAssetWithTx {
-    pub fn new_init_tx(account_asset: AccountAsset, tx: PubAccountTx) -> Self {
-        Self {
-            account_asset,
-            tx: tx.encode(),
-        }
-    }
-    pub fn new_mint_tx(account_asset: AccountAsset, tx: InitializedAssetTx) -> Self {
-        Self {
-            account_asset,
-            tx: tx.encode(),
-        }
-    }
-
-    pub fn new_send_tx(account_asset: AccountAsset, tx: InitializedTransferTx) -> Self {
+    pub fn new_send_tx(account_asset: AccountAsset, tx: ConfidentialTransferProof) -> Self {
         Self {
             account_asset,
             tx: tx.encode(),
@@ -356,27 +295,23 @@ pub struct SenderProofRequest {
 
 #[cfg(feature = "backend")]
 impl SenderProofRequest {
-    pub fn encrypted_balance(&self) -> Result<Option<EncryptedAmount>, String> {
+    pub fn encrypted_balance(&self) -> Result<Option<CipherText>, String> {
         Ok(if self.encrypted_balance.is_empty() {
             None
         } else {
-            Some(EncryptedAmount::decode(&mut self.encrypted_balance.as_slice())
+            Some(CipherText::decode(&mut self.encrypted_balance.as_slice())
                 .map_err(|e| format!("Failed to decode 'encrypted_balance': {e:?}"))?)
         })
     }
 
-    pub fn receiver(&self) -> Result<PubAccount, String> {
-        PubAccount::decode(&mut self.receiver.as_slice())
+    pub fn receiver(&self) -> Result<ElgamalPublicKey, String> {
+        ElgamalPublicKey::decode(&mut self.receiver.as_slice())
             .map_err(|e| format!("Failed to decode 'receiver': {e:?}"))
     }
 
-    pub fn mediator(&self) -> Result<Option<PubAccount>, String> {
-        Ok(if self.mediator.is_empty() {
-            None
-        } else {
-            Some(PubAccount::decode(&mut self.mediator.as_slice())
-                .map_err(|e| format!("Failed to decode 'mediator': {e:?}"))?)
-        })
+    pub fn mediator(&self) -> Result<ElgamalPublicKey, String> {
+        ElgamalPublicKey::decode(&mut self.mediator.as_slice())
+            .map_err(|e| format!("Failed to decode 'mediator': {e:?}"))
     }
 }
 
@@ -384,36 +319,14 @@ impl SenderProofRequest {
 pub struct MediatorVerifyRequest {
     #[serde(with = "SerHexSeq::<StrictPfx>")]
     sender_proof: Vec<u8>,
-    #[serde(with = "SerHexSeq::<StrictPfx>")]
-    sender: Vec<u8>,
-    #[serde(default, with = "SerHexSeq::<StrictPfx>")]
-    sender_enc_balance: Vec<u8>,
-    #[serde(with = "SerHexSeq::<StrictPfx>")]
-    receiver: Vec<u8>,
-    #[serde(default)]
-    amount: Option<Balance>,
+    amount: Balance,
 }
 
 #[cfg(feature = "backend")]
 impl MediatorVerifyRequest {
-    pub fn sender_proof(&self) -> Result<InitializedTransferTx, String> {
-        InitializedTransferTx::decode(&mut self.sender_proof.as_slice())
+    pub fn sender_proof(&self) -> Result<ConfidentialTransferProof, String> {
+        ConfidentialTransferProof::decode(&mut self.sender_proof.as_slice())
             .map_err(|e| format!("Failed to decode 'sender_proof': {e:?}"))
-    }
-
-    pub fn sender(&self) -> Result<PubAccount, String> {
-        PubAccount::decode(&mut self.sender.as_slice())
-            .map_err(|e| format!("Failed to decode 'sender': {e:?}"))
-    }
-
-    pub fn sender_enc_balance(&self) -> Result<EncryptedAmount, String> {
-        EncryptedAmount::decode(&mut self.sender_enc_balance.as_slice())
-                .map_err(|e| format!("Failed to decode 'sender_enc_balance': {e:?}"))
-    }
-
-    pub fn receiver(&self) -> Result<PubAccount, String> {
-        PubAccount::decode(&mut self.receiver.as_slice())
-            .map_err(|e| format!("Failed to decode 'receiver': {e:?}"))
     }
 }
 
@@ -426,8 +339,8 @@ pub struct ReceiverVerifyRequest {
 
 #[cfg(feature = "backend")]
 impl ReceiverVerifyRequest {
-    pub fn sender_proof(&self) -> Result<InitializedTransferTx, String> {
-        InitializedTransferTx::decode(&mut self.sender_proof.as_slice())
+    pub fn sender_proof(&self) -> Result<ConfidentialTransferProof, String> {
+        ConfidentialTransferProof::decode(&mut self.sender_proof.as_slice())
             .map_err(|e| format!("Failed to decode 'sender_proof': {e:?}"))
     }
 }

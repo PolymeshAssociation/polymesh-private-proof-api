@@ -1,5 +1,5 @@
 use async_trait::async_trait;
-use mercat_api_shared::{
+use confidential_assets_api_shared::{
   CreateUser, CreateAsset, CreateAccount, UpdateAccountAsset,
   User, Asset, Account, AccountWithSecret, AccountAsset,
   AccountAssetWithSecret,

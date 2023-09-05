@@ -3,7 +3,7 @@ use actix_web::middleware::Logger;
 use actix_web::{web, App, HttpServer};
 use sqlx::sqlite::SqlitePool;
 
-use mercat_api as api;
+use confidential_assets_api as api;
 
 type BackendRepository = api::repo::SqliteMercatRepository;
 
