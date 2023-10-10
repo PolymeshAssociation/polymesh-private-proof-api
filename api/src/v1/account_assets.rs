@@ -15,7 +15,7 @@ pub fn service<R: MercatRepository>(cfg: &mut web::ServiceConfig) {
       .route("/{asset_id}", web::get().to(get_account_asset::<R>))
       // POST
       .route("", web::post().to(create_account_asset::<R>))
-      .route("/{asset_id}/mint", web::post().to(post_mint::<R>))
+      .route("/{asset_id}/mint", web::post().to(asset_issuer_mint::<R>))
       .route(
         "/{asset_id}/send",
         web::post().to(request_sender_proof::<R>),
@@ -27,6 +27,7 @@ pub fn service<R: MercatRepository>(cfg: &mut web::ServiceConfig) {
   );
 }
 
+/// Get all assets for an account.
 async fn get_all_account_assets<R: MercatRepository>(
   account_id: web::Path<i64>,
   repo: web::Data<R>,
@@ -37,6 +38,7 @@ async fn get_all_account_assets<R: MercatRepository>(
   })
 }
 
+/// Get one asset for the account.
 async fn get_account_asset<R: MercatRepository>(path: web::Path<(i64, i64)>, repo: web::Data<R>) -> HttpResponse {
   let (account_id, asset_id) = path.into_inner();
   match repo.get_account_asset(account_id, asset_id).await {
@@ -45,6 +47,7 @@ async fn get_account_asset<R: MercatRepository>(path: web::Path<(i64, i64)>, rep
   }
 }
 
+/// Add an asset to the account and initialize it's balance.
 async fn create_account_asset<R: MercatRepository>(
   account_id: web::Path<i64>,
   create_account_asset: web::Json<CreateAccountAsset>,
@@ -73,7 +76,8 @@ async fn create_account_asset<R: MercatRepository>(
   HttpResponse::Ok().json(account_asset)
 }
 
-async fn post_mint<R: MercatRepository>(
+/// Asset issuer updates their account balance when minting.
+async fn asset_issuer_mint<R: MercatRepository>(
   path: web::Path<(i64, i64)>,
   account_mint_asset: web::Json<AccountMintAsset>,
   repo: web::Data<R>,
