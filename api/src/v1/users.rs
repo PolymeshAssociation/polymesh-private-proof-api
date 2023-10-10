@@ -8,28 +8,31 @@ pub fn service<R: MercatRepository>(cfg: &mut web::ServiceConfig) {
   cfg.service(
     web::scope("/users")
       // GET
-      .route("", web::get().to(get_all::<R>))
-      .route("/{user_id}", web::get().to(get::<R>))
+      .route("", web::get().to(get_all_users::<R>))
+      .route("/{user_id}", web::get().to(get_user::<R>))
       // POST
-      .route("", web::post().to(post::<R>)),
+      .route("", web::post().to(create_user::<R>)),
   );
 }
 
-async fn get_all<R: MercatRepository>(repo: web::Data<R>) -> Result<impl Responder> {
+/// Get all users.
+async fn get_all_users<R: MercatRepository>(repo: web::Data<R>) -> Result<impl Responder> {
   Ok(match repo.get_users().await {
     Ok(users) => HttpResponse::Ok().json(users),
     Err(e) => HttpResponse::NotFound().body(format!("Internal server error: {:?}", e)),
   })
 }
 
-async fn get<R: MercatRepository>(user_id: web::Path<i64>, repo: web::Data<R>) -> HttpResponse {
+/// Get one user.
+async fn get_user<R: MercatRepository>(user_id: web::Path<i64>, repo: web::Data<R>) -> HttpResponse {
   match repo.get_user(*user_id).await {
     Ok(user) => HttpResponse::Ok().json(user),
     Err(_) => HttpResponse::NotFound().body("Not found"),
   }
 }
 
-async fn post<R: MercatRepository>(
+/// Create a new user.
+async fn create_user<R: MercatRepository>(
   user: web::Json<CreateUser>,
   repo: web::Data<R>,
 ) -> HttpResponse {

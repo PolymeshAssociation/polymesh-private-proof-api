@@ -9,7 +9,7 @@ fn account_service<R: MercatRepository>(cfg: &mut web::ServiceConfig) {
   cfg.service(
     web::scope("/{account_id}")
       // GET
-      .route("", web::get().to(get::<R>))
+      .route("", web::get().to(get_account::<R>))
       // POST
       .route(
         "/auditor_verify",
@@ -23,28 +23,31 @@ pub fn service<R: MercatRepository>(cfg: &mut web::ServiceConfig) {
   cfg.service(
     web::scope("/accounts")
       // GET
-      .route("", web::get().to(get_all::<R>))
+      .route("", web::get().to(get_all_accounts::<R>))
       .configure(account_service::<R>)
       // POST
-      .route("", web::post().to(post::<R>)),
+      .route("", web::post().to(create_account::<R>)),
   );
 }
 
-async fn get_all<R: MercatRepository>(repo: web::Data<R>) -> Result<impl Responder> {
+/// Get all accounts.
+async fn get_all_accounts<R: MercatRepository>(repo: web::Data<R>) -> Result<impl Responder> {
   Ok(match repo.get_accounts().await {
     Ok(accounts) => HttpResponse::Ok().json(accounts),
     Err(e) => HttpResponse::NotFound().body(format!("Internal server error: {:?}", e)),
   })
 }
 
-async fn get<R: MercatRepository>(account_id: web::Path<i64>, repo: web::Data<R>) -> HttpResponse {
+/// Get one account.
+async fn get_account<R: MercatRepository>(account_id: web::Path<i64>, repo: web::Data<R>) -> HttpResponse {
   match repo.get_account(*account_id).await {
     Ok(account) => HttpResponse::Ok().json(account),
     Err(_) => HttpResponse::NotFound().body("Not found"),
   }
 }
 
-async fn post<R: MercatRepository>(repo: web::Data<R>) -> HttpResponse {
+/// Create a new account.
+async fn create_account<R: MercatRepository>(repo: web::Data<R>) -> HttpResponse {
   let account = CreateAccount::new();
   match repo.create_account(&account).await {
     Ok(account) => HttpResponse::Ok().json(account),
@@ -52,6 +55,7 @@ async fn post<R: MercatRepository>(repo: web::Data<R>) -> HttpResponse {
   }
 }
 
+/// Verify a sender proof as an auditor.
 async fn auditor_verify_request<R: MercatRepository>(
   account_id: web::Path<i64>,
   req: web::Json<AuditorVerifyRequest>,

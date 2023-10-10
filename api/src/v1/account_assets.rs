@@ -11,10 +11,10 @@ pub fn service<R: MercatRepository>(cfg: &mut web::ServiceConfig) {
   cfg.service(
     web::scope("/assets")
       // GET
-      .route("", web::get().to(get_all::<R>))
-      .route("/{asset_id}", web::get().to(get::<R>))
+      .route("", web::get().to(get_all_account_assets::<R>))
+      .route("/{asset_id}", web::get().to(get_account_asset::<R>))
       // POST
-      .route("", web::post().to(post::<R>))
+      .route("", web::post().to(create_account_asset::<R>))
       .route("/{asset_id}/mint", web::post().to(post_mint::<R>))
       .route(
         "/{asset_id}/send",
@@ -27,7 +27,7 @@ pub fn service<R: MercatRepository>(cfg: &mut web::ServiceConfig) {
   );
 }
 
-async fn get_all<R: MercatRepository>(
+async fn get_all_account_assets<R: MercatRepository>(
   account_id: web::Path<i64>,
   repo: web::Data<R>,
 ) -> Result<impl Responder> {
@@ -37,7 +37,7 @@ async fn get_all<R: MercatRepository>(
   })
 }
 
-async fn get<R: MercatRepository>(path: web::Path<(i64, i64)>, repo: web::Data<R>) -> HttpResponse {
+async fn get_account_asset<R: MercatRepository>(path: web::Path<(i64, i64)>, repo: web::Data<R>) -> HttpResponse {
   let (account_id, asset_id) = path.into_inner();
   match repo.get_account_asset(account_id, asset_id).await {
     Ok(account_asset) => HttpResponse::Ok().json(account_asset),
@@ -45,7 +45,7 @@ async fn get<R: MercatRepository>(path: web::Path<(i64, i64)>, repo: web::Data<R
   }
 }
 
-async fn post<R: MercatRepository>(
+async fn create_account_asset<R: MercatRepository>(
   account_id: web::Path<i64>,
   create_account_asset: web::Json<CreateAccountAsset>,
   repo: web::Data<R>,
