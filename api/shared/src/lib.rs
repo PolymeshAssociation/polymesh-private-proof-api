@@ -7,9 +7,6 @@ use zeroize::{Zeroize, ZeroizeOnDrop};
 use codec::{Decode, Encode};
 
 #[cfg(feature = "backend")]
-use std::collections::BTreeMap;
-
-#[cfg(feature = "backend")]
 use confidential_assets::{
   elgamal::CipherText,
   transaction::{AuditorId, ConfidentialTransferProof},
@@ -203,7 +200,9 @@ impl AccountAssetWithSecret {
       .or_else(|| self.enc_balance())
       .ok_or_else(|| format!("No encrypted balance."))?;
     let receiver = req.receiver()?;
-    let auditor = req.auditor()?;
+    let auditors = req.auditors()?.into_iter().enumerate().map(|(idx, auditor)| {
+      (AuditorId(idx as _), auditor)
+    }).collect();
 
     let mut rng = rand::thread_rng();
     let sender_balance = self.balance as Balance;
@@ -212,7 +211,7 @@ impl AccountAssetWithSecret {
       &enc_balance,
       sender_balance,
       &receiver,
-      &BTreeMap::from([(AuditorId(0), auditor)]),
+      &auditors,
       req.amount,
       &mut rng,
     )
@@ -289,13 +288,25 @@ impl AccountAssetWithTx {
 }
 
 #[derive(Clone, Serialize, Deserialize)]
+pub struct PublicKey {
+  #[serde(with = "SerHexSeq::<StrictPfx>")]
+  key: Vec<u8>,
+}
+
+impl PublicKey {
+  pub fn pub_key(&self) -> Result<ElgamalPublicKey, String> {
+    ElgamalPublicKey::decode(&mut self.key.as_slice())
+      .map_err(|e| format!("Failed to decode PublicKey: {e:?}"))
+  }
+}
+
+#[derive(Clone, Serialize, Deserialize)]
 pub struct SenderProofRequest {
   #[serde(default, with = "SerHexSeq::<StrictPfx>")]
   encrypted_balance: Vec<u8>,
-  #[serde(with = "SerHexSeq::<StrictPfx>")]
-  receiver: Vec<u8>,
-  #[serde(default, with = "SerHexSeq::<StrictPfx>")]
-  auditor: Vec<u8>,
+  receiver: PublicKey,
+  #[serde(default)]
+  auditors: Vec<PublicKey>,
   amount: Balance,
 }
 
@@ -313,13 +324,15 @@ impl SenderProofRequest {
   }
 
   pub fn receiver(&self) -> Result<ElgamalPublicKey, String> {
-    ElgamalPublicKey::decode(&mut self.receiver.as_slice())
+    self.receiver.pub_key()
       .map_err(|e| format!("Failed to decode 'receiver': {e:?}"))
   }
 
-  pub fn auditor(&self) -> Result<ElgamalPublicKey, String> {
-    ElgamalPublicKey::decode(&mut self.auditor.as_slice())
-      .map_err(|e| format!("Failed to decode 'auditor': {e:?}"))
+  pub fn auditors(&self) -> Result<Vec<ElgamalPublicKey>, String> {
+    Ok(self.auditors.iter().map(|k| {
+      k.pub_key()
+        .map_err(|e| format!("Failed to decode 'auditor': {e:?}"))
+    }).collect::<Result<Vec<_>, String>>()?)
   }
 }
 
