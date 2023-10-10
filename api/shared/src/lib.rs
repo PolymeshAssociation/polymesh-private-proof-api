@@ -89,15 +89,15 @@ impl AccountWithSecret {
         }
     }
 
-    pub fn mediator_verify_tx(&self, req: &MediatorVerifyRequest) -> Result<bool, String> {
+    pub fn auditor_verify_tx(&self, req: &AuditorVerifyRequest) -> Result<bool, String> {
         // Decode MercatAccount from database.
-        let mediator = self.encryption_keys()
+        let auditor = self.encryption_keys()
             .ok_or_else(|| format!("Failed to get account from database."))?;
 
         // Decode request.
         let sender_proof = req.sender_proof()?;
 
-        let amount = sender_proof.auditor_verify(AuditorId(0), &mediator)
+        let amount = sender_proof.auditor_verify(AuditorId(0), &auditor)
             .map_err(|e| format!("Failed to verify sender proof: {e:?}"))?;
         if amount != req.amount {
             return Err(format!("Failed to verify sender proof: Invalid transaction amount").into());
@@ -200,7 +200,7 @@ impl AccountAssetWithSecret {
             .or_else(|| self.enc_balance())
             .ok_or_else(|| format!("No encrypted balance."))?;
         let receiver = req.receiver()?;
-        let mediator = req.mediator()?;
+        let auditor = req.auditor()?;
 
         let mut rng = rand::thread_rng();
         let sender_balance = self.balance as Balance;
@@ -209,7 +209,7 @@ impl AccountAssetWithSecret {
                 &enc_balance,
                 sender_balance,
                 &receiver,
-                &BTreeMap::from([(AuditorId(0), mediator)]),
+                &BTreeMap::from([(AuditorId(0), auditor)]),
                 req.amount,
                 &mut rng,
             )
@@ -289,7 +289,7 @@ pub struct SenderProofRequest {
     #[serde(with = "SerHexSeq::<StrictPfx>")]
     receiver: Vec<u8>,
     #[serde(default, with = "SerHexSeq::<StrictPfx>")]
-    mediator: Vec<u8>,
+    auditor: Vec<u8>,
     amount: Balance,
 }
 
@@ -309,21 +309,21 @@ impl SenderProofRequest {
             .map_err(|e| format!("Failed to decode 'receiver': {e:?}"))
     }
 
-    pub fn mediator(&self) -> Result<ElgamalPublicKey, String> {
-        ElgamalPublicKey::decode(&mut self.mediator.as_slice())
-            .map_err(|e| format!("Failed to decode 'mediator': {e:?}"))
+    pub fn auditor(&self) -> Result<ElgamalPublicKey, String> {
+        ElgamalPublicKey::decode(&mut self.auditor.as_slice())
+            .map_err(|e| format!("Failed to decode 'auditor': {e:?}"))
     }
 }
 
 #[derive(Clone, Serialize, Deserialize)]
-pub struct MediatorVerifyRequest {
+pub struct AuditorVerifyRequest {
     #[serde(with = "SerHexSeq::<StrictPfx>")]
     sender_proof: Vec<u8>,
     amount: Balance,
 }
 
 #[cfg(feature = "backend")]
-impl MediatorVerifyRequest {
+impl AuditorVerifyRequest {
     pub fn sender_proof(&self) -> Result<ConfidentialTransferProof, String> {
         ConfidentialTransferProof::decode(&mut self.sender_proof.as_slice())
             .map_err(|e| format!("Failed to decode 'sender_proof': {e:?}"))

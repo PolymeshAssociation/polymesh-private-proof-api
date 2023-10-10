@@ -6,7 +6,7 @@ use actix_web::{
 
 use confidential_assets_api_shared::{
     CreateAccount,
-    MediatorVerifyRequest,
+    AuditorVerifyRequest,
 };
 
 use crate::repo::MercatRepository;
@@ -18,7 +18,7 @@ fn account_service<R: MercatRepository>(cfg: &mut web::ServiceConfig) {
             // GET
             .route("", web::get().to(get::<R>))
             // POST
-            .route("/mediator_verify", web::post().to(mediator_verify_request::<R>))
+            .route("/auditor_verify", web::post().to(auditor_verify_request::<R>))
             .configure(account_assets::service::<R>)
     );
 }
@@ -60,9 +60,9 @@ async fn post<R: MercatRepository>(
     }
 }
 
-async fn mediator_verify_request<R: MercatRepository>(
+async fn auditor_verify_request<R: MercatRepository>(
     account_id: web::Path<i64>,
-    req: web::Json<MediatorVerifyRequest>,
+    req: web::Json<AuditorVerifyRequest>,
     repo: web::Data<R>,
 ) -> HttpResponse {
     // Get the account with secret key.
@@ -74,7 +74,7 @@ async fn mediator_verify_request<R: MercatRepository>(
     };
 
     // Verify the sender's proof.
-    match account.mediator_verify_tx(&req) {
+    match account.auditor_verify_tx(&req) {
         Ok(is_valid) => {
             return HttpResponse::Ok().json(is_valid);
         },
