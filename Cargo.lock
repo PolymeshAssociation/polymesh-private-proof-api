@@ -643,7 +643,7 @@ dependencies = [
 [[package]]
 name = "confidential_assets"
 version = "1.0.0"
-source = "git+ssh://git@github.com/PolymeshAssociation/confidential_assets.git?branch=main#00d65edcf919b0af4b999e39251f8f7d2fa8ac04"
+source = "git+ssh://git@github.com/PolymeshAssociation/confidential_assets.git?branch=main#a70d828e36093bc17b3e28305b2b866f49391884"
 dependencies = [
  "bincode",
  "bulletproofs",
@@ -2455,7 +2455,7 @@ dependencies = [
 [[package]]
 name = "sp-std"
 version = "5.0.0"
-source = "git+https://github.com/PolymeshAssociation/substrate?branch=polymesh-v6-monthly-2023-03#020f51af1d993a0fd4dbec2f6399d9c649915bb8"
+source = "git+https://github.com/PolymeshAssociation/substrate?branch=polymesh-v6-monthly-2023-03#497e3a771f6951815613af339a1d2936af0e3cb6"
 
 [[package]]
 name = "spin"
