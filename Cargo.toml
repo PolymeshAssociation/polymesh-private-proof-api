@@ -4,6 +4,7 @@ members = [
     "api/shared",
     "front",
 ]
+resolver = "2"
 
 [patch.crates-io]
 confidential_assets = { git = "ssh://git@github.com/PolymeshAssociation/confidential_assets.git", branch = "main" }
