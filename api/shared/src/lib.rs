@@ -287,16 +287,25 @@ impl AccountAssetWithTx {
   }
 }
 
-#[derive(Clone, Serialize, Deserialize)]
-pub struct PublicKey {
-  #[serde(with = "SerHexSeq::<StrictPfx>")]
-  key: Vec<u8>,
+#[derive(Clone, Debug, Default, Deserialize, Serialize)]
+pub struct PublicKey(#[serde(with = "SerHexSeq::<StrictPfx>")] Vec<u8>);
+
+#[cfg(feature = "backend")]
+impl PublicKey {
+  pub fn decode(&self) -> Result<ElgamalPublicKey, String> {
+    ElgamalPublicKey::decode(&mut self.0.as_slice())
+      .map_err(|e| format!("Failed to decode PublicKey: {e:?}"))
+  }
 }
 
-impl PublicKey {
-  pub fn pub_key(&self) -> Result<ElgamalPublicKey, String> {
-    ElgamalPublicKey::decode(&mut self.key.as_slice())
-      .map_err(|e| format!("Failed to decode PublicKey: {e:?}"))
+#[derive(Clone, Serialize, Deserialize)]
+pub struct SenderProof(#[serde(with = "SerHexSeq::<StrictPfx>")] Vec<u8>);
+
+#[cfg(feature = "backend")]
+impl SenderProof {
+  pub fn decode(&self) -> Result<ConfidentialTransferProof, String> {
+    ConfidentialTransferProof::decode(&mut self.0.as_slice())
+      .map_err(|e| format!("Failed to decode 'sender_proof': {e:?}"))
   }
 }
 
@@ -324,13 +333,13 @@ impl SenderProofRequest {
   }
 
   pub fn receiver(&self) -> Result<ElgamalPublicKey, String> {
-    self.receiver.pub_key()
+    self.receiver.decode()
       .map_err(|e| format!("Failed to decode 'receiver': {e:?}"))
   }
 
   pub fn auditors(&self) -> Result<Vec<ElgamalPublicKey>, String> {
     Ok(self.auditors.iter().map(|k| {
-      k.pub_key()
+      k.decode()
         .map_err(|e| format!("Failed to decode 'auditor': {e:?}"))
     }).collect::<Result<Vec<_>, String>>()?)
   }
@@ -338,30 +347,26 @@ impl SenderProofRequest {
 
 #[derive(Clone, Serialize, Deserialize)]
 pub struct AuditorVerifyRequest {
-  #[serde(with = "SerHexSeq::<StrictPfx>")]
-  sender_proof: Vec<u8>,
+  sender_proof: SenderProof,
   amount: Balance,
 }
 
 #[cfg(feature = "backend")]
 impl AuditorVerifyRequest {
   pub fn sender_proof(&self) -> Result<ConfidentialTransferProof, String> {
-    ConfidentialTransferProof::decode(&mut self.sender_proof.as_slice())
-      .map_err(|e| format!("Failed to decode 'sender_proof': {e:?}"))
+    self.sender_proof.decode()
   }
 }
 
 #[derive(Clone, Serialize, Deserialize)]
 pub struct ReceiverVerifyRequest {
-  #[serde(with = "SerHexSeq::<StrictPfx>")]
-  sender_proof: Vec<u8>,
+  sender_proof: SenderProof,
   amount: Balance,
 }
 
 #[cfg(feature = "backend")]
 impl ReceiverVerifyRequest {
   pub fn sender_proof(&self) -> Result<ConfidentialTransferProof, String> {
-    ConfidentialTransferProof::decode(&mut self.sender_proof.as_slice())
-      .map_err(|e| format!("Failed to decode 'sender_proof': {e:?}"))
+    self.sender_proof.decode()
   }
 }
