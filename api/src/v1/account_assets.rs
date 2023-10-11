@@ -5,32 +5,29 @@ use confidential_assets_api_shared::{
   SenderProofRequest,
 };
 
-use crate::repo::ConfidentialRepository;
+use crate::repo::Repository;
 
-pub fn service<R: ConfidentialRepository>(cfg: &mut web::ServiceConfig) {
+pub fn service(cfg: &mut web::ServiceConfig) {
   cfg.service(
     web::scope("/assets")
       // GET
-      .route("", web::get().to(get_all_account_assets::<R>))
-      .route("/{asset_id}", web::get().to(get_account_asset::<R>))
+      .route("", web::get().to(get_all_account_assets))
+      .route("/{asset_id}", web::get().to(get_account_asset))
       // POST
-      .route("", web::post().to(create_account_asset::<R>))
-      .route("/{asset_id}/mint", web::post().to(asset_issuer_mint::<R>))
-      .route(
-        "/{asset_id}/send",
-        web::post().to(request_sender_proof::<R>),
-      )
+      .route("", web::post().to(create_account_asset))
+      .route("/{asset_id}/mint", web::post().to(asset_issuer_mint))
+      .route("/{asset_id}/send", web::post().to(request_sender_proof))
       .route(
         "/{asset_id}/receiver_verify",
-        web::post().to(receiver_verify_request::<R>),
+        web::post().to(receiver_verify_request),
       ),
   );
 }
 
 /// Get all assets for an account.
-async fn get_all_account_assets<R: ConfidentialRepository>(
+async fn get_all_account_assets(
   account_id: web::Path<i64>,
-  repo: web::Data<R>,
+  repo: web::Data<Repository>,
 ) -> Result<impl Responder> {
   Ok(match repo.get_account_assets(*account_id).await {
     Ok(account_assets) => HttpResponse::Ok().json(account_assets),
@@ -39,7 +36,10 @@ async fn get_all_account_assets<R: ConfidentialRepository>(
 }
 
 /// Get one asset for the account.
-async fn get_account_asset<R: ConfidentialRepository>(path: web::Path<(i64, i64)>, repo: web::Data<R>) -> HttpResponse {
+async fn get_account_asset(
+  path: web::Path<(i64, i64)>,
+  repo: web::Data<Repository>,
+) -> HttpResponse {
   let (account_id, asset_id) = path.into_inner();
   match repo.get_account_asset(account_id, asset_id).await {
     Ok(account_asset) => HttpResponse::Ok().json(account_asset),
@@ -48,10 +48,10 @@ async fn get_account_asset<R: ConfidentialRepository>(path: web::Path<(i64, i64)
 }
 
 /// Add an asset to the account and initialize it's balance.
-async fn create_account_asset<R: ConfidentialRepository>(
+async fn create_account_asset(
   account_id: web::Path<i64>,
   create_account_asset: web::Json<CreateAccountAsset>,
-  repo: web::Data<R>,
+  repo: web::Data<Repository>,
 ) -> HttpResponse {
   // Get the account's secret key.
   let account = match repo.get_account_with_secret(*account_id).await {
@@ -77,10 +77,10 @@ async fn create_account_asset<R: ConfidentialRepository>(
 }
 
 /// Asset issuer updates their account balance when minting.
-async fn asset_issuer_mint<R: ConfidentialRepository>(
+async fn asset_issuer_mint(
   path: web::Path<(i64, i64)>,
   account_mint_asset: web::Json<AccountMintAsset>,
-  repo: web::Data<R>,
+  repo: web::Data<Repository>,
 ) -> HttpResponse {
   let (account_id, asset_id) = path.into_inner();
   // Get the account asset with account secret key.
@@ -118,10 +118,10 @@ async fn asset_issuer_mint<R: ConfidentialRepository>(
   HttpResponse::Ok().json(account_asset)
 }
 
-async fn request_sender_proof<R: ConfidentialRepository>(
+async fn request_sender_proof(
   path: web::Path<(i64, i64)>,
   req: web::Json<SenderProofRequest>,
-  repo: web::Data<R>,
+  repo: web::Data<Repository>,
 ) -> HttpResponse {
   let (account_id, asset_id) = path.into_inner();
   // Get the account asset with account secret key.
@@ -161,10 +161,10 @@ async fn request_sender_proof<R: ConfidentialRepository>(
   HttpResponse::Ok().json(balance_with_tx)
 }
 
-async fn receiver_verify_request<R: ConfidentialRepository>(
+async fn receiver_verify_request(
   path: web::Path<(i64, i64)>,
   req: web::Json<ReceiverVerifyRequest>,
-  repo: web::Data<R>,
+  repo: web::Data<Repository>,
 ) -> HttpResponse {
   let (account_id, asset_id) = path.into_inner();
   // Get the account asset with account secret key.

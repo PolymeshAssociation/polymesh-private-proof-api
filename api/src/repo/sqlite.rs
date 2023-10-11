@@ -101,7 +101,10 @@ impl ConfidentialRepository for SqliteConfidentialRepository {
     .map_err(|e| e.to_string())
   }
 
-  async fn get_account_with_secret(&self, account_id: i64) -> ConfidentialRepoResult<AccountWithSecret> {
+  async fn get_account_with_secret(
+    &self,
+    account_id: i64,
+  ) -> ConfidentialRepoResult<AccountWithSecret> {
     sqlx::query_as!(
       AccountWithSecret,
       r#"SELECT account_id, public_key, secret_key FROM accounts WHERE account_id = ?"#,

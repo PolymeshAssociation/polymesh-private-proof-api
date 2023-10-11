@@ -11,6 +11,8 @@ pub use sqlite::SqliteConfidentialRepository;
 pub type ConfidentialRepoError = String;
 pub type ConfidentialRepoResult<T> = Result<T, ConfidentialRepoError>;
 
+pub type Repository = Box<dyn ConfidentialRepository>;
+
 #[cfg_attr(test, mockall::automock)]
 #[async_trait]
 pub trait ConfidentialRepository: Send + Sync + 'static {
@@ -27,7 +29,10 @@ pub trait ConfidentialRepository: Send + Sync + 'static {
   // Accounts
   async fn get_accounts(&self) -> ConfidentialRepoResult<Vec<Account>>;
   async fn get_account(&self, account_id: i64) -> ConfidentialRepoResult<Account>;
-  async fn get_account_with_secret(&self, account_id: i64) -> ConfidentialRepoResult<AccountWithSecret>;
+  async fn get_account_with_secret(
+    &self,
+    account_id: i64,
+  ) -> ConfidentialRepoResult<AccountWithSecret>;
   async fn create_account(&self, account: &CreateAccount) -> ConfidentialRepoResult<Account>;
 
   // Account balances

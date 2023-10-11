@@ -4,15 +4,14 @@ use actix_web::{web, App, HttpServer};
 use sqlx::sqlite::SqlitePool;
 
 use confidential_assets_api as api;
+use confidential_assets_api::repo::Repository;
 
-type BackendRepository = api::repo::SqliteConfidentialRepository;
-
-async fn get_repo() -> Result<BackendRepository, sqlx::Error> {
+async fn get_repo() -> Result<Repository, sqlx::Error> {
   let conn_str =
     std::env::var("DATABASE_URL").map_err(|e| sqlx::Error::Configuration(Box::new(e)))?;
   let pool = SqlitePool::connect(&conn_str).await?;
   sqlx::migrate!().run(&pool).await?;
-  Ok(api::repo::SqliteConfidentialRepository::new(pool))
+  Ok(Box::new(api::repo::SqliteConfidentialRepository::new(pool)))
 }
 
 #[actix_web::main]
@@ -46,7 +45,7 @@ async fn main() -> std::io::Result<()> {
         web::scope("/api")
           .app_data(repo.clone())
           .configure(api::health::service)
-          .configure(api::v1::service::<BackendRepository>),
+          .configure(api::v1::service),
       )
       .wrap(Logger::default())
   })

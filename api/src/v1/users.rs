@@ -2,21 +2,21 @@ use actix_web::{web, HttpResponse, Responder, Result};
 
 use confidential_assets_api_shared::CreateUser;
 
-use crate::repo::ConfidentialRepository;
+use crate::repo::Repository;
 
-pub fn service<R: ConfidentialRepository>(cfg: &mut web::ServiceConfig) {
+pub fn service(cfg: &mut web::ServiceConfig) {
   cfg.service(
     web::scope("/users")
       // GET
-      .route("", web::get().to(get_all_users::<R>))
-      .route("/{user_id}", web::get().to(get_user::<R>))
+      .route("", web::get().to(get_all_users))
+      .route("/{user_id}", web::get().to(get_user))
       // POST
-      .route("", web::post().to(create_user::<R>)),
+      .route("", web::post().to(create_user)),
   );
 }
 
 /// Get all users.
-async fn get_all_users<R: ConfidentialRepository>(repo: web::Data<R>) -> Result<impl Responder> {
+async fn get_all_users(repo: web::Data<Repository>) -> Result<impl Responder> {
   Ok(match repo.get_users().await {
     Ok(users) => HttpResponse::Ok().json(users),
     Err(e) => HttpResponse::NotFound().body(format!("Internal server error: {:?}", e)),
@@ -24,7 +24,7 @@ async fn get_all_users<R: ConfidentialRepository>(repo: web::Data<R>) -> Result<
 }
 
 /// Get one user.
-async fn get_user<R: ConfidentialRepository>(user_id: web::Path<i64>, repo: web::Data<R>) -> HttpResponse {
+async fn get_user(user_id: web::Path<i64>, repo: web::Data<Repository>) -> HttpResponse {
   match repo.get_user(*user_id).await {
     Ok(user) => HttpResponse::Ok().json(user),
     Err(_) => HttpResponse::NotFound().body("Not found"),
@@ -32,10 +32,7 @@ async fn get_user<R: ConfidentialRepository>(user_id: web::Path<i64>, repo: web:
 }
 
 /// Create a new user.
-async fn create_user<R: ConfidentialRepository>(
-  user: web::Json<CreateUser>,
-  repo: web::Data<R>,
-) -> HttpResponse {
+async fn create_user(user: web::Json<CreateUser>, repo: web::Data<Repository>) -> HttpResponse {
   match repo.create_user(&user).await {
     Ok(user) => HttpResponse::Ok().json(user),
     Err(e) => HttpResponse::InternalServerError().body(format!("Internal server error: {:?}", e)),
