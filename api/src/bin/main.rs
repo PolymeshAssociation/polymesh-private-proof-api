@@ -4,6 +4,8 @@ use actix_web::{web, App, HttpServer};
 use sqlx::sqlite::SqlitePool;
 
 use utoipa::{openapi::OpenApiBuilder, OpenApi};
+use utoipa_rapidoc::RapiDoc;
+use utoipa_redoc::{Redoc, Servable};
 use utoipa_swagger_ui::SwaggerUi;
 
 use confidential_assets_api as api;
@@ -97,7 +99,11 @@ async fn main() -> std::io::Result<()> {
           .configure(api::health::service)
           .configure(api::v1::service),
       )
+      .service(Redoc::with_url("/redoc", openapi.clone()))
       .service(SwaggerUi::new("/swagger-ui/{_:.*}").url("/api-docs/openapi.json", openapi.clone()))
+      // There is no need to create RapiDoc::with_openapi because the OpenApi is served
+      // via SwaggerUi instead we only make rapidoc to point to the existing doc.
+      .service(RapiDoc::new("/api-docs/openapi.json").path("/rapidoc"))
       .wrap(Logger::default())
   })
   .bind(&address)
