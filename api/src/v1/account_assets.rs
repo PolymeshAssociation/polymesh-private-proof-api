@@ -8,20 +8,23 @@ use confidential_assets_api_shared::{
 use crate::repo::Repository;
 
 pub fn service(cfg: &mut web::ServiceConfig) {
-  cfg.service(
-    web::scope("/assets")
-      .service(get_all_account_assets)
-      .service(get_account_asset)
-      .service(create_account_asset)
-      .service(asset_issuer_mint)
-      .service(request_sender_proof)
-      .service(receiver_verify_request),
-  );
+  cfg
+    .service(get_all_account_assets)
+    .service(get_account_asset)
+    .service(create_account_asset)
+    .service(asset_issuer_mint)
+    .service(request_sender_proof)
+    .service(receiver_verify_request);
 }
 
 /// Get all assets for an account.
-#[get("")]
-async fn get_all_account_assets(
+#[utoipa::path(
+  responses(
+    (status = 200, description = "List all assets for an account", body = [AccountAsset])
+  )
+)]
+#[get("/accounts/{account_id}/assets")]
+pub async fn get_all_account_assets(
   account_id: web::Path<i64>,
   repo: web::Data<Repository>,
 ) -> Result<impl Responder> {
@@ -32,8 +35,13 @@ async fn get_all_account_assets(
 }
 
 /// Get one asset for the account.
-#[get("/{asset_id}")]
-async fn get_account_asset(
+#[utoipa::path(
+  responses(
+    (status = 200, description = "Get an asset for an account", body = AccountAsset)
+  )
+)]
+#[get("/accounts/{account_id}/assets/{asset_id}")]
+pub async fn get_account_asset(
   path: web::Path<(i64, i64)>,
   repo: web::Data<Repository>,
 ) -> HttpResponse {
@@ -45,8 +53,13 @@ async fn get_account_asset(
 }
 
 /// Add an asset to the account and initialize it's balance.
-#[post("/{asset_id}")]
-async fn create_account_asset(
+#[utoipa::path(
+  responses(
+    (status = 200, description = "Add an asset to the account and initialize it's balance", body = AccountAsset)
+  )
+)]
+#[post("/accounts/{account_id}/assets/{asset_id}")]
+pub async fn create_account_asset(
   account_id: web::Path<i64>,
   create_account_asset: web::Json<CreateAccountAsset>,
   repo: web::Data<Repository>,
@@ -75,8 +88,13 @@ async fn create_account_asset(
 }
 
 /// Asset issuer updates their account balance when minting.
-#[post("/{asset_id}/mint")]
-async fn asset_issuer_mint(
+#[utoipa::path(
+  responses(
+    (status = 200, description = "Asset issuer updates their account balance when minting", body = AccountAsset)
+  )
+)]
+#[post("/accounts/{account_id}/assets/{asset_id}/mint")]
+pub async fn asset_issuer_mint(
   path: web::Path<(i64, i64)>,
   account_mint_asset: web::Json<AccountMintAsset>,
   repo: web::Data<Repository>,
@@ -117,8 +135,14 @@ async fn asset_issuer_mint(
   HttpResponse::Ok().json(account_asset)
 }
 
-#[post("/{asset_id}/send")]
-async fn request_sender_proof(
+/// Generate a sender proof.
+#[utoipa::path(
+  responses(
+    (status = 200, description = "Generate a sender proof", body = AccountAssetWithTx)
+  )
+)]
+#[post("/accounts/{account_id}/assets/{asset_id}/send")]
+pub async fn request_sender_proof(
   path: web::Path<(i64, i64)>,
   req: web::Json<SenderProofRequest>,
   repo: web::Data<Repository>,
@@ -161,8 +185,14 @@ async fn request_sender_proof(
   HttpResponse::Ok().json(balance_with_tx)
 }
 
-#[post("/{asset_id}/receiver_verify")]
-async fn receiver_verify_request(
+/// Verify a sender proof as the receiver.
+#[utoipa::path(
+  responses(
+    (status = 200, description = "Verify a sender proof as the receiver", body = bool)
+  )
+)]
+#[post("/accounts/{account_id}/assets/{asset_id}/receiver_verify")]
+pub async fn receiver_verify_request(
   path: web::Path<(i64, i64)>,
   req: web::Json<ReceiverVerifyRequest>,
   repo: web::Data<Repository>,

@@ -1,6 +1,8 @@
 use serde::{Deserialize, Serialize};
 use serde_hex::{SerHexSeq, StrictPfx};
 
+use utoipa::ToSchema;
+
 use zeroize::{Zeroize, ZeroizeOnDrop};
 
 #[cfg(feature = "backend")]
@@ -17,39 +19,47 @@ use confidential_assets::{
 pub type Balance = u64;
 
 #[cfg_attr(feature = "backend", derive(sqlx::FromRow))]
-#[derive(Clone, Debug, Default, Deserialize, Serialize)]
+#[derive(Clone, Debug, Default, Deserialize, Serialize, ToSchema)]
 pub struct User {
+  #[schema(example = 1)]
   pub user_id: i64,
+  #[schema(example = "TestUser")]
   pub username: String,
 
   pub created_at: chrono::NaiveDateTime,
   pub updated_at: chrono::NaiveDateTime,
 }
 
-#[derive(Clone, Debug, Default, Deserialize, Serialize)]
+#[derive(Clone, Debug, Default, Deserialize, Serialize, ToSchema)]
 pub struct CreateUser {
+  #[schema(example = "TestUser")]
   pub username: String,
 }
 
 #[cfg_attr(feature = "backend", derive(sqlx::FromRow))]
-#[derive(Clone, Debug, Default, Deserialize, Serialize)]
+#[derive(Clone, Debug, Default, Deserialize, Serialize, ToSchema)]
 pub struct Asset {
+  #[schema(example = 1)]
   pub asset_id: i64,
+  #[schema(example = "ACME1")]
   pub ticker: String,
 
   pub created_at: chrono::NaiveDateTime,
   pub updated_at: chrono::NaiveDateTime,
 }
 
-#[derive(Clone, Debug, Default, Deserialize, Serialize)]
+#[derive(Clone, Debug, Default, Deserialize, Serialize, ToSchema)]
 pub struct CreateAsset {
+  #[schema(example = "ACME1")]
   pub ticker: String,
 }
 
-#[derive(Clone, Debug, Default, Deserialize, Serialize)]
+#[derive(Clone, Debug, Default, Deserialize, Serialize, ToSchema)]
 pub struct Account {
+  #[schema(example = 1)]
   pub account_id: i64,
 
+  #[schema(example = "0xdeadbeef00000000000000000000000000000000000000000000000000000000")]
   #[serde(with = "SerHexSeq::<StrictPfx>")]
   pub public_key: Vec<u8>,
 
@@ -104,8 +114,9 @@ impl AccountWithSecret {
   }
 }
 
-#[derive(Clone, Debug, Default, Deserialize, Serialize, Zeroize, ZeroizeOnDrop)]
+#[derive(Clone, Debug, Default, Deserialize, Serialize, ToSchema, Zeroize, ZeroizeOnDrop)]
 pub struct CreateAccount {
+  #[schema(example = "0xdeadbeef00000000000000000000000000000000000000000000000000000000")]
   #[serde(with = "SerHexSeq::<StrictPfx>")]
   pub public_key: Vec<u8>,
   #[serde(skip)]
@@ -132,13 +143,18 @@ impl CreateAccount {
 }
 
 #[cfg_attr(feature = "backend", derive(sqlx::FromRow))]
-#[derive(Clone, Debug, Default, Deserialize, Serialize)]
+#[derive(Clone, Debug, Default, Deserialize, Serialize, ToSchema)]
 pub struct AccountAsset {
+  #[schema(example = 1)]
   pub account_asset_id: i64,
+  #[schema(example = 1)]
   pub account_id: i64,
+  #[schema(example = 1)]
   pub asset_id: i64,
 
+  #[schema(example = 1000)]
   pub balance: i64,
+  #[schema(example = "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000")]
   #[serde(with = "SerHexSeq::<StrictPfx>")]
   pub enc_balance: Vec<u8>,
 
@@ -243,8 +259,9 @@ impl AccountAssetWithSecret {
   }
 }
 
-#[derive(Clone, Debug, Default, Deserialize, Serialize)]
+#[derive(Clone, Debug, Default, Deserialize, Serialize, ToSchema)]
 pub struct CreateAccountAsset {
+  #[schema(example = 1)]
   pub asset_id: i64,
 }
 
@@ -265,12 +282,13 @@ impl UpdateAccountAsset {
   }
 }
 
-#[derive(Clone, Debug, Default, Deserialize, Serialize)]
+#[derive(Clone, Debug, Default, Deserialize, Serialize, ToSchema)]
 pub struct AccountMintAsset {
+  #[schema(example = 1000, value_type = u64)]
   pub amount: Balance,
 }
 
-#[derive(Clone, Debug, Default, Deserialize, Serialize)]
+#[derive(Clone, Debug, Default, Deserialize, Serialize, ToSchema)]
 pub struct AccountAssetWithTx {
   pub account_asset: AccountAsset,
   #[serde(with = "SerHexSeq::<StrictPfx>")]
@@ -287,8 +305,12 @@ impl AccountAssetWithTx {
   }
 }
 
-#[derive(Clone, Debug, Default, Deserialize, Serialize)]
-pub struct PublicKey(#[serde(with = "SerHexSeq::<StrictPfx>")] Vec<u8>);
+#[derive(Clone, Debug, Default, Deserialize, Serialize, ToSchema)]
+pub struct PublicKey(
+  #[schema(example = "0xceae8587b3e968b9669df8eb715f73bcf3f7a9cd3c61c515a4d80f2ca59c8114")]
+  #[serde(with = "SerHexSeq::<StrictPfx>")]
+  Vec<u8>
+);
 
 #[cfg(feature = "backend")]
 impl PublicKey {
@@ -298,8 +320,12 @@ impl PublicKey {
   }
 }
 
-#[derive(Clone, Serialize, Deserialize)]
-pub struct SenderProof(#[serde(with = "SerHexSeq::<StrictPfx>")] Vec<u8>);
+#[derive(Clone, Serialize, Deserialize, ToSchema)]
+pub struct SenderProof(
+  #[schema(example = "<Hex encoded sender proof>")]
+  #[serde(with = "SerHexSeq::<StrictPfx>")]
+  Vec<u8>
+);
 
 #[cfg(feature = "backend")]
 impl SenderProof {
@@ -309,13 +335,17 @@ impl SenderProof {
   }
 }
 
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize, ToSchema)]
 pub struct SenderProofRequest {
+  #[schema(value_type = String, format = Binary, example = "")]
   #[serde(default, with = "SerHexSeq::<StrictPfx>")]
   encrypted_balance: Vec<u8>,
+  #[schema(value_type = String, format = Binary, example = "0xceae8587b3e968b9669df8eb715f73bcf3f7a9cd3c61c515a4d80f2ca59c8114")]
   receiver: PublicKey,
+  #[schema(example = json!(["0xceae8587b3e968b9669df8eb715f73bcf3f7a9cd3c61c515a4d80f2ca59c8114"]))]
   #[serde(default)]
   auditors: Vec<PublicKey>,
+  #[schema(example = 1000, value_type = u64)]
   amount: Balance,
 }
 
@@ -345,9 +375,10 @@ impl SenderProofRequest {
   }
 }
 
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize, ToSchema)]
 pub struct AuditorVerifyRequest {
   sender_proof: SenderProof,
+  #[schema(example = 1000, value_type = u64)]
   amount: Balance,
 }
 
@@ -358,9 +389,10 @@ impl AuditorVerifyRequest {
   }
 }
 
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize, ToSchema)]
 pub struct ReceiverVerifyRequest {
   sender_proof: SenderProof,
+  #[schema(example = 1000, value_type = u64)]
   amount: Balance,
 }
 

@@ -10,6 +10,12 @@ env_logger = "0.10.0"
 log = "0.4.17"
 anyhow = "1.0.71"
 
+# OpenAPI
+utoipa = { workspace = true }
+utoipa-swagger-ui = { workspace = true }
+utoipa-redoc = { workspace = true }
+utoipa-rapidoc = { workspace = true }
+
 # internal
 confidential_assets-api-shared = { path = "./shared/", features = ["backend"] }
 

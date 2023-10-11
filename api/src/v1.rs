@@ -1,9 +1,9 @@
 use actix_web::web;
 
-mod account_assets;
-mod accounts;
-mod assets;
-mod users;
+pub mod account_assets;
+pub mod accounts;
+pub mod assets;
+pub mod users;
 
 pub fn service(cfg: &mut web::ServiceConfig) {
   cfg.service(

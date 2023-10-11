@@ -5,27 +5,23 @@ use confidential_assets_api_shared::{AuditorVerifyRequest, CreateAccount};
 use super::account_assets;
 use crate::repo::Repository;
 
-fn account_service(cfg: &mut web::ServiceConfig) {
-  cfg.service(
-    web::scope("/{account_id}")
-      .service(get_account)
-      .service(auditor_verify_request)
-      .configure(account_assets::service),
-  );
-}
-
 pub fn service(cfg: &mut web::ServiceConfig) {
-  cfg.service(
-    web::scope("/accounts")
-      .service(get_all_accounts)
-      .configure(account_service)
-      .service(create_account),
-  );
+  cfg
+    .service(get_all_accounts)
+    .service(get_account)
+    .service(create_account)
+    .service(auditor_verify_request)
+    .configure(account_assets::service);
 }
 
 /// Get all accounts.
-#[get("")]
-async fn get_all_accounts(repo: web::Data<Repository>) -> Result<impl Responder> {
+#[utoipa::path(
+  responses(
+    (status = 200, description = "List all accounts", body = [Account])
+  )
+)]
+#[get("/accounts")]
+pub async fn get_all_accounts(repo: web::Data<Repository>) -> Result<impl Responder> {
   Ok(match repo.get_accounts().await {
     Ok(accounts) => HttpResponse::Ok().json(accounts),
     Err(e) => HttpResponse::NotFound().body(format!("Internal server error: {:?}", e)),
@@ -33,8 +29,13 @@ async fn get_all_accounts(repo: web::Data<Repository>) -> Result<impl Responder>
 }
 
 /// Get one account.
-#[get("")]
-async fn get_account(account_id: web::Path<i64>, repo: web::Data<Repository>) -> HttpResponse {
+#[utoipa::path(
+  responses(
+    (status = 200, description = "Get an account", body = Account)
+  )
+)]
+#[get("/accounts/{account_id}")]
+pub async fn get_account(account_id: web::Path<i64>, repo: web::Data<Repository>) -> HttpResponse {
   match repo.get_account(*account_id).await {
     Ok(account) => HttpResponse::Ok().json(account),
     Err(_) => HttpResponse::NotFound().body("Not found"),
@@ -42,8 +43,13 @@ async fn get_account(account_id: web::Path<i64>, repo: web::Data<Repository>) ->
 }
 
 /// Create a new account.
-#[post("")]
-async fn create_account(repo: web::Data<Repository>) -> HttpResponse {
+#[utoipa::path(
+  responses(
+    (status = 200, description = "Create an account", body = Account)
+  )
+)]
+#[post("/accounts")]
+pub async fn create_account(repo: web::Data<Repository>) -> HttpResponse {
   let account = CreateAccount::new();
   match repo.create_account(&account).await {
     Ok(account) => HttpResponse::Ok().json(account),
@@ -52,8 +58,13 @@ async fn create_account(repo: web::Data<Repository>) -> HttpResponse {
 }
 
 /// Verify a sender proof as an auditor.
-#[post("/auditor_verify")]
-async fn auditor_verify_request(
+#[utoipa::path(
+  responses(
+    (status = 200, description = "Verify a sender proof as an auditor", body = bool)
+  )
+)]
+#[post("/accounts/{account_id}/auditor_verify")]
+pub async fn auditor_verify_request(
   account_id: web::Path<i64>,
   req: web::Json<AuditorVerifyRequest>,
   repo: web::Data<Repository>,
