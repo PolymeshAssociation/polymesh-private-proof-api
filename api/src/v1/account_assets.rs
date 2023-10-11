@@ -5,9 +5,9 @@ use confidential_assets_api_shared::{
   SenderProofRequest,
 };
 
-use crate::repo::MercatRepository;
+use crate::repo::ConfidentialRepository;
 
-pub fn service<R: MercatRepository>(cfg: &mut web::ServiceConfig) {
+pub fn service<R: ConfidentialRepository>(cfg: &mut web::ServiceConfig) {
   cfg.service(
     web::scope("/assets")
       // GET
@@ -28,7 +28,7 @@ pub fn service<R: MercatRepository>(cfg: &mut web::ServiceConfig) {
 }
 
 /// Get all assets for an account.
-async fn get_all_account_assets<R: MercatRepository>(
+async fn get_all_account_assets<R: ConfidentialRepository>(
   account_id: web::Path<i64>,
   repo: web::Data<R>,
 ) -> Result<impl Responder> {
@@ -39,7 +39,7 @@ async fn get_all_account_assets<R: MercatRepository>(
 }
 
 /// Get one asset for the account.
-async fn get_account_asset<R: MercatRepository>(path: web::Path<(i64, i64)>, repo: web::Data<R>) -> HttpResponse {
+async fn get_account_asset<R: ConfidentialRepository>(path: web::Path<(i64, i64)>, repo: web::Data<R>) -> HttpResponse {
   let (account_id, asset_id) = path.into_inner();
   match repo.get_account_asset(account_id, asset_id).await {
     Ok(account_asset) => HttpResponse::Ok().json(account_asset),
@@ -48,7 +48,7 @@ async fn get_account_asset<R: MercatRepository>(path: web::Path<(i64, i64)>, rep
 }
 
 /// Add an asset to the account and initialize it's balance.
-async fn create_account_asset<R: MercatRepository>(
+async fn create_account_asset<R: ConfidentialRepository>(
   account_id: web::Path<i64>,
   create_account_asset: web::Json<CreateAccountAsset>,
   repo: web::Data<R>,
@@ -77,7 +77,7 @@ async fn create_account_asset<R: MercatRepository>(
 }
 
 /// Asset issuer updates their account balance when minting.
-async fn asset_issuer_mint<R: MercatRepository>(
+async fn asset_issuer_mint<R: ConfidentialRepository>(
   path: web::Path<(i64, i64)>,
   account_mint_asset: web::Json<AccountMintAsset>,
   repo: web::Data<R>,
@@ -118,7 +118,7 @@ async fn asset_issuer_mint<R: MercatRepository>(
   HttpResponse::Ok().json(account_asset)
 }
 
-async fn request_sender_proof<R: MercatRepository>(
+async fn request_sender_proof<R: ConfidentialRepository>(
   path: web::Path<(i64, i64)>,
   req: web::Json<SenderProofRequest>,
   repo: web::Data<R>,
@@ -161,7 +161,7 @@ async fn request_sender_proof<R: MercatRepository>(
   HttpResponse::Ok().json(balance_with_tx)
 }
 
-async fn receiver_verify_request<R: MercatRepository>(
+async fn receiver_verify_request<R: ConfidentialRepository>(
   path: web::Path<(i64, i64)>,
   req: web::Json<ReceiverVerifyRequest>,
   repo: web::Data<R>,

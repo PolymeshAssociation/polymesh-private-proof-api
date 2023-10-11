@@ -6,48 +6,48 @@ use confidential_assets_api_shared::{
 
 mod sqlite;
 
-pub use sqlite::SqliteMercatRepository;
+pub use sqlite::SqliteConfidentialRepository;
 
-pub type MercatRepoError = String;
-pub type MercatRepoResult<T> = Result<T, MercatRepoError>;
+pub type ConfidentialRepoError = String;
+pub type ConfidentialRepoResult<T> = Result<T, ConfidentialRepoError>;
 
 #[cfg_attr(test, mockall::automock)]
 #[async_trait]
-pub trait MercatRepository: Send + Sync + 'static {
+pub trait ConfidentialRepository: Send + Sync + 'static {
   // Users
-  async fn get_users(&self) -> MercatRepoResult<Vec<User>>;
-  async fn get_user(&self, user_id: i64) -> MercatRepoResult<User>;
-  async fn create_user(&self, user: &CreateUser) -> MercatRepoResult<User>;
+  async fn get_users(&self) -> ConfidentialRepoResult<Vec<User>>;
+  async fn get_user(&self, user_id: i64) -> ConfidentialRepoResult<User>;
+  async fn create_user(&self, user: &CreateUser) -> ConfidentialRepoResult<User>;
 
   // Assets
-  async fn get_assets(&self) -> MercatRepoResult<Vec<Asset>>;
-  async fn get_asset(&self, asset_id: i64) -> MercatRepoResult<Asset>;
-  async fn create_asset(&self, asset: &CreateAsset) -> MercatRepoResult<Asset>;
+  async fn get_assets(&self) -> ConfidentialRepoResult<Vec<Asset>>;
+  async fn get_asset(&self, asset_id: i64) -> ConfidentialRepoResult<Asset>;
+  async fn create_asset(&self, asset: &CreateAsset) -> ConfidentialRepoResult<Asset>;
 
   // Accounts
-  async fn get_accounts(&self) -> MercatRepoResult<Vec<Account>>;
-  async fn get_account(&self, account_id: i64) -> MercatRepoResult<Account>;
-  async fn get_account_with_secret(&self, account_id: i64) -> MercatRepoResult<AccountWithSecret>;
-  async fn create_account(&self, account: &CreateAccount) -> MercatRepoResult<Account>;
+  async fn get_accounts(&self) -> ConfidentialRepoResult<Vec<Account>>;
+  async fn get_account(&self, account_id: i64) -> ConfidentialRepoResult<Account>;
+  async fn get_account_with_secret(&self, account_id: i64) -> ConfidentialRepoResult<AccountWithSecret>;
+  async fn create_account(&self, account: &CreateAccount) -> ConfidentialRepoResult<Account>;
 
   // Account balances
-  async fn get_account_assets(&self, account_id: i64) -> MercatRepoResult<Vec<AccountAsset>>;
+  async fn get_account_assets(&self, account_id: i64) -> ConfidentialRepoResult<Vec<AccountAsset>>;
   async fn get_account_asset(
     &self,
     account_id: i64,
     asset_id: i64,
-  ) -> MercatRepoResult<AccountAsset>;
+  ) -> ConfidentialRepoResult<AccountAsset>;
   async fn get_account_asset_with_secret(
     &self,
     account_id: i64,
     asset_id: i64,
-  ) -> MercatRepoResult<AccountAssetWithSecret>;
+  ) -> ConfidentialRepoResult<AccountAssetWithSecret>;
   async fn create_account_asset(
     &self,
     account_asset: &UpdateAccountAsset,
-  ) -> MercatRepoResult<AccountAsset>;
+  ) -> ConfidentialRepoResult<AccountAsset>;
   async fn update_account_asset(
     &self,
     account_asset: &UpdateAccountAsset,
-  ) -> MercatRepoResult<Option<AccountAsset>>;
+  ) -> ConfidentialRepoResult<Option<AccountAsset>>;
 }

@@ -86,7 +86,7 @@ impl AccountWithSecret {
   }
 
   pub fn auditor_verify_tx(&self, req: &AuditorVerifyRequest) -> Result<bool, String> {
-    // Decode MercatAccount from database.
+    // Decode ConfidentialAccount from database.
     let auditor = self
       .encryption_keys()
       .ok_or_else(|| format!("Failed to get account from database."))?;
@@ -189,7 +189,7 @@ impl AccountAssetWithSecret {
     &self,
     req: &SenderProofRequest,
   ) -> Result<(UpdateAccountAsset, ConfidentialTransferProof), String> {
-    // Decode MercatAccount from database.
+    // Decode ConfidentialAccount from database.
     let sender = self
       .account
       .encryption_keys()
@@ -228,7 +228,7 @@ impl AccountAssetWithSecret {
   }
 
   pub fn receiver_verify_tx(&self, req: &ReceiverVerifyRequest) -> Result<bool, String> {
-    // Decode MercatAccount from database.
+    // Decode ConfidentialAccount from database.
     let receiver = self
       .account
       .encryption_keys()

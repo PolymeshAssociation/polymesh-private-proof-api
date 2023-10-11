@@ -2,9 +2,9 @@ use actix_web::{web, HttpResponse, Responder, Result};
 
 use confidential_assets_api_shared::CreateAsset;
 
-use crate::repo::MercatRepository;
+use crate::repo::ConfidentialRepository;
 
-pub fn service<R: MercatRepository>(cfg: &mut web::ServiceConfig) {
+pub fn service<R: ConfidentialRepository>(cfg: &mut web::ServiceConfig) {
   cfg.service(
     web::scope("/assets")
       // GET
@@ -16,7 +16,7 @@ pub fn service<R: MercatRepository>(cfg: &mut web::ServiceConfig) {
 }
 
 /// Get all assets.
-async fn get_all_assets<R: MercatRepository>(repo: web::Data<R>) -> Result<impl Responder> {
+async fn get_all_assets<R: ConfidentialRepository>(repo: web::Data<R>) -> Result<impl Responder> {
   Ok(match repo.get_assets().await {
     Ok(assets) => HttpResponse::Ok().json(assets),
     Err(e) => HttpResponse::NotFound().body(format!("Internal server error: {:?}", e)),
@@ -24,7 +24,7 @@ async fn get_all_assets<R: MercatRepository>(repo: web::Data<R>) -> Result<impl 
 }
 
 /// Get an asset.
-async fn get_asset<R: MercatRepository>(asset_id: web::Path<i64>, repo: web::Data<R>) -> HttpResponse {
+async fn get_asset<R: ConfidentialRepository>(asset_id: web::Path<i64>, repo: web::Data<R>) -> HttpResponse {
   match repo.get_asset(*asset_id).await {
     Ok(asset) => HttpResponse::Ok().json(asset),
     Err(_) => HttpResponse::NotFound().body("Not found"),
@@ -32,7 +32,7 @@ async fn get_asset<R: MercatRepository>(asset_id: web::Path<i64>, repo: web::Dat
 }
 
 /// Create an asset.
-async fn create_asset<R: MercatRepository>(
+async fn create_asset<R: ConfidentialRepository>(
   asset: web::Json<CreateAsset>,
   repo: web::Data<R>,
 ) -> HttpResponse {

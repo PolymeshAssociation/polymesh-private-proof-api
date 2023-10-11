@@ -2,9 +2,9 @@ use actix_web::{web, HttpResponse, Responder, Result};
 
 use confidential_assets_api_shared::CreateUser;
 
-use crate::repo::MercatRepository;
+use crate::repo::ConfidentialRepository;
 
-pub fn service<R: MercatRepository>(cfg: &mut web::ServiceConfig) {
+pub fn service<R: ConfidentialRepository>(cfg: &mut web::ServiceConfig) {
   cfg.service(
     web::scope("/users")
       // GET
@@ -16,7 +16,7 @@ pub fn service<R: MercatRepository>(cfg: &mut web::ServiceConfig) {
 }
 
 /// Get all users.
-async fn get_all_users<R: MercatRepository>(repo: web::Data<R>) -> Result<impl Responder> {
+async fn get_all_users<R: ConfidentialRepository>(repo: web::Data<R>) -> Result<impl Responder> {
   Ok(match repo.get_users().await {
     Ok(users) => HttpResponse::Ok().json(users),
     Err(e) => HttpResponse::NotFound().body(format!("Internal server error: {:?}", e)),
@@ -24,7 +24,7 @@ async fn get_all_users<R: MercatRepository>(repo: web::Data<R>) -> Result<impl R
 }
 
 /// Get one user.
-async fn get_user<R: MercatRepository>(user_id: web::Path<i64>, repo: web::Data<R>) -> HttpResponse {
+async fn get_user<R: ConfidentialRepository>(user_id: web::Path<i64>, repo: web::Data<R>) -> HttpResponse {
   match repo.get_user(*user_id).await {
     Ok(user) => HttpResponse::Ok().json(user),
     Err(_) => HttpResponse::NotFound().body("Not found"),
@@ -32,7 +32,7 @@ async fn get_user<R: MercatRepository>(user_id: web::Path<i64>, repo: web::Data<
 }
 
 /// Create a new user.
-async fn create_user<R: MercatRepository>(
+async fn create_user<R: ConfidentialRepository>(
   user: web::Json<CreateUser>,
   repo: web::Data<R>,
 ) -> HttpResponse {

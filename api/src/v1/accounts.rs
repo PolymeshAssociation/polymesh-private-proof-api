@@ -3,9 +3,9 @@ use actix_web::{web, HttpResponse, Responder, Result};
 use confidential_assets_api_shared::{AuditorVerifyRequest, CreateAccount};
 
 use super::account_assets;
-use crate::repo::MercatRepository;
+use crate::repo::ConfidentialRepository;
 
-fn account_service<R: MercatRepository>(cfg: &mut web::ServiceConfig) {
+fn account_service<R: ConfidentialRepository>(cfg: &mut web::ServiceConfig) {
   cfg.service(
     web::scope("/{account_id}")
       // GET
@@ -19,7 +19,7 @@ fn account_service<R: MercatRepository>(cfg: &mut web::ServiceConfig) {
   );
 }
 
-pub fn service<R: MercatRepository>(cfg: &mut web::ServiceConfig) {
+pub fn service<R: ConfidentialRepository>(cfg: &mut web::ServiceConfig) {
   cfg.service(
     web::scope("/accounts")
       // GET
@@ -31,7 +31,7 @@ pub fn service<R: MercatRepository>(cfg: &mut web::ServiceConfig) {
 }
 
 /// Get all accounts.
-async fn get_all_accounts<R: MercatRepository>(repo: web::Data<R>) -> Result<impl Responder> {
+async fn get_all_accounts<R: ConfidentialRepository>(repo: web::Data<R>) -> Result<impl Responder> {
   Ok(match repo.get_accounts().await {
     Ok(accounts) => HttpResponse::Ok().json(accounts),
     Err(e) => HttpResponse::NotFound().body(format!("Internal server error: {:?}", e)),
@@ -39,7 +39,7 @@ async fn get_all_accounts<R: MercatRepository>(repo: web::Data<R>) -> Result<imp
 }
 
 /// Get one account.
-async fn get_account<R: MercatRepository>(account_id: web::Path<i64>, repo: web::Data<R>) -> HttpResponse {
+async fn get_account<R: ConfidentialRepository>(account_id: web::Path<i64>, repo: web::Data<R>) -> HttpResponse {
   match repo.get_account(*account_id).await {
     Ok(account) => HttpResponse::Ok().json(account),
     Err(_) => HttpResponse::NotFound().body("Not found"),
@@ -47,7 +47,7 @@ async fn get_account<R: MercatRepository>(account_id: web::Path<i64>, repo: web:
 }
 
 /// Create a new account.
-async fn create_account<R: MercatRepository>(repo: web::Data<R>) -> HttpResponse {
+async fn create_account<R: ConfidentialRepository>(repo: web::Data<R>) -> HttpResponse {
   let account = CreateAccount::new();
   match repo.create_account(&account).await {
     Ok(account) => HttpResponse::Ok().json(account),
@@ -56,7 +56,7 @@ async fn create_account<R: MercatRepository>(repo: web::Data<R>) -> HttpResponse
 }
 
 /// Verify a sender proof as an auditor.
-async fn auditor_verify_request<R: MercatRepository>(
+async fn auditor_verify_request<R: ConfidentialRepository>(
   account_id: web::Path<i64>,
   req: web::Json<AuditorVerifyRequest>,
   repo: web::Data<R>,

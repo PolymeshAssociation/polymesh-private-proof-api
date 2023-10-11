@@ -5,14 +5,14 @@ use sqlx::sqlite::SqlitePool;
 
 use confidential_assets_api as api;
 
-type BackendRepository = api::repo::SqliteMercatRepository;
+type BackendRepository = api::repo::SqliteConfidentialRepository;
 
 async fn get_repo() -> Result<BackendRepository, sqlx::Error> {
   let conn_str =
     std::env::var("DATABASE_URL").map_err(|e| sqlx::Error::Configuration(Box::new(e)))?;
   let pool = SqlitePool::connect(&conn_str).await?;
   sqlx::migrate!().run(&pool).await?;
-  Ok(api::repo::SqliteMercatRepository::new(pool))
+  Ok(api::repo::SqliteConfidentialRepository::new(pool))
 }
 
 #[actix_web::main]
