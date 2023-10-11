@@ -1,4 +1,4 @@
-use actix_web::{web, HttpResponse, Responder, Result};
+use actix_web::{get, post, web, HttpResponse, Responder, Result};
 
 use confidential_assets_api_shared::{
   AccountAssetWithTx, AccountMintAsset, CreateAccountAsset, ReceiverVerifyRequest,
@@ -10,21 +10,17 @@ use crate::repo::Repository;
 pub fn service(cfg: &mut web::ServiceConfig) {
   cfg.service(
     web::scope("/assets")
-      // GET
-      .route("", web::get().to(get_all_account_assets))
-      .route("/{asset_id}", web::get().to(get_account_asset))
-      // POST
-      .route("", web::post().to(create_account_asset))
-      .route("/{asset_id}/mint", web::post().to(asset_issuer_mint))
-      .route("/{asset_id}/send", web::post().to(request_sender_proof))
-      .route(
-        "/{asset_id}/receiver_verify",
-        web::post().to(receiver_verify_request),
-      ),
+      .service(get_all_account_assets)
+      .service(get_account_asset)
+      .service(create_account_asset)
+      .service(asset_issuer_mint)
+      .service(request_sender_proof)
+      .service(receiver_verify_request),
   );
 }
 
 /// Get all assets for an account.
+#[get("")]
 async fn get_all_account_assets(
   account_id: web::Path<i64>,
   repo: web::Data<Repository>,
@@ -36,6 +32,7 @@ async fn get_all_account_assets(
 }
 
 /// Get one asset for the account.
+#[get("/{asset_id}")]
 async fn get_account_asset(
   path: web::Path<(i64, i64)>,
   repo: web::Data<Repository>,
@@ -48,6 +45,7 @@ async fn get_account_asset(
 }
 
 /// Add an asset to the account and initialize it's balance.
+#[post("/{asset_id}")]
 async fn create_account_asset(
   account_id: web::Path<i64>,
   create_account_asset: web::Json<CreateAccountAsset>,
@@ -77,6 +75,7 @@ async fn create_account_asset(
 }
 
 /// Asset issuer updates their account balance when minting.
+#[post("/{asset_id}/mint")]
 async fn asset_issuer_mint(
   path: web::Path<(i64, i64)>,
   account_mint_asset: web::Json<AccountMintAsset>,
@@ -118,6 +117,7 @@ async fn asset_issuer_mint(
   HttpResponse::Ok().json(account_asset)
 }
 
+#[post("/{asset_id}/send")]
 async fn request_sender_proof(
   path: web::Path<(i64, i64)>,
   req: web::Json<SenderProofRequest>,
@@ -161,6 +161,7 @@ async fn request_sender_proof(
   HttpResponse::Ok().json(balance_with_tx)
 }
 
+#[post("/{asset_id}/receiver_verify")]
 async fn receiver_verify_request(
   path: web::Path<(i64, i64)>,
   req: web::Json<ReceiverVerifyRequest>,

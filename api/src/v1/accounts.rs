@@ -1,4 +1,4 @@
-use actix_web::{web, HttpResponse, Responder, Result};
+use actix_web::{get, post, web, HttpResponse, Responder, Result};
 
 use confidential_assets_api_shared::{AuditorVerifyRequest, CreateAccount};
 
@@ -8,10 +8,8 @@ use crate::repo::Repository;
 fn account_service(cfg: &mut web::ServiceConfig) {
   cfg.service(
     web::scope("/{account_id}")
-      // GET
-      .route("", web::get().to(get_account))
-      // POST
-      .route("/auditor_verify", web::post().to(auditor_verify_request))
+      .service(get_account)
+      .service(auditor_verify_request)
       .configure(account_assets::service),
   );
 }
@@ -19,15 +17,14 @@ fn account_service(cfg: &mut web::ServiceConfig) {
 pub fn service(cfg: &mut web::ServiceConfig) {
   cfg.service(
     web::scope("/accounts")
-      // GET
-      .route("", web::get().to(get_all_accounts))
+      .service(get_all_accounts)
       .configure(account_service)
-      // POST
-      .route("", web::post().to(create_account)),
+      .service(create_account),
   );
 }
 
 /// Get all accounts.
+#[get("")]
 async fn get_all_accounts(repo: web::Data<Repository>) -> Result<impl Responder> {
   Ok(match repo.get_accounts().await {
     Ok(accounts) => HttpResponse::Ok().json(accounts),
@@ -36,6 +33,7 @@ async fn get_all_accounts(repo: web::Data<Repository>) -> Result<impl Responder>
 }
 
 /// Get one account.
+#[get("")]
 async fn get_account(account_id: web::Path<i64>, repo: web::Data<Repository>) -> HttpResponse {
   match repo.get_account(*account_id).await {
     Ok(account) => HttpResponse::Ok().json(account),
@@ -44,6 +42,7 @@ async fn get_account(account_id: web::Path<i64>, repo: web::Data<Repository>) ->
 }
 
 /// Create a new account.
+#[post("")]
 async fn create_account(repo: web::Data<Repository>) -> HttpResponse {
   let account = CreateAccount::new();
   match repo.create_account(&account).await {
@@ -53,6 +52,7 @@ async fn create_account(repo: web::Data<Repository>) -> HttpResponse {
 }
 
 /// Verify a sender proof as an auditor.
+#[post("/auditor_verify")]
 async fn auditor_verify_request(
   account_id: web::Path<i64>,
   req: web::Json<AuditorVerifyRequest>,
