@@ -17,7 +17,7 @@ utoipa-redoc = { workspace = true }
 utoipa-rapidoc = { workspace = true }
 
 # internal
-confidential-proof-api-shared = { path = "./shared/", features = ["backend"] }
+confidential-proof-shared = { workspace = true, features = ["backend"] }
 
 # Confidential Assets
 confidential_assets = { workspace = true, default-features = false }

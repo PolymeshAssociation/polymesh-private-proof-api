@@ -10,7 +10,7 @@ use utoipa_swagger_ui::SwaggerUi;
 
 use confidential_proof_api as proof_api;
 use confidential_proof_api::{repo, v1::*};
-use confidential_proof_api_shared::*;
+use confidential_proof_shared::*;
 
 async fn get_repo() -> Result<repo::Repository, sqlx::Error> {
   let conn_str =

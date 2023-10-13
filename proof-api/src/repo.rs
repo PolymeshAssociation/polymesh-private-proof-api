@@ -1,5 +1,5 @@
 use async_trait::async_trait;
-use confidential_proof_api_shared::{
+use confidential_proof_shared::{
   Account, AccountAsset, AccountAssetWithSecret, AccountWithSecret, Asset, CreateAccount,
   CreateAsset, CreateUser, UpdateAccountAsset, User,
 };

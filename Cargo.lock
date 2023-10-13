@@ -650,7 +650,7 @@ dependencies = [
  "anyhow",
  "async-trait",
  "chrono",
- "confidential-proof-api-shared",
+ "confidential-proof-shared",
  "confidential_assets",
  "dotenv",
  "env_logger",
@@ -671,7 +671,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "confidential-proof-api-shared"
+name = "confidential-proof-shared"
 version = "0.1.0"
 dependencies = [
  "chrono",
