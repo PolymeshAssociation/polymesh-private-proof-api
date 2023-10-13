@@ -1,5 +1,5 @@
 [package]
-name = "confidential_assets-api"
+name = "confidential-proof-api"
 version = "0.1.0"
 authors = [ "Polymesh Association" ]
 edition = "2021"
@@ -17,7 +17,7 @@ utoipa-redoc = { workspace = true }
 utoipa-rapidoc = { workspace = true }
 
 # internal
-confidential_assets-api-shared = { path = "./shared/", features = ["backend"] }
+confidential-proof-api-shared = { path = "./shared/", features = ["backend"] }
 
 # Confidential Assets
 confidential_assets = { workspace = true, default-features = false }

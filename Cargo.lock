@@ -641,6 +641,56 @@ dependencies = [
 ]
 
 [[package]]
+name = "confidential-proof-api"
+version = "0.1.0"
+dependencies = [
+ "actix-cors",
+ "actix-web",
+ "actix-web-lab",
+ "anyhow",
+ "async-trait",
+ "chrono",
+ "confidential-proof-api-shared",
+ "confidential_assets",
+ "dotenv",
+ "env_logger",
+ "hex",
+ "log",
+ "parity-scale-codec",
+ "rand",
+ "rust_decimal",
+ "rust_decimal_macros",
+ "serde",
+ "serde_json",
+ "sqlx",
+ "utoipa",
+ "utoipa-rapidoc",
+ "utoipa-redoc",
+ "utoipa-swagger-ui",
+ "uuid",
+]
+
+[[package]]
+name = "confidential-proof-api-shared"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "confidential_assets",
+ "hex",
+ "parity-scale-codec",
+ "rand",
+ "rust_decimal",
+ "rust_decimal_macros",
+ "serde",
+ "serde-hex",
+ "serde_json",
+ "sqlx",
+ "utoipa",
+ "uuid",
+ "zeroize",
+]
+
+[[package]]
 name = "confidential_assets"
 version = "1.0.0"
 source = "git+ssh://git@github.com/PolymeshAssociation/confidential_assets.git?branch=main#a70d828e36093bc17b3e28305b2b866f49391884"
@@ -661,56 +711,6 @@ dependencies = [
  "sha3",
  "sp-std",
  "thiserror",
- "zeroize",
-]
-
-[[package]]
-name = "confidential_assets-api"
-version = "0.1.0"
-dependencies = [
- "actix-cors",
- "actix-web",
- "actix-web-lab",
- "anyhow",
- "async-trait",
- "chrono",
- "confidential_assets",
- "confidential_assets-api-shared",
- "dotenv",
- "env_logger",
- "hex",
- "log",
- "parity-scale-codec",
- "rand",
- "rust_decimal",
- "rust_decimal_macros",
- "serde",
- "serde_json",
- "sqlx",
- "utoipa",
- "utoipa-rapidoc",
- "utoipa-redoc",
- "utoipa-swagger-ui",
- "uuid",
-]
-
-[[package]]
-name = "confidential_assets-api-shared"
-version = "0.1.0"
-dependencies = [
- "chrono",
- "confidential_assets",
- "hex",
- "parity-scale-codec",
- "rand",
- "rust_decimal",
- "rust_decimal_macros",
- "serde",
- "serde-hex",
- "serde_json",
- "sqlx",
- "utoipa",
- "uuid",
  "zeroize",
 ]
 

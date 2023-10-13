@@ -1,6 +1,6 @@
 use actix_web::{get, post, web, HttpResponse, Responder, Result};
 
-use confidential_assets_api_shared::CreateAsset;
+use confidential_proof_api_shared::CreateAsset;
 
 use crate::repo::Repository;
 

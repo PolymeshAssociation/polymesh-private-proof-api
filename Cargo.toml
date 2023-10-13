@@ -1,7 +1,7 @@
 [workspace]
 members = [
-    "api",
-    "api/shared",
+    "proof-api",
+    "proof-api/shared",
 ]
 resolver = "2"
 
@@ -11,8 +11,8 @@ bulletproofs = { version = "4.0.0", git = "https://github.com/PolymeshAssociatio
 
 [workspace.dependencies]
 # internal
-confidential_assets-api-shared = { path = "./api/shared/" }
-confidential_assets-api = { path = "./api/" }
+confidential-proof-api-shared = { path = "./proof-api/shared/" }
+confidential-proof-api = { path = "./proof-api/" }
 
 # OpenAPI
 utoipa = { version = "4.0", features = ["actix_extras", "chrono", "uuid", "decimal"] }

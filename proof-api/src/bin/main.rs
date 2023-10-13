@@ -3,21 +3,21 @@ use actix_web::middleware::Logger;
 use actix_web::{web, App, HttpServer};
 use sqlx::sqlite::SqlitePool;
 
-use utoipa::{openapi::OpenApiBuilder, OpenApi};
+use utoipa::OpenApi;
 use utoipa_rapidoc::RapiDoc;
 use utoipa_redoc::{Redoc, Servable};
 use utoipa_swagger_ui::SwaggerUi;
 
-use confidential_assets_api as api;
-use confidential_assets_api::repo::Repository;
-use confidential_assets_api_shared::*;
+use confidential_proof_api as proof_api;
+use confidential_proof_api::{repo, v1::*};
+use confidential_proof_api_shared::*;
 
-async fn get_repo() -> Result<Repository, sqlx::Error> {
+async fn get_repo() -> Result<repo::Repository, sqlx::Error> {
   let conn_str =
     std::env::var("DATABASE_URL").map_err(|e| sqlx::Error::Configuration(Box::new(e)))?;
   let pool = SqlitePool::connect(&conn_str).await?;
   sqlx::migrate!().run(&pool).await?;
-  Ok(Box::new(api::repo::SqliteConfidentialRepository::new(pool)))
+  Ok(Box::new(repo::SqliteConfidentialRepository::new(pool)))
 }
 
 #[actix_web::main]
@@ -44,22 +44,22 @@ async fn main() -> std::io::Result<()> {
   #[derive(OpenApi)]
   #[openapi(
       paths(
-        api::v1::users::get_all_users,
-        api::v1::users::get_user,
-        api::v1::users::create_user,
-        api::v1::assets::get_all_assets,
-        api::v1::assets::get_asset,
-        api::v1::assets::create_asset,
-        api::v1::accounts::get_all_accounts,
-        api::v1::accounts::get_account,
-        api::v1::accounts::create_account,
-        api::v1::accounts::auditor_verify_request,
-        api::v1::account_assets::get_all_account_assets,
-        api::v1::account_assets::get_account_asset,
-        api::v1::account_assets::create_account_asset,
-        api::v1::account_assets::asset_issuer_mint,
-        api::v1::account_assets::request_sender_proof,
-        api::v1::account_assets::receiver_verify_request,
+        users::get_all_users,
+        users::get_user,
+        users::create_user,
+        assets::get_all_assets,
+        assets::get_asset,
+        assets::create_asset,
+        accounts::get_all_accounts,
+        accounts::get_account,
+        accounts::create_account,
+        accounts::auditor_verify_request,
+        account_assets::get_all_account_assets,
+        account_assets::get_account_asset,
+        account_assets::create_account_asset,
+        account_assets::asset_issuer_mint,
+        account_assets::request_sender_proof,
+        account_assets::receiver_verify_request,
       ),
       components(
         schemas(
@@ -81,11 +81,7 @@ async fn main() -> std::io::Result<()> {
   )]
   struct ApiDoc;
 
-  let builder: OpenApiBuilder = ApiDoc::openapi().into();
-
-  let openapi = builder
-    //.paths(api::v1::users::__path_get_all_users)
-    .build();
+  let openapi = ApiDoc::openapi();
 
   HttpServer::new(move || {
     // CORS
@@ -96,8 +92,8 @@ async fn main() -> std::io::Result<()> {
       .service(
         web::scope("/api")
           .app_data(repo.clone())
-          .configure(api::health::service)
-          .configure(api::v1::service),
+          .configure(proof_api::health::service)
+          .configure(proof_api::v1::service),
       )
       .service(Redoc::with_url("/redoc", openapi.clone()))
       .service(SwaggerUi::new("/swagger-ui/{_:.*}").url("/api-docs/openapi.json", openapi.clone()))
