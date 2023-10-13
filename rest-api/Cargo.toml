@@ -1,0 +1,70 @@
+[package]
+name = "confidential-rest-api"
+version = "0.1.0"
+authors = [ "Polymesh Association" ]
+edition = "2021"
+
+[dependencies]
+dotenv = "0.15.0"
+env_logger = "0.10.0"
+log = "0.4.17"
+anyhow = "1.0.71"
+
+# OpenAPI
+utoipa = { workspace = true }
+utoipa-swagger-ui = { workspace = true }
+utoipa-redoc = { workspace = true }
+utoipa-rapidoc = { workspace = true }
+
+# internal
+confidential-proof-shared = { workspace = true, features = ["backend"] }
+
+# Confidential Assets
+confidential_assets = { workspace = true, default-features = false }
+
+rand = { workspace = true, default-features = false, features = ["alloc"] }
+
+# encoding
+hex = { workspace = true, default-features = false, features = ["alloc"] }
+codec = { workspace = true, default-features = false, features = ["derive"] }
+serde = { workspace = true, default-features = false, features = ["alloc", "derive"] }
+serde_json = { workspace = true, default-features = false, features = ["alloc"] }
+
+# actix
+actix-cors = { workspace = true }
+actix-web = { workspace = true }
+actix-web-lab = { workspace = true }
+async-trait = "0.1"
+
+# types
+uuid = { workspace = true, features = ["serde", "v4"] }
+chrono = { workspace = true, features = ["serde"] }
+rust_decimal = { workspace = true, features = ["serde-with-arbitrary-precision"] }
+rust_decimal_macros = { workspace = true }
+
+# sql
+sqlx = { workspace = true, features = ["runtime-tokio", "tls-native-tls", "sqlite", "chrono", "uuid"] }
+
+[features]
+default = ["std", "simd_backend", "discrete_log"]
+
+u64_backend = [
+	"confidential_assets/u64_backend",
+]
+avx2_backend = [
+	"confidential_assets/avx2_backend",
+]
+simd_backend = [
+	"confidential_assets/simd_backend",
+]
+
+discrete_log = [
+	"confidential_assets/rayon",
+	"confidential_assets/discrete_log",
+]
+
+std = [
+	"confidential_assets/std",
+	"rand/std",
+	"codec/std",
+]

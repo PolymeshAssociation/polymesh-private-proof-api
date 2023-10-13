@@ -1,0 +1,10 @@
+CREATE TABLE IF NOT EXISTS accounts
+(
+    account_id     INTEGER PRIMARY KEY NOT NULL,
+
+    public_key     BLOB UNIQUE NOT NULL,
+    secret_key     BLOB NOT NULL,
+
+    created_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    updated_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL
+);

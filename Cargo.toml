@@ -1,6 +1,7 @@
 [workspace]
 members = [
     "proof-api",
+    "rest-api",
     "shared",
 ]
 resolver = "2"
