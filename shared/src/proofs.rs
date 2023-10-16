@@ -119,7 +119,7 @@ impl AccountWithSecret {
     let sender_proof = req.sender_proof()?;
 
     let amount = sender_proof
-      .auditor_verify(AuditorId(0), &auditor)
+      .auditor_verify(AuditorId(req.auditor_id), &auditor)
       .map_err(|e| format!("Failed to verify sender proof: {e:?}"))?;
     if amount != req.amount {
       return Err(format!("Failed to verify sender proof: Invalid transaction amount").into());
@@ -453,6 +453,9 @@ impl SenderProofRequest {
 pub struct AuditorVerifyRequest {
   /// Sender proof.
   sender_proof: SenderProof,
+  /// Auditor id.
+  #[schema(example = 0, value_type = u32)]
+  auditor_id: u32,
   /// Transaction amount.
   #[schema(example = 1000, value_type = u64)]
   amount: Balance,
