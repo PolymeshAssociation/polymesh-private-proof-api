@@ -18,7 +18,7 @@ create_user() {
 
 create_asset() {
 	curl_post "/assets" "{
-	  \"ticker\": \"$1\"
+	  \"asset_id\": \"$1\"
 	}"
 }
 

@@ -58,7 +58,7 @@ pub async fn get_account_asset(
     (status = 200, description = "Add an asset to the account and initialize it's balance", body = AccountAsset)
   )
 )]
-#[post("/accounts/{account_id}/assets/{asset_id}")]
+#[post("/accounts/{account_id}/assets")]
 pub async fn create_account_asset(
   account_id: web::Path<i64>,
   create_account_asset: web::Json<CreateAccountAsset>,
