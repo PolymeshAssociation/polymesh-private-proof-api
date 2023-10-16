@@ -18,11 +18,14 @@ use confidential_assets::{
 #[cfg(not(feature = "backend"))]
 pub type Balance = u64;
 
+/// User for account access control.
 #[cfg_attr(feature = "backend", derive(sqlx::FromRow))]
 #[derive(Clone, Debug, Default, Deserialize, Serialize, ToSchema)]
 pub struct User {
+  /// User id.
   #[schema(example = 1)]
   pub user_id: i64,
+  /// User name.
   #[schema(example = "TestUser")]
   pub username: String,
 
@@ -30,17 +33,22 @@ pub struct User {
   pub updated_at: chrono::NaiveDateTime,
 }
 
+/// Create a new user.
 #[derive(Clone, Debug, Default, Deserialize, Serialize, ToSchema)]
 pub struct CreateUser {
+  /// User name.
   #[schema(example = "TestUser")]
   pub username: String,
 }
 
+/// Asset.
 #[cfg_attr(feature = "backend", derive(sqlx::FromRow))]
 #[derive(Clone, Debug, Default, Deserialize, Serialize, ToSchema)]
 pub struct Asset {
+  /// Asset id.
   #[schema(example = 1)]
   pub asset_id: i64,
+  /// Asset ticker.
   #[schema(example = "ACME1")]
   pub ticker: String,
 
@@ -48,17 +56,22 @@ pub struct Asset {
   pub updated_at: chrono::NaiveDateTime,
 }
 
+/// Create an asset.
 #[derive(Clone, Debug, Default, Deserialize, Serialize, ToSchema)]
 pub struct CreateAsset {
+  /// Asset ticker.
   #[schema(example = "ACME1")]
   pub ticker: String,
 }
 
+/// Confidential account.
 #[derive(Clone, Debug, Default, Deserialize, Serialize, ToSchema)]
 pub struct Account {
+  /// Account id.
   #[schema(example = 1)]
   pub account_id: i64,
 
+  /// Account public key (Elgamal public key).
   #[schema(example = "0xdeadbeef00000000000000000000000000000000000000000000000000000000")]
   #[serde(with = "SerHexSeq::<StrictPfx>")]
   pub public_key: Vec<u8>,
@@ -67,6 +80,7 @@ pub struct Account {
   pub updated_at: chrono::NaiveDateTime,
 }
 
+/// Account with secret key.  Not allowed to be serialized.
 #[cfg_attr(feature = "backend", derive(sqlx::FromRow))]
 #[derive(Clone, Debug, Default, Zeroize, ZeroizeOnDrop)]
 #[cfg(feature = "backend")]
@@ -95,7 +109,7 @@ impl AccountWithSecret {
     }
   }
 
-  pub fn auditor_verify_tx(&self, req: &AuditorVerifyRequest) -> Result<bool, String> {
+  pub fn auditor_verify_proof(&self, req: &AuditorVerifyRequest) -> Result<bool, String> {
     // Decode ConfidentialAccount from database.
     let auditor = self
       .encryption_keys()
@@ -114,12 +128,10 @@ impl AccountWithSecret {
   }
 }
 
-#[derive(Clone, Debug, Default, Deserialize, Serialize, ToSchema, Zeroize, ZeroizeOnDrop)]
+/// Create a new account.  Not allowed to be serialized.
+#[derive(Clone, Debug, Default, Zeroize, ZeroizeOnDrop)]
 pub struct CreateAccount {
-  #[schema(example = "0xdeadbeef00000000000000000000000000000000000000000000000000000000")]
-  #[serde(with = "SerHexSeq::<StrictPfx>")]
   pub public_key: Vec<u8>,
-  #[serde(skip)]
   pub secret_key: Vec<u8>,
 }
 
@@ -142,18 +154,24 @@ impl CreateAccount {
   }
 }
 
+/// Account asset.
 #[cfg_attr(feature = "backend", derive(sqlx::FromRow))]
 #[derive(Clone, Debug, Default, Deserialize, Serialize, ToSchema)]
 pub struct AccountAsset {
+  /// Account asset id.
   #[schema(example = 1)]
   pub account_asset_id: i64,
+  /// Account id.
   #[schema(example = 1)]
   pub account_id: i64,
+  /// Asset id.
   #[schema(example = 1)]
   pub asset_id: i64,
 
+  /// Current balance.
   #[schema(example = 1000)]
   pub balance: i64,
+  /// Current balance encryted.
   #[schema(example = "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000")]
   #[serde(with = "SerHexSeq::<StrictPfx>")]
   pub enc_balance: Vec<u8>,
@@ -169,6 +187,7 @@ impl AccountAsset {
   }
 }
 
+/// Account asset with account secret key.  Not allowed to be serialized.
 #[cfg_attr(feature = "backend", derive(sqlx::FromRow))]
 #[derive(Clone, Debug, Default)]
 #[cfg(feature = "backend")]
@@ -201,7 +220,7 @@ impl AccountAssetWithSecret {
     })
   }
 
-  pub fn create_send_tx(
+  pub fn create_send_proof(
     &self,
     req: &SenderProofRequest,
   ) -> Result<(UpdateAccountAsset, ConfidentialTransferProof), String> {
@@ -222,7 +241,7 @@ impl AccountAssetWithSecret {
 
     let mut rng = rand::thread_rng();
     let sender_balance = self.balance as Balance;
-    let tx = ConfidentialTransferProof::new(
+    let proof = ConfidentialTransferProof::new(
       &sender,
       &enc_balance,
       sender_balance,
@@ -237,13 +256,13 @@ impl AccountAssetWithSecret {
       account_id: self.account.account_id,
       asset_id: self.asset_id,
       balance: (self.balance as u64) - req.amount,
-      enc_balance: enc_balance - tx.sender_amount(),
+      enc_balance: enc_balance - proof.sender_amount(),
     };
 
-    Ok((update, tx))
+    Ok((update, proof))
   }
 
-  pub fn receiver_verify_tx(&self, req: &ReceiverVerifyRequest) -> Result<bool, String> {
+  pub fn receiver_verify_proof(&self, req: &ReceiverVerifyRequest) -> Result<bool, String> {
     // Decode ConfidentialAccount from database.
     let receiver = self
       .account
@@ -280,12 +299,15 @@ impl AccountAssetWithSecret {
   }
 }
 
+/// Create a new account asset.
 #[derive(Clone, Debug, Default, Deserialize, Serialize, ToSchema)]
 pub struct CreateAccountAsset {
+  /// Asset id.
   #[schema(example = 1)]
   pub asset_id: i64,
 }
 
+/// Update account asset.
 #[derive(Clone, Debug, Default)]
 #[cfg(feature = "backend")]
 pub struct UpdateAccountAsset {
@@ -303,6 +325,7 @@ impl UpdateAccountAsset {
   }
 }
 
+/// Update account asset balance request.
 #[derive(Clone, Serialize, Deserialize, ToSchema)]
 pub struct UpdateAccountAssetBalanceRequest {
   /// Encrypted balance.
@@ -319,29 +342,36 @@ impl UpdateAccountAssetBalanceRequest {
     )
   }
 }
+
+/// Mint assets.
 #[derive(Clone, Debug, Default, Deserialize, Serialize, ToSchema)]
 pub struct AccountMintAsset {
+  /// Amount to mint.
   #[schema(example = 1000, value_type = u64)]
   pub amount: Balance,
 }
 
+/// Account asset with sender proof.
 #[derive(Clone, Debug, Default, Deserialize, Serialize, ToSchema)]
-pub struct AccountAssetWithTx {
+pub struct AccountAssetWithProof {
+  /// Account asset.
   pub account_asset: AccountAsset,
+  /// Sender proof.
   #[serde(with = "SerHexSeq::<StrictPfx>")]
-  pub tx: Vec<u8>,
+  pub proof: Vec<u8>,
 }
 
 #[cfg(feature = "backend")]
-impl AccountAssetWithTx {
-  pub fn new_send_tx(account_asset: AccountAsset, tx: ConfidentialTransferProof) -> Self {
+impl AccountAssetWithProof {
+  pub fn new_send_proof(account_asset: AccountAsset, proof: ConfidentialTransferProof) -> Self {
     Self {
       account_asset,
-      tx: tx.encode(),
+      proof: proof.encode(),
     }
   }
 }
 
+/// Elgamal public key.
 #[derive(Clone, Debug, Default, Deserialize, Serialize, ToSchema)]
 pub struct PublicKey(
   #[schema(example = "0xceae8587b3e968b9669df8eb715f73bcf3f7a9cd3c61c515a4d80f2ca59c8114")]
@@ -357,6 +387,7 @@ impl PublicKey {
   }
 }
 
+/// Confidential transfer sender proof.
 #[derive(Clone, Serialize, Deserialize, ToSchema)]
 pub struct SenderProof(
   #[schema(example = "<Hex encoded sender proof>")]
@@ -372,16 +403,21 @@ impl SenderProof {
   }
 }
 
+/// Generate a new sender proof.
 #[derive(Clone, Serialize, Deserialize, ToSchema)]
 pub struct SenderProofRequest {
+  /// Current encrypted balance (optional).
   #[schema(value_type = String, format = Binary, example = "")]
   #[serde(default, with = "SerHexSeq::<StrictPfx>")]
   encrypted_balance: Vec<u8>,
+  /// Receiver's public key.
   #[schema(value_type = String, format = Binary, example = "0xceae8587b3e968b9669df8eb715f73bcf3f7a9cd3c61c515a4d80f2ca59c8114")]
   receiver: PublicKey,
+  /// List of auditors/mediators.  The order must match on-chain leg.
   #[schema(example = json!(["0xceae8587b3e968b9669df8eb715f73bcf3f7a9cd3c61c515a4d80f2ca59c8114"]))]
   #[serde(default)]
   auditors: Vec<PublicKey>,
+  /// Transaction amount.
   #[schema(example = 1000, value_type = u64)]
   amount: Balance,
 }
@@ -412,9 +448,12 @@ impl SenderProofRequest {
   }
 }
 
+/// Auditor verify sender proof.
 #[derive(Clone, Serialize, Deserialize, ToSchema)]
 pub struct AuditorVerifyRequest {
+  /// Sender proof.
   sender_proof: SenderProof,
+  /// Transaction amount.
   #[schema(example = 1000, value_type = u64)]
   amount: Balance,
 }
@@ -426,9 +465,12 @@ impl AuditorVerifyRequest {
   }
 }
 
+/// Receiver verify sender proof.
 #[derive(Clone, Serialize, Deserialize, ToSchema)]
 pub struct ReceiverVerifyRequest {
+  /// Sender proof.
   sender_proof: SenderProof,
+  /// Transaction amount.
   #[schema(example = 1000, value_type = u64)]
   amount: Balance,
 }

@@ -14,7 +14,7 @@ pub fn service(cfg: &mut web::ServiceConfig) {
 /// Get all assets.
 #[utoipa::path(
   responses(
-    (status = 200, description = "List all assets", body = [Asset])
+    (status = 200, body = [Asset])
   )
 )]
 #[get("/assets")]
@@ -28,7 +28,7 @@ pub async fn get_all_assets(repo: web::Data<Repository>) -> Result<impl Responde
 /// Get an asset.
 #[utoipa::path(
   responses(
-    (status = 200, description = "Get an asset", body = Asset)
+    (status = 200, body = Asset)
   )
 )]
 #[get("/assets/{asset_id}")]
@@ -42,7 +42,7 @@ pub async fn get_asset(asset_id: web::Path<i64>, repo: web::Data<Repository>) ->
 /// Create an asset.
 #[utoipa::path(
   responses(
-    (status = 200, description = "Create an asset", body = Asset)
+    (status = 200, body = Asset)
   )
 )]
 #[post("/assets")]

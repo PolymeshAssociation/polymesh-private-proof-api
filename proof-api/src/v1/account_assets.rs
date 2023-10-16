@@ -1,7 +1,7 @@
 use actix_web::{get, post, web, HttpResponse, Responder, Result};
 
 use confidential_proof_shared::{
-  AccountAssetWithTx, AccountMintAsset, CreateAccountAsset, ReceiverVerifyRequest,
+  AccountAssetWithProof, AccountMintAsset, CreateAccountAsset, ReceiverVerifyRequest,
   SenderProofRequest,
   UpdateAccountAssetBalanceRequest,
 };
@@ -22,7 +22,7 @@ pub fn service(cfg: &mut web::ServiceConfig) {
 /// Get all assets for an account.
 #[utoipa::path(
   responses(
-    (status = 200, description = "List all assets for an account", body = [AccountAsset])
+    (status = 200, body = [AccountAsset])
   )
 )]
 #[get("/accounts/{account_id}/assets")]
@@ -39,7 +39,7 @@ pub async fn get_all_account_assets(
 /// Get one asset for the account.
 #[utoipa::path(
   responses(
-    (status = 200, description = "Get an asset for an account", body = AccountAsset)
+    (status = 200, body = AccountAsset)
   )
 )]
 #[get("/accounts/{account_id}/assets/{asset_id}")]
@@ -57,7 +57,7 @@ pub async fn get_account_asset(
 /// Add an asset to the account and initialize it's balance.
 #[utoipa::path(
   responses(
-    (status = 200, description = "Add an asset to the account and initialize it's balance", body = AccountAsset)
+    (status = 200, body = AccountAsset)
   )
 )]
 #[post("/accounts/{account_id}/assets")]
@@ -92,7 +92,7 @@ pub async fn create_account_asset(
 /// Asset issuer updates their account balance when minting.
 #[utoipa::path(
   responses(
-    (status = 200, description = "Asset issuer updates their account balance when minting", body = AccountAsset)
+    (status = 200, body = AccountAsset)
   )
 )]
 #[post("/accounts/{account_id}/assets/{asset_id}/mint")]
@@ -140,7 +140,7 @@ pub async fn asset_issuer_mint(
 /// Generate a sender proof.
 #[utoipa::path(
   responses(
-    (status = 200, description = "Generate a sender proof", body = AccountAssetWithTx)
+    (status = 200, body = AccountAssetWithProof)
   )
 )]
 #[post("/accounts/{account_id}/assets/{asset_id}/send")]
@@ -162,8 +162,8 @@ pub async fn request_sender_proof(
   };
 
   // Generate sender proof.
-  let (update, tx) = match account_asset.create_send_tx(&req) {
-    Ok(tx) => tx,
+  let (update, proof) = match account_asset.create_send_proof(&req) {
+    Ok(proof) => proof,
     Err(e) => {
       return HttpResponse::InternalServerError()
         .body(format!("Failed to generate sender proof: {e:?}"));
@@ -183,14 +183,14 @@ pub async fn request_sender_proof(
   };
 
   // Return account_asset with sender proof.
-  let balance_with_tx = AccountAssetWithTx::new_send_tx(account_asset, tx);
-  HttpResponse::Ok().json(balance_with_tx)
+  let balance_with_proof = AccountAssetWithProof::new_send_proof(account_asset, proof);
+  HttpResponse::Ok().json(balance_with_proof)
 }
 
 /// Verify a sender proof as the receiver.
 #[utoipa::path(
   responses(
-    (status = 200, description = "Verify a sender proof as the receiver", body = bool)
+    (status = 200, body = bool)
   )
 )]
 #[post("/accounts/{account_id}/assets/{asset_id}/receiver_verify")]
@@ -212,7 +212,7 @@ pub async fn receiver_verify_request(
   };
 
   // Verify the sender's proof.
-  match account_asset.receiver_verify_tx(&req) {
+  match account_asset.receiver_verify_proof(&req) {
     Ok(is_valid) => {
       return HttpResponse::Ok().json(is_valid);
     }

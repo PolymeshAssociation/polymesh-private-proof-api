@@ -17,7 +17,7 @@ pub fn service(cfg: &mut web::ServiceConfig) {
 /// Get all accounts.
 #[utoipa::path(
   responses(
-    (status = 200, description = "List all accounts", body = [Account])
+    (status = 200, body = [Account])
   )
 )]
 #[get("/accounts")]
@@ -31,7 +31,7 @@ pub async fn get_all_accounts(repo: web::Data<Repository>) -> Result<impl Respon
 /// Get one account.
 #[utoipa::path(
   responses(
-    (status = 200, description = "Get an account", body = Account)
+    (status = 200, body = Account)
   )
 )]
 #[get("/accounts/{account_id}")]
@@ -45,7 +45,7 @@ pub async fn get_account(account_id: web::Path<i64>, repo: web::Data<Repository>
 /// Create a new account.
 #[utoipa::path(
   responses(
-    (status = 200, description = "Create an account", body = Account)
+    (status = 200, body = Account)
   )
 )]
 #[post("/accounts")]
@@ -60,7 +60,7 @@ pub async fn create_account(repo: web::Data<Repository>) -> HttpResponse {
 /// Verify a sender proof as an auditor.
 #[utoipa::path(
   responses(
-    (status = 200, description = "Verify a sender proof as an auditor", body = bool)
+    (status = 200, body = bool)
   )
 )]
 #[post("/accounts/{account_id}/auditor_verify")]
@@ -78,7 +78,7 @@ pub async fn auditor_verify_request(
   };
 
   // Verify the sender's proof.
-  match account.auditor_verify_tx(&req) {
+  match account.auditor_verify_proof(&req) {
     Ok(is_valid) => {
       return HttpResponse::Ok().json(is_valid);
     }

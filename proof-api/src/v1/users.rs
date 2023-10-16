@@ -14,7 +14,7 @@ pub fn service(cfg: &mut web::ServiceConfig) {
 /// Get all users.
 #[utoipa::path(
   responses(
-    (status = 200, description = "List users", body = [User])
+    (status = 200, body = [User])
   )
 )]
 #[get("/users")]
@@ -28,7 +28,7 @@ pub async fn get_all_users(repo: web::Data<Repository>) -> Result<impl Responder
 /// Get one user.
 #[utoipa::path(
   responses(
-    (status = 200, description = "Get user", body = User)
+    (status = 200, body = User)
   )
 )]
 #[get("/users/{user_id}")]
@@ -42,7 +42,7 @@ pub async fn get_user(user_id: web::Path<i64>, repo: web::Data<Repository>) -> H
 /// Create a new user.
 #[utoipa::path(
   responses(
-    (status = 200, description = "Create user", body = User)
+    (status = 200, body = User)
   )
 )]
 #[post("/users")]

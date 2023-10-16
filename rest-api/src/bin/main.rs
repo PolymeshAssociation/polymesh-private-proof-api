@@ -66,10 +66,10 @@ async fn main() -> std::io::Result<()> {
         schemas(
           User, CreateUser,
           Asset, CreateAsset,
-          Account, CreateAccount,
+          Account,
           AccountAsset, CreateAccountAsset,
           AccountMintAsset,
-          AccountAssetWithTx,
+          AccountAssetWithProof,
           PublicKey, SenderProof,
           AuditorVerifyRequest,
           ReceiverVerifyRequest,
