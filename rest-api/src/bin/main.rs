@@ -31,7 +31,7 @@ async fn main() -> std::io::Result<()> {
 
   // building address
   let port = std::env::var("PORT").unwrap_or("8080".to_string());
-  let address = format!("127.0.0.1:{}", port);
+  let address = format!("0.0.0.0:{}", port);
 
   // repository
   let repo = get_repo().await.expect("Couldn't get the repository");
