@@ -3,6 +3,7 @@ use actix_web::{get, post, web, HttpResponse, Responder, Result};
 use confidential_proof_shared::{
   AccountAssetWithTx, AccountMintAsset, CreateAccountAsset, ReceiverVerifyRequest,
   SenderProofRequest,
+  UpdateAccountAssetBalanceRequest,
 };
 
 use crate::repo::Repository;
@@ -14,7 +15,8 @@ pub fn service(cfg: &mut web::ServiceConfig) {
     .service(create_account_asset)
     .service(asset_issuer_mint)
     .service(request_sender_proof)
-    .service(receiver_verify_request);
+    .service(receiver_verify_request)
+    .service(update_balance_request);
 }
 
 /// Get all assets for an account.
@@ -219,9 +221,41 @@ pub async fn receiver_verify_request(
         .body(format!("Sender proof verification failed: {e:?}"));
     }
   }
+}
 
-  /*
-  // TODO: Update receiver balance?
+/// Update an account's encrypted balance.
+#[utoipa::path(
+  responses(
+    (status = 200, body = bool)
+  )
+)]
+#[post("/accounts/{account_id}/assets/{asset_id}/update_balance")]
+pub async fn update_balance_request(
+  path: web::Path<(i64, i64)>,
+  req: web::Json<UpdateAccountAssetBalanceRequest>,
+  repo: web::Data<Repository>,
+) -> HttpResponse {
+  let (account_id, asset_id) = path.into_inner();
+  // Get the account asset with account secret key.
+  let account_asset = match repo
+    .get_account_asset_with_secret(account_id, asset_id)
+    .await
+  {
+    Ok(account_asset) => account_asset,
+    Err(_) => {
+      return HttpResponse::NotFound().body("Account Asset not found");
+    }
+  };
+
+  // Prepare balance update.
+  let update = match account_asset.update_balance(&req) {
+    Ok(update) => update,
+    Err(e) => {
+      return HttpResponse::InternalServerError()
+        .body(format!("Failed to generate sender proof: {e:?}"));
+    }
+  };
+
   // Update account balance.
   let account_asset = match repo.update_account_asset(&update).await {
       Ok(Some(account_asset)) => account_asset,
@@ -233,8 +267,6 @@ pub async fn receiver_verify_request(
       }
   };
 
-  // Return account_asset with sender proof.
-  let balance_with_tx = AccountAssetWithTx::new_send_tx(account_asset, tx);
-  HttpResponse::Ok().json(balance_with_tx)
-  */
+  // Return account_asset.
+  HttpResponse::Ok().json(account_asset)
 }

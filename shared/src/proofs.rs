@@ -11,7 +11,7 @@ use codec::{Decode, Encode};
 #[cfg(feature = "backend")]
 use confidential_assets::{
   elgamal::CipherText,
-  transaction::{AuditorId, ConfidentialTransferProof},
+  transaction::{AuditorId, ConfidentialTransferProof, MAX_TOTAL_SUPPLY},
   Balance, ElgamalKeys, ElgamalPublicKey, ElgamalSecretKey, Scalar,
 };
 
@@ -257,6 +257,27 @@ impl AccountAssetWithSecret {
       .map_err(|e| format!("Failed to verify sender proof: {e:?}"))?;
     Ok(true)
   }
+
+  pub fn update_balance(&self, req: &UpdateAccountAssetBalanceRequest) -> Result<UpdateAccountAsset, String> {
+    // Decode `req`.
+    let enc_balance = req
+      .encrypted_balance()?;
+    // Decode ConfidentialAccount from database.
+    let keys = self
+      .account
+      .encryption_keys()
+      .ok_or_else(|| format!("Failed to get account from database."))?;
+    // Decrypt balance.
+    let balance = keys.secret.decrypt_with_hint(&enc_balance, 0, MAX_TOTAL_SUPPLY)
+      .ok_or_else(|| format!("Failed to decrypt balance."))?;
+    // Update account balance.
+    Ok(UpdateAccountAsset {
+      account_id: self.account.account_id,
+      asset_id: self.asset_id,
+      balance,
+      enc_balance,
+    })
+  }
 }
 
 #[derive(Clone, Debug, Default, Deserialize, Serialize, ToSchema)]
@@ -282,6 +303,22 @@ impl UpdateAccountAsset {
   }
 }
 
+#[derive(Clone, Serialize, Deserialize, ToSchema)]
+pub struct UpdateAccountAssetBalanceRequest {
+  /// Encrypted balance.
+  #[schema(value_type = String, format = Binary, example = "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000")]
+  #[serde(default, with = "SerHexSeq::<StrictPfx>")]
+  encrypted_balance: Vec<u8>,
+}
+
+#[cfg(feature = "backend")]
+impl UpdateAccountAssetBalanceRequest {
+  pub fn encrypted_balance(&self) -> Result<CipherText, String> {
+    Ok(CipherText::decode(&mut self.encrypted_balance.as_slice())
+      .map_err(|e| format!("Failed to decode 'encrypted_balance': {e:?}"))?,
+    )
+  }
+}
 #[derive(Clone, Debug, Default, Deserialize, Serialize, ToSchema)]
 pub struct AccountMintAsset {
   #[schema(example = 1000, value_type = u64)]

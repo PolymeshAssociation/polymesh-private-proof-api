@@ -60,6 +60,7 @@ async fn main() -> std::io::Result<()> {
         account_assets::asset_issuer_mint,
         account_assets::request_sender_proof,
         account_assets::receiver_verify_request,
+        account_assets::update_balance_request,
       ),
       components(
         schemas(
@@ -70,9 +71,10 @@ async fn main() -> std::io::Result<()> {
           AccountMintAsset,
           AccountAssetWithTx,
           PublicKey, SenderProof,
-          SenderProofRequest,
-          ReceiverVerifyRequest,
           AuditorVerifyRequest,
+          ReceiverVerifyRequest,
+          SenderProofRequest,
+          UpdateAccountAssetBalanceRequest,
         ),
       ),
       servers(
