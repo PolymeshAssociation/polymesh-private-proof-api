@@ -2,6 +2,7 @@ use async_trait::async_trait;
 use confidential_proof_shared::{
   Account, AccountAsset, AccountAssetWithSecret, AccountWithSecret, Asset, CreateAccount,
   CreateAsset, CreateUser, UpdateAccountAsset, User,
+  Signer, SignerWithSecret,
 };
 
 mod sqlite;
@@ -20,6 +21,15 @@ pub trait ConfidentialRepository: Send + Sync + 'static {
   async fn get_users(&self) -> ConfidentialRepoResult<Vec<User>>;
   async fn get_user(&self, user_id: i64) -> ConfidentialRepoResult<User>;
   async fn create_user(&self, user: &CreateUser) -> ConfidentialRepoResult<User>;
+
+  // Signers
+  async fn get_signers(&self) -> ConfidentialRepoResult<Vec<Signer>>;
+  async fn get_signer(&self, signer: &str) -> ConfidentialRepoResult<Signer>;
+  async fn get_signer_with_secret(
+    &self,
+    signer: &str,
+  ) -> ConfidentialRepoResult<SignerWithSecret>;
+  async fn create_signer(&self, signer: &SignerWithSecret) -> ConfidentialRepoResult<Signer>;
 
   // Assets
   async fn get_assets(&self) -> ConfidentialRepoResult<Vec<Asset>>;

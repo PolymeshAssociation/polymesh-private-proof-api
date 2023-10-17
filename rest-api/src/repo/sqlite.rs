@@ -2,6 +2,7 @@ use async_trait::async_trait;
 use confidential_proof_shared::{
   Account, AccountAsset, AccountAssetWithSecret, AccountWithSecret, Asset, CreateAccount,
   CreateAsset, CreateUser, UpdateAccountAsset, User,
+  Signer, SignerWithSecret,
 };
 
 use super::{ConfidentialRepoResult, ConfidentialRepository};
@@ -41,6 +42,60 @@ impl ConfidentialRepository for SqliteConfidentialRepository {
       RETURNING user_id, username, created_at, updated_at
       "#,
       user.username,
+    )
+    .fetch_one(&self.pool)
+    .await
+    .map_err(|e| e.to_string())
+  }
+
+  async fn get_signers(&self) -> ConfidentialRepoResult<Vec<Signer>> {
+    sqlx::query_as!(
+      Signer,
+      r#"SELECT signer_id, signer_name, public_key, created_at, updated_at FROM signers"#,
+    )
+    .fetch_all(&self.pool)
+    .await
+    .map_err(|e| e.to_string())
+  }
+
+  async fn get_signer(&self, signer: &str) -> ConfidentialRepoResult<Signer> {
+    sqlx::query_as!(
+      Signer,
+      r#"SELECT signer_id, signer_name, public_key, created_at, updated_at
+        FROM signers WHERE signer_name = ?"#,
+      signer
+    )
+    .fetch_one(&self.pool)
+    .await
+    .map_err(|e| e.to_string())
+  }
+
+  async fn get_signer_with_secret(
+    &self,
+    signer: &str,
+  ) -> ConfidentialRepoResult<SignerWithSecret> {
+    sqlx::query_as!(
+      SignerWithSecret,
+      r#"SELECT signer_id, signer_name, public_key, secret_key
+        FROM signers WHERE signer_name = ?"#,
+      signer
+    )
+    .fetch_one(&self.pool)
+    .await
+    .map_err(|e| e.to_string())
+  }
+
+  async fn create_signer(&self, signer: &SignerWithSecret) -> ConfidentialRepoResult<Signer> {
+    sqlx::query_as!(
+      Signer,
+      r#"
+      INSERT INTO signers (signer_name, public_key, secret_key)
+      VALUES (?, ?, ?)
+      RETURNING signer_id, signer_name, public_key, created_at, updated_at
+      "#,
+      signer.signer_name,
+      signer.public_key,
+      signer.secret_key,
     )
     .fetch_one(&self.pool)
     .await

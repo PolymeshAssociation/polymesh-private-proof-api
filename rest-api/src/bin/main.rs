@@ -8,6 +8,8 @@ use utoipa_rapidoc::RapiDoc;
 use utoipa_redoc::{Redoc, Servable};
 use utoipa_swagger_ui::SwaggerUi;
 
+use polymesh_api::Api;
+
 use confidential_rest_api as rest_api;
 use confidential_rest_api::{repo, v1::*};
 use confidential_proof_shared::*;
@@ -33,6 +35,9 @@ async fn main() -> std::io::Result<()> {
   let port = std::env::var("PORT").unwrap_or("8080".to_string());
   let address = format!("0.0.0.0:{}", port);
 
+  let polymesh_url = std::env::var("POLYMESH_URL").unwrap_or("ws://localhost:9944/".to_string());
+  let polymesh_api = web::Data::new(Api::new(&polymesh_url).await.expect("Polymesh Node"));
+
   // repository
   let repo = get_repo().await.expect("Couldn't get the repository");
   let repo = web::Data::new(repo);
@@ -47,9 +52,13 @@ async fn main() -> std::io::Result<()> {
         users::get_all_users,
         users::get_user,
         users::create_user,
+        signers::get_all_signers,
+        signers::get_signer,
+        signers::create_signer,
         assets::get_all_assets,
         assets::get_asset,
         assets::create_asset,
+        assets::tx_create_asset,
         accounts::get_all_accounts,
         accounts::get_account,
         accounts::create_account,
@@ -65,6 +74,7 @@ async fn main() -> std::io::Result<()> {
       components(
         schemas(
           User, CreateUser,
+          Signer, CreateSigner,
           Asset, CreateAsset,
           Account,
           AccountAsset, CreateAccountAsset,
@@ -75,6 +85,8 @@ async fn main() -> std::io::Result<()> {
           ReceiverVerifyRequest,
           SenderProofRequest,
           UpdateAccountAssetBalanceRequest,
+
+          CreateConfidentialAsset,
         ),
       ),
       servers(
@@ -94,6 +106,7 @@ async fn main() -> std::io::Result<()> {
       .service(
         web::scope("/api")
           .app_data(repo.clone())
+          .app_data(polymesh_api.clone())
           .configure(rest_api::health::service)
           .configure(rest_api::v1::service),
       )

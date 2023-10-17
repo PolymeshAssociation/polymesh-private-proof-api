@@ -4,10 +4,12 @@ pub mod account_assets;
 pub mod accounts;
 pub mod assets;
 pub mod users;
+pub mod signers;
 
 pub fn service(cfg: &mut web::ServiceConfig) {
   cfg.service(
     web::scope("/v1")
+      .configure(signers::service)
       .configure(users::service)
       .configure(assets::service)
       .configure(accounts::service),

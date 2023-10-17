@@ -9,6 +9,15 @@ use zeroize::{Zeroize, ZeroizeOnDrop};
 use codec::{Decode, Encode};
 
 #[cfg(feature = "backend")]
+use polymesh_api::{
+  types::{
+    pallet_confidential_asset::{
+      MediatorAccount, ConfidentialAccount,
+    },
+  },
+};
+
+#[cfg(feature = "backend")]
 use confidential_assets::{
   elgamal::CipherText,
   transaction::{AuditorId, ConfidentialTransferProof, MAX_TOTAL_SUPPLY},
@@ -372,7 +381,7 @@ impl AccountAssetWithProof {
 }
 
 /// Elgamal public key.
-#[derive(Clone, Debug, Default, Deserialize, Serialize, ToSchema)]
+#[derive(Clone, Debug, Default, Deserialize, Serialize, ToSchema, PartialEq, Eq, PartialOrd, Ord)]
 pub struct PublicKey(
   #[schema(example = "0xceae8587b3e968b9669df8eb715f73bcf3f7a9cd3c61c515a4d80f2ca59c8114")]
   #[serde(with = "SerHexSeq::<StrictPfx>")]
@@ -383,6 +392,16 @@ pub struct PublicKey(
 impl PublicKey {
   pub fn decode(&self) -> Result<ElgamalPublicKey, String> {
     ElgamalPublicKey::decode(&mut self.0.as_slice())
+      .map_err(|e| format!("Failed to decode PublicKey: {e:?}"))
+  }
+
+  pub fn as_confidential_account(&self) -> Result<ConfidentialAccount, String> {
+    ConfidentialAccount::decode(&mut self.0.as_slice())
+      .map_err(|e| format!("Failed to decode PublicKey: {e:?}"))
+  }
+
+  pub fn as_mediator_account(&self) -> Result<MediatorAccount, String> {
+    MediatorAccount::decode(&mut self.0.as_slice())
       .map_err(|e| format!("Failed to decode PublicKey: {e:?}"))
   }
 }

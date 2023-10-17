@@ -22,6 +22,9 @@ confidential-proof-shared = { workspace = true, features = ["backend"] }
 # Confidential Assets
 confidential_assets = { workspace = true, default-features = false }
 
+# Polymesh API
+polymesh-api = { workspace = true, features = ["default"] }
+
 rand = { workspace = true, default-features = false, features = ["alloc"] }
 
 # encoding

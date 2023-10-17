@@ -6,7 +6,14 @@ edition = "2021"
 [features]
 default = [ "std", "simd_backend", "discrete_log" ]
 
-backend = [ "std", "sqlx", "confidential_assets", "rand", "codec" ]
+backend = [
+	"std",
+	"sqlx",
+	"sp-core",
+	"confidential_assets",
+	"rand",
+	"codec"
+]
 
 u64_backend = [ "confidential_assets?/u64_backend" ]
 avx2_backend = [ "confidential_assets?/avx2_backend" ]
@@ -14,7 +21,12 @@ simd_backend = [ "confidential_assets?/simd_backend" ]
 
 discrete_log = [ "confidential_assets?/rayon", "confidential_assets?/discrete_log" ]
 
-std = [ "confidential_assets?/std", "rand?/std", "codec?/std" ]
+std = [
+	"sp-core?/std",
+	"confidential_assets?/std",
+	"rand?/std",
+	"codec?/std"
+]
 
 [dependencies]
 # OpenAPI
@@ -22,6 +34,11 @@ utoipa = { workspace = true }
 
 # Confidential Assets
 confidential_assets = { workspace = true, default-features = false, optional = true }
+
+# Polymesh API
+polymesh-api = { workspace = true, default-features = false, features = ["download_metadata"] }
+# For signing key pairs.
+sp-core = { workspace = true, default-features = false, optional = true }
 
 rand = { workspace = true, default-features = false, features = ["alloc"], optional = true }
 zeroize = { workspace = true }
