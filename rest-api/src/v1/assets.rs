@@ -1,14 +1,10 @@
 use actix_web::{get, post, web, HttpResponse, Responder, Result};
 
-use polymesh_api::types::{
-    pallet_confidential_asset::{
-        ConfidentialAuditors,
-    },
-    polymesh_primitives::{
-        asset::{AssetName, AssetType},
-    },
-};
 use polymesh_api::client::PairSigner;
+use polymesh_api::types::{
+  pallet_confidential_asset::ConfidentialAuditors,
+  polymesh_primitives::asset::{AssetName, AssetType},
+};
 use polymesh_api::Api;
 
 use confidential_proof_shared::{error::Error, CreateAsset, CreateConfidentialAsset};
@@ -42,7 +38,10 @@ pub async fn get_all_assets(repo: web::Data<Repository>) -> Result<impl Responde
   )
 )]
 #[get("/assets/{asset_id}")]
-pub async fn get_asset(asset_id: web::Path<i64>, repo: web::Data<Repository>) -> Result<impl Responder> {
+pub async fn get_asset(
+  asset_id: web::Path<i64>,
+  repo: web::Data<Repository>,
+) -> Result<impl Responder> {
   Ok(match repo.get_asset(*asset_id).await? {
     Some(asset) => HttpResponse::Ok().json(asset),
     None => HttpResponse::NotFound().body("Not found"),
@@ -76,7 +75,9 @@ pub async fn tx_create_asset(
   repo: web::Data<Repository>,
   api: web::Data<Api>,
 ) -> Result<impl Responder> {
-  let mut signer = repo.get_signer_with_secret(&asset.signer).await?
+  let mut signer = repo
+    .get_signer_with_secret(&asset.signer)
+    .await?
     .ok_or_else(|| Error::not_found("Signer"))
     .and_then(|signer| Ok(PairSigner::new(signer.keypair()?)))?;
 
@@ -84,7 +85,8 @@ pub async fn tx_create_asset(
 
   let ticker = asset.ticker()?;
 
-  let _res = api.call()
+  let _res = api
+    .call()
     .confidential_asset()
     .create_confidential_asset(
       AssetName(asset.name.as_bytes().into()),

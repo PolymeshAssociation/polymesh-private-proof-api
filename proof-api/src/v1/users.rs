@@ -30,8 +30,13 @@ pub async fn get_all_users(repo: web::Data<Repository>) -> Result<impl Responder
   )
 )]
 #[get("/users/{user_id}")]
-pub async fn get_user(user_id: web::Path<i64>, repo: web::Data<Repository>) -> Result<impl Responder> {
-  let user = repo.get_user(*user_id).await?
+pub async fn get_user(
+  user_id: web::Path<i64>,
+  repo: web::Data<Repository>,
+) -> Result<impl Responder> {
+  let user = repo
+    .get_user(*user_id)
+    .await?
     .ok_or_else(|| Error::not_found("User"))?;
   Ok(HttpResponse::Ok().json(user))
 }
@@ -43,7 +48,10 @@ pub async fn get_user(user_id: web::Path<i64>, repo: web::Data<Repository>) -> R
   )
 )]
 #[post("/users")]
-pub async fn create_user(user: web::Json<CreateUser>, repo: web::Data<Repository>) -> Result<impl Responder> {
+pub async fn create_user(
+  user: web::Json<CreateUser>,
+  repo: web::Data<Repository>,
+) -> Result<impl Responder> {
   let user = repo.create_user(&user).await?;
   Ok(HttpResponse::Ok().json(user))
 }

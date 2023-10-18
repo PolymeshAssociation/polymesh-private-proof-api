@@ -9,13 +9,7 @@ use zeroize::{Zeroize, ZeroizeOnDrop};
 use codec::{Decode, Encode};
 
 #[cfg(feature = "backend")]
-use polymesh_api::{
-  types::{
-    pallet_confidential_asset::{
-      MediatorAccount, ConfidentialAccount,
-    },
-  },
-};
+use polymesh_api::types::pallet_confidential_asset::{ConfidentialAccount, MediatorAccount};
 
 #[cfg(feature = "backend")]
 use confidential_assets::{
@@ -122,16 +116,16 @@ impl AccountWithSecret {
 
   pub fn auditor_verify_proof(&self, req: &AuditorVerifyRequest) -> Result<bool> {
     // Decode ConfidentialAccount from database.
-    let auditor = self
-      .encryption_keys()?;
+    let auditor = self.encryption_keys()?;
 
     // Decode request.
     let sender_proof = req.sender_proof()?;
 
-    let amount = sender_proof
-      .auditor_verify(AuditorId(req.auditor_id), &auditor)?;
+    let amount = sender_proof.auditor_verify(AuditorId(req.auditor_id), &auditor)?;
     if amount != req.amount {
-      return Err(Error::other("Failed to verify sender proof: Invalid transaction amount"));
+      return Err(Error::other(
+        "Failed to verify sender proof: Invalid transaction amount",
+      ));
     }
     Ok(true)
   }
@@ -181,7 +175,9 @@ pub struct AccountAsset {
   #[schema(example = 1000)]
   pub balance: i64,
   /// Current balance encryted.
-  #[schema(example = "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000")]
+  #[schema(
+    example = "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+  )]
   #[serde(with = "SerHexSeq::<StrictPfx>")]
   pub enc_balance: Vec<u8>,
 
@@ -234,18 +230,19 @@ impl AccountAssetWithSecret {
     req: &SenderProofRequest,
   ) -> Result<(UpdateAccountAsset, ConfidentialTransferProof)> {
     // Decode ConfidentialAccount from database.
-    let sender = self
-      .account
-      .encryption_keys()?;
+    let sender = self.account.encryption_keys()?;
     // Decode `req`.
     let enc_balance = req
       .encrypted_balance()?
       .or_else(|| self.enc_balance().ok())
       .ok_or_else(|| Error::other("No encrypted balance."))?;
     let receiver = req.receiver()?;
-    let auditors = req.auditors()?.into_iter().enumerate().map(|(idx, auditor)| {
-      (AuditorId(idx as _), auditor)
-    }).collect();
+    let auditors = req
+      .auditors()?
+      .into_iter()
+      .enumerate()
+      .map(|(idx, auditor)| (AuditorId(idx as _), auditor))
+      .collect();
 
     let mut rng = rand::thread_rng();
     let sender_balance = self.balance as Balance;
@@ -271,27 +268,26 @@ impl AccountAssetWithSecret {
 
   pub fn receiver_verify_proof(&self, req: &ReceiverVerifyRequest) -> Result<bool> {
     // Decode ConfidentialAccount from database.
-    let receiver = self
-      .account
-      .encryption_keys()?;
+    let receiver = self.account.encryption_keys()?;
 
     // Decode request.
     let sender_proof = req.sender_proof()?;
-    sender_proof
-      .receiver_verify(receiver, req.amount)?;
+    sender_proof.receiver_verify(receiver, req.amount)?;
     Ok(true)
   }
 
-  pub fn update_balance(&self, req: &UpdateAccountAssetBalanceRequest) -> Result<UpdateAccountAsset> {
+  pub fn update_balance(
+    &self,
+    req: &UpdateAccountAssetBalanceRequest,
+  ) -> Result<UpdateAccountAsset> {
     // Decode `req`.
-    let enc_balance = req
-      .encrypted_balance()?;
+    let enc_balance = req.encrypted_balance()?;
     // Decode ConfidentialAccount from database.
-    let keys = self
-      .account
-      .encryption_keys()?;
+    let keys = self.account.encryption_keys()?;
     // Decrypt balance.
-    let balance = keys.secret.decrypt_with_hint(&enc_balance, 0, MAX_TOTAL_SUPPLY)
+    let balance = keys
+      .secret
+      .decrypt_with_hint(&enc_balance, 0, MAX_TOTAL_SUPPLY)
       .ok_or_else(|| Error::other("Failed to decrypt balance."))?;
     // Update account balance.
     Ok(UpdateAccountAsset {
@@ -374,11 +370,13 @@ impl AccountAssetWithProof {
 }
 
 /// Elgamal public key.
-#[derive(Clone, Debug, Default, Deserialize, Serialize, ToSchema, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(
+  Clone, Debug, Default, Deserialize, Serialize, ToSchema, PartialEq, Eq, PartialOrd, Ord,
+)]
 pub struct PublicKey(
   #[schema(example = "0xceae8587b3e968b9669df8eb715f73bcf3f7a9cd3c61c515a4d80f2ca59c8114")]
   #[serde(with = "SerHexSeq::<StrictPfx>")]
-  Vec<u8>
+  Vec<u8>,
 );
 
 #[cfg(feature = "backend")]
@@ -401,7 +399,7 @@ impl PublicKey {
 pub struct SenderProof(
   #[schema(example = "<Hex encoded sender proof>")]
   #[serde(with = "SerHexSeq::<StrictPfx>")]
-  Vec<u8>
+  Vec<u8>,
 );
 
 #[cfg(feature = "backend")]
@@ -445,9 +443,13 @@ impl SenderProofRequest {
   }
 
   pub fn auditors(&self) -> Result<Vec<ElgamalPublicKey>> {
-    Ok(self.auditors.iter().map(|k| {
-      k.decode()
-    }).collect::<Result<Vec<_>>>()?)
+    Ok(
+      self
+        .auditors
+        .iter()
+        .map(|k| k.decode())
+        .collect::<Result<Vec<_>>>()?,
+    )
   }
 }
 

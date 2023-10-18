@@ -5,18 +5,13 @@ use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 
 #[cfg(feature = "backend")]
-use polymesh_api::{
-  types::{
-    pallet_confidential_asset::{
-      MediatorAccount,
-      ConfidentialTransactionRole,
-    },
-    polymesh_primitives::ticker::Ticker,
-  },
+use polymesh_api::types::{
+  pallet_confidential_asset::{ConfidentialTransactionRole, MediatorAccount},
+  polymesh_primitives::ticker::Ticker,
 };
 
-use crate::proofs::PublicKey;
 use crate::error::Result;
+use crate::proofs::PublicKey;
 
 #[derive(Clone, Copy, Debug, Default, Deserialize, Serialize, ToSchema)]
 pub enum AuditorRole {

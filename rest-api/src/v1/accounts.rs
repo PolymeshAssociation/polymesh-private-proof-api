@@ -33,8 +33,13 @@ pub async fn get_all_accounts(repo: web::Data<Repository>) -> Result<impl Respon
   )
 )]
 #[get("/accounts/{account_id}")]
-pub async fn get_account(account_id: web::Path<i64>, repo: web::Data<Repository>) -> Result<impl Responder> {
-  let account = repo.get_account(*account_id).await?
+pub async fn get_account(
+  account_id: web::Path<i64>,
+  repo: web::Data<Repository>,
+) -> Result<impl Responder> {
+  let account = repo
+    .get_account(*account_id)
+    .await?
     .ok_or_else(|| Error::not_found("Account"))?;
   Ok(HttpResponse::Ok().json(account))
 }
@@ -65,17 +70,16 @@ pub async fn auditor_verify_request(
   repo: web::Data<Repository>,
 ) -> Result<impl Responder> {
   // Get the account with secret key.
-  let account = repo.get_account_with_secret(*account_id).await?
+  let account = repo
+    .get_account_with_secret(*account_id)
+    .await?
     .ok_or_else(|| Error::not_found("Account"))?;
 
   // Verify the sender's proof.
   Ok(match account.auditor_verify_proof(&req) {
-    Ok(is_valid) => {
-      HttpResponse::Ok().json(is_valid)
-    }
+    Ok(is_valid) => HttpResponse::Ok().json(is_valid),
     Err(e) => {
-      HttpResponse::InternalServerError()
-        .body(format!("Sender proof verification failed: {e:?}"))
+      HttpResponse::InternalServerError().body(format!("Sender proof verification failed: {e:?}"))
     }
   })
 }

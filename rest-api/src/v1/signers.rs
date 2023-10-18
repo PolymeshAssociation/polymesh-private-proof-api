@@ -30,7 +30,10 @@ pub async fn get_all_signers(repo: web::Data<Repository>) -> Result<impl Respond
   )
 )]
 #[get("/signers/{signer}")]
-pub async fn get_signer(signer: web::Path<String>, repo: web::Data<Repository>) -> Result<impl Responder> {
+pub async fn get_signer(
+  signer: web::Path<String>,
+  repo: web::Data<Repository>,
+) -> Result<impl Responder> {
   Ok(match repo.get_signer(&signer).await? {
     Some(signer) => HttpResponse::Ok().json(signer),
     None => HttpResponse::NotFound().body("Not found"),
@@ -44,7 +47,10 @@ pub async fn get_signer(signer: web::Path<String>, repo: web::Data<Repository>) 
   )
 )]
 #[post("/signers")]
-pub async fn create_signer(signer: web::Json<CreateSigner>, repo: web::Data<Repository>) -> Result<impl Responder> {
+pub async fn create_signer(
+  signer: web::Json<CreateSigner>,
+  repo: web::Data<Repository>,
+) -> Result<impl Responder> {
   let signer = signer.as_signer_with_secret()?;
   let signer = repo.create_signer(&signer).await?;
   Ok(HttpResponse::Ok().json(signer))

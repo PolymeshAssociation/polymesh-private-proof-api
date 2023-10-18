@@ -1,8 +1,7 @@
 use async_trait::async_trait;
 use confidential_proof_shared::{
-  error::Result,
-  Account, AccountAsset, AccountAssetWithSecret, AccountWithSecret, Asset, CreateAccount,
-  CreateAsset, CreateUser, UpdateAccountAsset, User,
+  error::Result, Account, AccountAsset, AccountAssetWithSecret, AccountWithSecret, Asset,
+  CreateAccount, CreateAsset, CreateUser, UpdateAccountAsset, User,
 };
 
 mod sqlite;
@@ -27,28 +26,19 @@ pub trait ConfidentialRepository: Send + Sync + 'static {
   // Accounts
   async fn get_accounts(&self) -> Result<Vec<Account>>;
   async fn get_account(&self, account_id: i64) -> Result<Option<Account>>;
-  async fn get_account_with_secret(
-    &self,
-    account_id: i64,
-  ) -> Result<Option<AccountWithSecret>>;
+  async fn get_account_with_secret(&self, account_id: i64) -> Result<Option<AccountWithSecret>>;
   async fn create_account(&self, account: &CreateAccount) -> Result<Account>;
 
   // Account balances
   async fn get_account_assets(&self, account_id: i64) -> Result<Vec<AccountAsset>>;
-  async fn get_account_asset(
-    &self,
-    account_id: i64,
-    asset_id: i64,
-  ) -> Result<Option<AccountAsset>>;
+  async fn get_account_asset(&self, account_id: i64, asset_id: i64)
+    -> Result<Option<AccountAsset>>;
   async fn get_account_asset_with_secret(
     &self,
     account_id: i64,
     asset_id: i64,
   ) -> Result<Option<AccountAssetWithSecret>>;
-  async fn create_account_asset(
-    &self,
-    account_asset: &UpdateAccountAsset,
-  ) -> Result<AccountAsset>;
+  async fn create_account_asset(&self, account_asset: &UpdateAccountAsset) -> Result<AccountAsset>;
   async fn update_account_asset(
     &self,
     account_asset: &UpdateAccountAsset,

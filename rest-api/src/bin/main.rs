@@ -10,13 +10,12 @@ use utoipa_swagger_ui::SwaggerUi;
 
 use polymesh_api::Api;
 
+use confidential_proof_shared::*;
 use confidential_rest_api as rest_api;
 use confidential_rest_api::{repo, v1::*};
-use confidential_proof_shared::*;
 
 async fn get_repo() -> anyhow::Result<repo::Repository> {
-  let conn_str =
-    std::env::var("DATABASE_URL")?;
+  let conn_str = std::env::var("DATABASE_URL")?;
   let pool = SqlitePool::connect(&conn_str).await?;
   sqlx::migrate!().run(&pool).await?;
   Ok(Box::new(repo::SqliteConfidentialRepository::new(pool)))
@@ -109,15 +108,13 @@ async fn start_server() -> anyhow::Result<()> {
       .service(RapiDoc::new("/api-docs/openapi.json").path("/rapidoc"))
       .wrap(Logger::default())
   })
-    .bind(&address)
-    .map_err(|err| {
-      log::error!(
-        "🔥🔥🔥 Couldn't start the server on address & port {address}: {err:?}",
-      );
-      err
-    })?
-    .run()
-    .await?;
+  .bind(&address)
+  .map_err(|err| {
+    log::error!("🔥🔥🔥 Couldn't start the server on address & port {address}: {err:?}",);
+    err
+  })?
+  .run()
+  .await?;
   Ok(())
 }
 

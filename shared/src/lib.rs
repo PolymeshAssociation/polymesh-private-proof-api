@@ -5,10 +5,7 @@ use utoipa::ToSchema;
 use zeroize::{Zeroize, ZeroizeOnDrop};
 
 #[cfg(feature = "backend")]
-use sp_core::{
-  crypto::Pair,
-  sr25519
-};
+use sp_core::{crypto::Pair, sr25519};
 
 pub mod error;
 pub use error::*;

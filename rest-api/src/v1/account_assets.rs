@@ -1,10 +1,8 @@
 use actix_web::{get, post, web, HttpResponse, Responder, Result};
 
 use confidential_proof_shared::{
-  error::Error,
-  AccountAssetWithProof, AccountMintAsset, CreateAccountAsset, ReceiverVerifyRequest,
-  SenderProofRequest,
-  UpdateAccountAssetBalanceRequest,
+  error::Error, AccountAssetWithProof, AccountMintAsset, CreateAccountAsset, ReceiverVerifyRequest,
+  SenderProofRequest, UpdateAccountAssetBalanceRequest,
 };
 
 use crate::repo::Repository;
@@ -47,7 +45,9 @@ pub async fn get_account_asset(
   repo: web::Data<Repository>,
 ) -> Result<impl Responder> {
   let (account_id, asset_id) = path.into_inner();
-  let account_asset = repo.get_account_asset(account_id, asset_id).await?
+  let account_asset = repo
+    .get_account_asset(account_id, asset_id)
+    .await?
     .ok_or_else(|| Error::not_found("Account Asset"))?;
   Ok(HttpResponse::Ok().json(account_asset))
 }
@@ -65,7 +65,9 @@ pub async fn create_account_asset(
   repo: web::Data<Repository>,
 ) -> Result<impl Responder> {
   // Get the account's secret key.
-  let account = repo.get_account_with_secret(*account_id).await?
+  let account = repo
+    .get_account_with_secret(*account_id)
+    .await?
     .ok_or_else(|| Error::not_found("Account"))?;
 
   // Generate Account initialization proof.
@@ -101,7 +103,9 @@ pub async fn asset_issuer_mint(
   let update = account_asset.mint(account_mint_asset.amount)?;
 
   // Update account balance.
-  let account_asset = repo.update_account_asset(&update).await?
+  let account_asset = repo
+    .update_account_asset(&update)
+    .await?
     .ok_or_else(|| Error::not_found("Account Asset"))?;
 
   // Return account_asset.
@@ -131,7 +135,9 @@ pub async fn request_sender_proof(
   let (update, proof) = account_asset.create_send_proof(&req)?;
 
   // Update account balance.
-  let account_asset = repo.update_account_asset(&update).await?
+  let account_asset = repo
+    .update_account_asset(&update)
+    .await?
     .ok_or_else(|| Error::not_found("Account Asset"))?;
 
   // Return account_asset with sender proof.
@@ -164,8 +170,10 @@ pub async fn receiver_verify_request(
       return Ok(HttpResponse::Ok().json(is_valid));
     }
     Err(e) => {
-      return Ok(HttpResponse::InternalServerError()
-        .body(format!("Sender proof verification failed: {e:?}")));
+      return Ok(
+        HttpResponse::InternalServerError()
+          .body(format!("Sender proof verification failed: {e:?}")),
+      );
     }
   }
 }
@@ -193,7 +201,9 @@ pub async fn update_balance_request(
   let update = account_asset.update_balance(&req)?;
 
   // Update account balance.
-  let account_asset = repo.update_account_asset(&update).await?
+  let account_asset = repo
+    .update_account_asset(&update)
+    .await?
     .ok_or_else(|| Error::not_found("Account Asset"))?;
 
   // Return account_asset.

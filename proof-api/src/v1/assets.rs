@@ -30,7 +30,10 @@ pub async fn get_all_assets(repo: web::Data<Repository>) -> Result<impl Responde
   )
 )]
 #[get("/assets/{asset_id}")]
-pub async fn get_asset(asset_id: web::Path<i64>, repo: web::Data<Repository>) -> Result<impl Responder> {
+pub async fn get_asset(
+  asset_id: web::Path<i64>,
+  repo: web::Data<Repository>,
+) -> Result<impl Responder> {
   Ok(match repo.get_asset(*asset_id).await? {
     Some(asset) => HttpResponse::Ok().json(asset),
     None => HttpResponse::NotFound().body("Not found"),

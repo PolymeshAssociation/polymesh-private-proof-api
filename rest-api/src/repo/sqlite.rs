@@ -1,9 +1,7 @@
 use async_trait::async_trait;
 use confidential_proof_shared::{
-  error::Result,
-  Account, AccountAsset, AccountAssetWithSecret, AccountWithSecret, Asset, CreateAccount,
-  CreateAsset, CreateUser, UpdateAccountAsset, User,
-  Signer, SignerWithSecret,
+  error::Result, Account, AccountAsset, AccountAssetWithSecret, AccountWithSecret, Asset,
+  CreateAccount, CreateAsset, CreateUser, Signer, SignerWithSecret, UpdateAccountAsset, User,
 };
 
 use super::ConfidentialRepository;
@@ -21,118 +19,137 @@ impl SqliteConfidentialRepository {
 #[async_trait]
 impl ConfidentialRepository for SqliteConfidentialRepository {
   async fn get_users(&self) -> Result<Vec<User>> {
-    Ok(sqlx::query_as!(User, r#"SELECT * FROM users"#,)
-      .fetch_all(&self.pool)
-      .await?)
+    Ok(
+      sqlx::query_as!(User, r#"SELECT * FROM users"#,)
+        .fetch_all(&self.pool)
+        .await?,
+    )
   }
 
   async fn get_user(&self, user_id: i64) -> Result<Option<User>> {
-    Ok(sqlx::query_as!(User, r#"SELECT * FROM users WHERE user_id = ?"#, user_id)
-      .fetch_optional(&self.pool)
-      .await?)
+    Ok(
+      sqlx::query_as!(User, r#"SELECT * FROM users WHERE user_id = ?"#, user_id)
+        .fetch_optional(&self.pool)
+        .await?,
+    )
   }
 
   async fn create_user(&self, user: &CreateUser) -> Result<User> {
-    Ok(sqlx::query_as!(
-      User,
-      r#"
+    Ok(
+      sqlx::query_as!(
+        User,
+        r#"
       INSERT INTO users (username)
       VALUES (?)
       RETURNING user_id, username, created_at, updated_at
       "#,
-      user.username,
+        user.username,
+      )
+      .fetch_one(&self.pool)
+      .await?,
     )
-    .fetch_one(&self.pool)
-    .await?)
   }
 
   async fn get_signers(&self) -> Result<Vec<Signer>> {
-    Ok(sqlx::query_as!(
-      Signer,
-      r#"SELECT signer_id, signer_name, public_key, created_at, updated_at FROM signers"#,
+    Ok(
+      sqlx::query_as!(
+        Signer,
+        r#"SELECT signer_id, signer_name, public_key, created_at, updated_at FROM signers"#,
+      )
+      .fetch_all(&self.pool)
+      .await?,
     )
-    .fetch_all(&self.pool)
-    .await?)
   }
 
   async fn get_signer(&self, signer: &str) -> Result<Option<Signer>> {
-    Ok(sqlx::query_as!(
-      Signer,
-      r#"SELECT signer_id, signer_name, public_key, created_at, updated_at
+    Ok(
+      sqlx::query_as!(
+        Signer,
+        r#"SELECT signer_id, signer_name, public_key, created_at, updated_at
         FROM signers WHERE signer_name = ?"#,
-      signer
+        signer
+      )
+      .fetch_optional(&self.pool)
+      .await?,
     )
-    .fetch_optional(&self.pool)
-    .await?)
   }
 
-  async fn get_signer_with_secret(
-    &self,
-    signer: &str,
-  ) -> Result<Option<SignerWithSecret>> {
-    Ok(sqlx::query_as!(
-      SignerWithSecret,
-      r#"SELECT signer_id, signer_name, public_key, secret_key
+  async fn get_signer_with_secret(&self, signer: &str) -> Result<Option<SignerWithSecret>> {
+    Ok(
+      sqlx::query_as!(
+        SignerWithSecret,
+        r#"SELECT signer_id, signer_name, public_key, secret_key
         FROM signers WHERE signer_name = ?"#,
-      signer
+        signer
+      )
+      .fetch_optional(&self.pool)
+      .await?,
     )
-    .fetch_optional(&self.pool)
-    .await?)
   }
 
   async fn create_signer(&self, signer: &SignerWithSecret) -> Result<Signer> {
-    Ok(sqlx::query_as!(
-      Signer,
-      r#"
+    Ok(
+      sqlx::query_as!(
+        Signer,
+        r#"
       INSERT INTO signers (signer_name, public_key, secret_key)
       VALUES (?, ?, ?)
       RETURNING signer_id, signer_name, public_key, created_at, updated_at
       "#,
-      signer.signer_name,
-      signer.public_key,
-      signer.secret_key,
+        signer.signer_name,
+        signer.public_key,
+        signer.secret_key,
+      )
+      .fetch_one(&self.pool)
+      .await?,
     )
-    .fetch_one(&self.pool)
-    .await?)
   }
 
   async fn get_assets(&self) -> Result<Vec<Asset>> {
-    Ok(sqlx::query_as!(Asset, r#"SELECT * FROM assets"#,)
-      .fetch_all(&self.pool)
-      .await?)
+    Ok(
+      sqlx::query_as!(Asset, r#"SELECT * FROM assets"#,)
+        .fetch_all(&self.pool)
+        .await?,
+    )
   }
 
   async fn get_asset(&self, asset_id: i64) -> Result<Option<Asset>> {
-    Ok(sqlx::query_as!(
-      Asset,
-      r#"SELECT * FROM assets WHERE asset_id = ?"#,
-      asset_id
+    Ok(
+      sqlx::query_as!(
+        Asset,
+        r#"SELECT * FROM assets WHERE asset_id = ?"#,
+        asset_id
+      )
+      .fetch_optional(&self.pool)
+      .await?,
     )
-    .fetch_optional(&self.pool)
-    .await?)
   }
 
   async fn create_asset(&self, asset: &CreateAsset) -> Result<Asset> {
-    Ok(sqlx::query_as!(
-      Asset,
-      r#"
+    Ok(
+      sqlx::query_as!(
+        Asset,
+        r#"
       INSERT INTO assets (ticker)
       VALUES (?)
       RETURNING asset_id, ticker, created_at, updated_at
       "#,
-      asset.ticker,
+        asset.ticker,
+      )
+      .fetch_one(&self.pool)
+      .await?,
     )
-    .fetch_one(&self.pool)
-    .await?)
   }
 
   async fn get_accounts(&self) -> Result<Vec<Account>> {
-    Ok(sqlx::query_as!(
-      Account,
-      r#"SELECT account_id, public_key, created_at, updated_at FROM accounts"#,
+    Ok(
+      sqlx::query_as!(
+        Account,
+        r#"SELECT account_id, public_key, created_at, updated_at FROM accounts"#,
+      )
+      .fetch_all(&self.pool)
+      .await?,
     )
-    .fetch_all(&self.pool)
-    .await?)
   }
 
   async fn get_account(&self, account_id: i64) -> Result<Option<Account>> {
@@ -145,42 +162,45 @@ impl ConfidentialRepository for SqliteConfidentialRepository {
     .await?)
   }
 
-  async fn get_account_with_secret(
-    &self,
-    account_id: i64,
-  ) -> Result<Option<AccountWithSecret>> {
-    Ok(sqlx::query_as!(
-      AccountWithSecret,
-      r#"SELECT account_id, public_key, secret_key FROM accounts WHERE account_id = ?"#,
-      account_id
+  async fn get_account_with_secret(&self, account_id: i64) -> Result<Option<AccountWithSecret>> {
+    Ok(
+      sqlx::query_as!(
+        AccountWithSecret,
+        r#"SELECT account_id, public_key, secret_key FROM accounts WHERE account_id = ?"#,
+        account_id
+      )
+      .fetch_optional(&self.pool)
+      .await?,
     )
-    .fetch_optional(&self.pool)
-    .await?)
   }
 
   async fn create_account(&self, account: &CreateAccount) -> Result<Account> {
-    Ok(sqlx::query_as!(
-      Account,
-      r#"
+    Ok(
+      sqlx::query_as!(
+        Account,
+        r#"
       INSERT INTO accounts (public_key, secret_key)
       VALUES (?, ?)
       RETURNING account_id, public_key, created_at, updated_at
       "#,
-      account.public_key,
-      account.secret_key,
+        account.public_key,
+        account.secret_key,
+      )
+      .fetch_one(&self.pool)
+      .await?,
     )
-    .fetch_one(&self.pool)
-    .await?)
   }
 
   async fn get_account_assets(&self, account_id: i64) -> Result<Vec<AccountAsset>> {
-    Ok(sqlx::query_as!(
-      AccountAsset,
-      r#"SELECT * FROM account_assets WHERE account_id = ?"#,
-      account_id
+    Ok(
+      sqlx::query_as!(
+        AccountAsset,
+        r#"SELECT * FROM account_assets WHERE account_id = ?"#,
+        account_id
+      )
+      .fetch_all(&self.pool)
+      .await?,
     )
-    .fetch_all(&self.pool)
-    .await?)
   }
 
   async fn get_account_asset(
@@ -188,14 +208,16 @@ impl ConfidentialRepository for SqliteConfidentialRepository {
     account_id: i64,
     asset_id: i64,
   ) -> Result<Option<AccountAsset>> {
-    Ok(sqlx::query_as!(
-      AccountAsset,
-      r#"SELECT * FROM account_assets WHERE account_id = ? AND asset_id = ?"#,
-      account_id,
-      asset_id,
+    Ok(
+      sqlx::query_as!(
+        AccountAsset,
+        r#"SELECT * FROM account_assets WHERE account_id = ? AND asset_id = ?"#,
+        account_id,
+        asset_id,
+      )
+      .fetch_optional(&self.pool)
+      .await?,
     )
-    .fetch_optional(&self.pool)
-    .await?)
   }
 
   async fn get_account_asset_with_secret(
@@ -203,41 +225,42 @@ impl ConfidentialRepository for SqliteConfidentialRepository {
     account_id: i64,
     asset_id: i64,
   ) -> Result<Option<AccountAssetWithSecret>> {
-    Ok(sqlx::query_as(
-      r#"
+    Ok(
+      sqlx::query_as(
+        r#"
           SELECT aa.account_asset_id, aa.asset_id, aa.balance, aa.enc_balance,
             acc.account_id, acc.public_key, acc.secret_key
           FROM account_assets as aa
           JOIN accounts as acc using(account_id)
           WHERE aa.account_id = ? AND aa.asset_id = ?
         "#,
+      )
+      .bind(account_id)
+      .bind(asset_id)
+      .fetch_optional(&self.pool)
+      .await?,
     )
-    .bind(account_id)
-    .bind(asset_id)
-    .fetch_optional(&self.pool)
-    .await?)
   }
 
-  async fn create_account_asset(
-    &self,
-    account_asset: &UpdateAccountAsset,
-  ) -> Result<AccountAsset> {
+  async fn create_account_asset(&self, account_asset: &UpdateAccountAsset) -> Result<AccountAsset> {
     let balance = account_asset.balance as i64;
     let enc_balance = account_asset.enc_balance();
-    Ok(sqlx::query_as!(
-      AccountAsset,
-      r#"
+    Ok(
+      sqlx::query_as!(
+        AccountAsset,
+        r#"
       INSERT INTO account_assets (account_id, asset_id, balance, enc_balance)
       VALUES (?, ?, ?, ?)
       RETURNING account_asset_id, account_id, asset_id, balance, enc_balance, created_at, updated_at
       "#,
-      account_asset.account_id,
-      account_asset.asset_id,
-      balance,
-      enc_balance,
+        account_asset.account_id,
+        account_asset.asset_id,
+        balance,
+        enc_balance,
+      )
+      .fetch_one(&self.pool)
+      .await?,
     )
-    .fetch_one(&self.pool)
-    .await?)
   }
 
   async fn update_account_asset(
@@ -246,20 +269,22 @@ impl ConfidentialRepository for SqliteConfidentialRepository {
   ) -> Result<Option<AccountAsset>> {
     let balance = account_asset.balance as i64;
     let enc_balance = account_asset.enc_balance();
-    Ok(sqlx::query_as!(
-      AccountAsset,
-      r#"
+    Ok(
+      sqlx::query_as!(
+        AccountAsset,
+        r#"
       UPDATE account_assets SET balance = ?, enc_balance = ?, updated_at = CURRENT_TIMESTAMP
       WHERE account_id = ? AND asset_id = ?
       RETURNING account_asset_id as "account_asset_id!", account_id, asset_id,
         balance, enc_balance, created_at, updated_at
       "#,
-      balance,
-      enc_balance,
-      account_asset.account_id,
-      account_asset.asset_id,
+        balance,
+        enc_balance,
+        account_asset.account_id,
+        account_asset.asset_id,
+      )
+      .fetch_optional(&self.pool)
+      .await?,
     )
-    .fetch_optional(&self.pool)
-    .await?)
   }
 }

@@ -3,8 +3,8 @@ use actix_web::web;
 pub mod account_assets;
 pub mod accounts;
 pub mod assets;
-pub mod users;
 pub mod signers;
+pub mod users;
 
 pub fn service(cfg: &mut web::ServiceConfig) {
   cfg.service(
