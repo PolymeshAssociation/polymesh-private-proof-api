@@ -175,9 +175,7 @@ pub struct AccountAsset {
   #[schema(example = 1000)]
   pub balance: i64,
   /// Current balance encryted.
-  #[schema(
-    example = "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
-  )]
+  #[schema(value_type = String, format = Binary, example = "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000")]
   #[serde(with = "SerHexSeq::<StrictPfx>")]
   pub enc_balance: Vec<u8>,
 
@@ -450,6 +448,98 @@ impl SenderProofRequest {
         .map(|k| k.decode())
         .collect::<Result<Vec<_>>>()?,
     )
+  }
+}
+
+/// SenderProof verify sender proof.
+#[derive(Clone, Serialize, Deserialize, ToSchema)]
+pub struct SenderProofVerifyRequest {
+  /// Sender's encrypted balance.
+  #[schema(value_type = String, format = Binary, example = "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000")]
+  #[serde(default, with = "SerHexSeq::<StrictPfx>")]
+  sender_balance: Vec<u8>,
+  /// Sender's public key.
+  #[schema(value_type = String, format = Binary, example = "0xceae8587b3e968b9669df8eb715f73bcf3f7a9cd3c61c515a4d80f2ca59c8114")]
+  sender: PublicKey,
+  /// Receiver's public key.
+  #[schema(value_type = String, format = Binary, example = "0xceae8587b3e968b9669df8eb715f73bcf3f7a9cd3c61c515a4d80f2ca59c8114")]
+  receiver: PublicKey,
+  /// List of auditors/mediators.  The order must match on-chain leg.
+  #[schema(example = json!(["0xceae8587b3e968b9669df8eb715f73bcf3f7a9cd3c61c515a4d80f2ca59c8114"]))]
+  #[serde(default)]
+  auditors: Vec<PublicKey>,
+  /// Sender proof.
+  sender_proof: SenderProof,
+}
+
+#[cfg(feature = "backend")]
+impl SenderProofVerifyRequest {
+  pub fn sender_balance(&self) -> Result<CipherText> {
+    Ok(CipherText::decode(&mut self.sender_balance.as_slice())?)
+  }
+
+  pub fn sender(&self) -> Result<ElgamalPublicKey> {
+    Ok(self.sender.decode()?)
+  }
+
+  pub fn receiver(&self) -> Result<ElgamalPublicKey> {
+    Ok(self.receiver.decode()?)
+  }
+
+  pub fn auditors(&self) -> Result<Vec<ElgamalPublicKey>> {
+    Ok(
+      self
+        .auditors
+        .iter()
+        .map(|k| k.decode())
+        .collect::<Result<Vec<_>>>()?,
+    )
+  }
+
+  pub fn sender_proof(&self) -> Result<ConfidentialTransferProof> {
+    self.sender_proof.decode()
+  }
+
+  pub fn verify_proof(&self) -> Result<bool> {
+    // Decode sender's balance.
+    let sender_balance = self.sender_balance()?;
+    // Decode sender & receiver.
+    let sender = self.sender()?;
+    let receiver = self.sender()?;
+    let auditors = self
+      .auditors()?
+      .into_iter()
+      .enumerate()
+      .map(|(idx, auditor)| (AuditorId(idx as _), auditor))
+      .collect();
+
+    let mut rng = rand::thread_rng();
+    let sender_proof = self.sender_proof()?;
+    sender_proof.verify(&sender, &sender_balance, &receiver, &auditors, &mut rng)?;
+    Ok(true)
+  }
+}
+
+/// Verify result.
+#[derive(Clone, Serialize, Deserialize, ToSchema)]
+pub struct SenderProofVerifyResult {
+  /// Is the sender proof valid.
+  #[schema(example = true)]
+  is_valid: bool,
+  /// If `is_valid` is false, then provide an error message.
+  #[schema(example = json!(null))]
+  err_msg: Option<String>,
+}
+
+#[cfg(feature = "backend")]
+impl SenderProofVerifyResult {
+  pub fn from_result(res: Result<bool>) -> Self {
+    let (is_valid, err_msg) = match res {
+      Ok(true) => (true, None),
+      Ok(false) => (false, Some("Invalid proof".to_string())),
+      Err(err) => (false, Some(format!("Invalid proof: {err:?}"))),
+    };
+    Self { is_valid, err_msg }
   }
 }
 

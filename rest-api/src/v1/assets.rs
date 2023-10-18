@@ -7,7 +7,10 @@ use polymesh_api::types::{
 };
 use polymesh_api::Api;
 
-use confidential_proof_shared::{error::Error, CreateAsset, CreateConfidentialAsset};
+use confidential_proof_shared::{
+  error::Error, CreateAsset, CreateConfidentialAsset, SenderProofVerifyRequest,
+  SenderProofVerifyResult,
+};
 
 use crate::repo::Repository;
 
@@ -16,6 +19,7 @@ pub fn service(cfg: &mut web::ServiceConfig) {
     .service(get_all_assets)
     .service(get_asset)
     .service(create_asset)
+    .service(sender_proof_verify)
     .service(tx_create_asset);
 }
 
@@ -99,4 +103,19 @@ pub async fn tx_create_asset(
     .await;
 
   Ok(HttpResponse::Ok().json(true))
+}
+
+/// Verify a sender proof using only public information.
+#[utoipa::path(
+  responses(
+    (status = 200, body = SenderProofVerifyResult)
+  )
+)]
+#[post("/assets/sender_proof_verify")]
+pub async fn sender_proof_verify(
+  req: web::Json<SenderProofVerifyRequest>,
+) -> Result<impl Responder> {
+  // Verify the sender's proof.
+  let res = req.verify_proof();
+  Ok(HttpResponse::Ok().json(SenderProofVerifyResult::from_result(res)))
 }

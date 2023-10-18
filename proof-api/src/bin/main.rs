@@ -65,6 +65,7 @@ async fn start_server() -> anyhow::Result<()> {
           AuditorVerifyRequest,
           ReceiverVerifyRequest,
           SenderProofRequest,
+          SenderProofVerifyResult,
           UpdateAccountAssetBalanceRequest,
         ),
       ),

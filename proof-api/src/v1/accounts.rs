@@ -1,6 +1,8 @@
 use actix_web::{get, post, web, HttpResponse, Responder, Result};
 
-use confidential_proof_shared::{error::Error, AuditorVerifyRequest, CreateAccount};
+use confidential_proof_shared::{
+  error::Error, AuditorVerifyRequest, CreateAccount, SenderProofVerifyResult,
+};
 
 use super::account_assets;
 use crate::repo::Repository;
@@ -60,7 +62,7 @@ pub async fn create_account(repo: web::Data<Repository>) -> Result<impl Responde
 /// Verify a sender proof as an auditor.
 #[utoipa::path(
   responses(
-    (status = 200, body = bool)
+    (status = 200, body = SenderProofVerifyResult)
   )
 )]
 #[post("/accounts/{account_id}/auditor_verify")]
@@ -76,10 +78,6 @@ pub async fn auditor_verify_request(
     .ok_or_else(|| Error::not_found("Account"))?;
 
   // Verify the sender's proof.
-  Ok(match account.auditor_verify_proof(&req) {
-    Ok(is_valid) => HttpResponse::Ok().json(is_valid),
-    Err(e) => {
-      HttpResponse::InternalServerError().body(format!("Sender proof verification failed: {e:?}"))
-    }
-  })
+  let res = account.auditor_verify_proof(&req);
+  Ok(HttpResponse::Ok().json(SenderProofVerifyResult::from_result(res)))
 }

@@ -1,6 +1,6 @@
 use actix_web::{get, post, web, HttpResponse, Responder, Result};
 
-use confidential_proof_shared::CreateAsset;
+use confidential_proof_shared::{CreateAsset, SenderProofVerifyRequest, SenderProofVerifyResult};
 
 use crate::repo::Repository;
 
@@ -8,7 +8,8 @@ pub fn service(cfg: &mut web::ServiceConfig) {
   cfg
     .service(get_all_assets)
     .service(get_asset)
-    .service(create_asset);
+    .service(create_asset)
+    .service(sender_proof_verify);
 }
 
 /// Get all assets.
@@ -53,4 +54,19 @@ pub async fn create_asset(
 ) -> Result<impl Responder> {
   let asset = repo.create_asset(&asset).await?;
   Ok(HttpResponse::Ok().json(asset))
+}
+
+/// Verify a sender proof using only public information.
+#[utoipa::path(
+  responses(
+    (status = 200, body = SenderProofVerifyResult)
+  )
+)]
+#[post("/assets/sender_proof_verify")]
+pub async fn sender_proof_verify(
+  req: web::Json<SenderProofVerifyRequest>,
+) -> Result<impl Responder> {
+  // Verify the sender's proof.
+  let res = req.verify_proof();
+  Ok(HttpResponse::Ok().json(SenderProofVerifyResult::from_result(res)))
 }
