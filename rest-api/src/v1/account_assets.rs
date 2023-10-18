@@ -101,16 +101,8 @@ pub async fn asset_issuer_mint(
   let update = account_asset.mint(account_mint_asset.amount)?;
 
   // Update account balance.
-  let account_asset = match repo.update_account_asset(&update).await {
-    Ok(Some(account_asset)) => account_asset,
-    Ok(None) => {
-      return Ok(HttpResponse::InternalServerError()
-        .body("Internal server error: Failed to updated account asset."));
-    }
-    Err(e) => {
-      return Ok(HttpResponse::InternalServerError().body(format!("Internal server error: {:?}", e)));
-    }
-  };
+  let account_asset = repo.update_account_asset(&update).await?
+    .ok_or_else(|| Error::not_found("Account Asset"))?;
 
   // Return account_asset.
   Ok(HttpResponse::Ok().json(account_asset))
@@ -139,16 +131,8 @@ pub async fn request_sender_proof(
   let (update, proof) = account_asset.create_send_proof(&req)?;
 
   // Update account balance.
-  let account_asset = match repo.update_account_asset(&update).await {
-    Ok(Some(account_asset)) => account_asset,
-    Ok(None) => {
-      return Ok(HttpResponse::InternalServerError()
-        .body("Internal server error: Failed to updated account asset."));
-    }
-    Err(e) => {
-      return Ok(HttpResponse::InternalServerError().body(format!("Internal server error: {:?}", e)));
-    }
-  };
+  let account_asset = repo.update_account_asset(&update).await?
+    .ok_or_else(|| Error::not_found("Account Asset"))?;
 
   // Return account_asset with sender proof.
   let balance_with_proof = AccountAssetWithProof::new_send_proof(account_asset, proof);
@@ -209,15 +193,8 @@ pub async fn update_balance_request(
   let update = account_asset.update_balance(&req)?;
 
   // Update account balance.
-  let account_asset = match repo.update_account_asset(&update).await {
-      Ok(Some(account_asset)) => account_asset,
-      Ok(None) => {
-          return Ok(HttpResponse::InternalServerError().body("Internal server error: Failed to updated account asset."));
-      }
-      Err(e) => {
-          return Ok(HttpResponse::InternalServerError().body(format!("Internal server error: {:?}", e)));
-      }
-  };
+  let account_asset = repo.update_account_asset(&update).await?
+    .ok_or_else(|| Error::not_found("Account Asset"))?;
 
   // Return account_asset.
   Ok(HttpResponse::Ok().json(account_asset))
