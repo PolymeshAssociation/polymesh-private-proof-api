@@ -12,29 +12,21 @@ use confidential_proof_api as proof_api;
 use confidential_proof_api::{repo, v1::*};
 use confidential_proof_shared::*;
 
-async fn get_repo() -> Result<repo::Repository, sqlx::Error> {
+async fn get_repo() -> anyhow::Result<repo::Repository> {
   let conn_str =
-    std::env::var("DATABASE_URL").map_err(|e| sqlx::Error::Configuration(Box::new(e)))?;
+    std::env::var("DATABASE_URL")?;
   let pool = SqlitePool::connect(&conn_str).await?;
   sqlx::migrate!().run(&pool).await?;
   Ok(Box::new(repo::SqliteConfidentialRepository::new(pool)))
 }
 
-#[actix_web::main]
-async fn main() -> std::io::Result<()> {
-  if std::env::var_os("RUST_LOG").is_none() {
-    std::env::set_var("RUST_LOG", "actix_web=info");
-  }
-  // env vars
-  dotenv::dotenv().ok();
-  env_logger::init();
-
+async fn start_server() -> anyhow::Result<()> {
   // building address
   let port = std::env::var("PORT").unwrap_or("8080".to_string());
   let address = format!("0.0.0.0:{}", port);
 
   // repository
-  let repo = get_repo().await.expect("Couldn't get the repository");
+  let repo = get_repo().await?;
   let repo = web::Data::new(repo);
   log::info!("Repository initialized");
 
@@ -104,13 +96,30 @@ async fn main() -> std::io::Result<()> {
       .service(RapiDoc::new("/api-docs/openapi.json").path("/rapidoc"))
       .wrap(Logger::default())
   })
-  .bind(&address)
-  .unwrap_or_else(|err| {
-    panic!(
-      "🔥🔥🔥 Couldn't start the server in port {}: {:?}",
-      port, err
-    )
-  })
-  .run()
-  .await
+    .bind(&address)
+    .map_err(|err| {
+      log::error!(
+        "🔥🔥🔥 Couldn't start the server on address & port {address}: {err:?}",
+      );
+      err
+    })?
+    .run()
+    .await?;
+  Ok(())
+}
+
+#[actix_web::main]
+async fn main() -> std::io::Result<()> {
+  if std::env::var_os("RUST_LOG").is_none() {
+    std::env::set_var("RUST_LOG", "actix_web=info");
+  }
+  // env vars
+  dotenv::dotenv().ok();
+  env_logger::init();
+
+  if let Err(err) = start_server().await {
+    log::error!("Failed to start server: {err:?}");
+    return Err(std::io::Error::new(std::io::ErrorKind::Other, err));
+  }
+  Ok(())
 }

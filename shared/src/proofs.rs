@@ -24,6 +24,8 @@ use confidential_assets::{
   Balance, ElgamalKeys, ElgamalPublicKey, ElgamalSecretKey, Scalar,
 };
 
+use crate::error::*;
+
 #[cfg(not(feature = "backend"))]
 pub type Balance = u64;
 
@@ -102,10 +104,10 @@ pub struct AccountWithSecret {
 
 #[cfg(feature = "backend")]
 impl AccountWithSecret {
-  pub fn encryption_keys(&self) -> Option<ElgamalKeys> {
-    Some(ElgamalKeys {
-      public: ElgamalPublicKey::decode(&mut self.public_key.as_slice()).ok()?,
-      secret: ElgamalSecretKey::decode(&mut self.secret_key.as_slice()).ok()?,
+  pub fn encryption_keys(&self) -> Result<ElgamalKeys> {
+    Ok(ElgamalKeys {
+      public: ElgamalPublicKey::decode(&mut self.public_key.as_slice())?,
+      secret: ElgamalSecretKey::decode(&mut self.secret_key.as_slice())?,
     })
   }
 
@@ -118,20 +120,18 @@ impl AccountWithSecret {
     }
   }
 
-  pub fn auditor_verify_proof(&self, req: &AuditorVerifyRequest) -> Result<bool, String> {
+  pub fn auditor_verify_proof(&self, req: &AuditorVerifyRequest) -> Result<bool> {
     // Decode ConfidentialAccount from database.
     let auditor = self
-      .encryption_keys()
-      .ok_or_else(|| format!("Failed to get account from database."))?;
+      .encryption_keys()?;
 
     // Decode request.
     let sender_proof = req.sender_proof()?;
 
     let amount = sender_proof
-      .auditor_verify(AuditorId(req.auditor_id), &auditor)
-      .map_err(|e| format!("Failed to verify sender proof: {e:?}"))?;
+      .auditor_verify(AuditorId(req.auditor_id), &auditor)?;
     if amount != req.amount {
-      return Err(format!("Failed to verify sender proof: Invalid transaction amount").into());
+      return Err(Error::other("Failed to verify sender proof: Invalid transaction amount"));
     }
     Ok(true)
   }
@@ -213,15 +213,15 @@ pub struct AccountAssetWithSecret {
 
 #[cfg(feature = "backend")]
 impl AccountAssetWithSecret {
-  pub fn enc_balance(&self) -> Option<CipherText> {
-    CipherText::decode(&mut self.enc_balance.as_slice()).ok()
+  pub fn enc_balance(&self) -> Result<CipherText> {
+    Ok(CipherText::decode(&mut self.enc_balance.as_slice())?)
   }
 
-  pub fn mint(&self, amount: Balance) -> Option<UpdateAccountAsset> {
+  pub fn mint(&self, amount: Balance) -> Result<UpdateAccountAsset> {
     // Decode `enc_balance`.
     let enc_balance = self.enc_balance()?;
     // Update account balance.
-    Some(UpdateAccountAsset {
+    Ok(UpdateAccountAsset {
       account_id: self.account.account_id,
       asset_id: self.asset_id,
       balance: (self.balance as u64) + amount,
@@ -232,17 +232,16 @@ impl AccountAssetWithSecret {
   pub fn create_send_proof(
     &self,
     req: &SenderProofRequest,
-  ) -> Result<(UpdateAccountAsset, ConfidentialTransferProof), String> {
+  ) -> Result<(UpdateAccountAsset, ConfidentialTransferProof)> {
     // Decode ConfidentialAccount from database.
     let sender = self
       .account
-      .encryption_keys()
-      .ok_or_else(|| format!("Failed to get account from database."))?;
+      .encryption_keys()?;
     // Decode `req`.
     let enc_balance = req
       .encrypted_balance()?
-      .or_else(|| self.enc_balance())
-      .ok_or_else(|| format!("No encrypted balance."))?;
+      .or_else(|| self.enc_balance().ok())
+      .ok_or_else(|| Error::other("No encrypted balance."))?;
     let receiver = req.receiver()?;
     let auditors = req.auditors()?.into_iter().enumerate().map(|(idx, auditor)| {
       (AuditorId(idx as _), auditor)
@@ -258,8 +257,7 @@ impl AccountAssetWithSecret {
       &auditors,
       req.amount,
       &mut rng,
-    )
-    .map_err(|e| format!("Failed to generate proof: {e:?}"))?;
+    )?;
     // Update account balance.
     let update = UpdateAccountAsset {
       account_id: self.account.account_id,
@@ -271,33 +269,30 @@ impl AccountAssetWithSecret {
     Ok((update, proof))
   }
 
-  pub fn receiver_verify_proof(&self, req: &ReceiverVerifyRequest) -> Result<bool, String> {
+  pub fn receiver_verify_proof(&self, req: &ReceiverVerifyRequest) -> Result<bool> {
     // Decode ConfidentialAccount from database.
     let receiver = self
       .account
-      .encryption_keys()
-      .ok_or_else(|| format!("Failed to get account from database."))?;
+      .encryption_keys()?;
 
     // Decode request.
     let sender_proof = req.sender_proof()?;
     sender_proof
-      .receiver_verify(receiver, req.amount)
-      .map_err(|e| format!("Failed to verify sender proof: {e:?}"))?;
+      .receiver_verify(receiver, req.amount)?;
     Ok(true)
   }
 
-  pub fn update_balance(&self, req: &UpdateAccountAssetBalanceRequest) -> Result<UpdateAccountAsset, String> {
+  pub fn update_balance(&self, req: &UpdateAccountAssetBalanceRequest) -> Result<UpdateAccountAsset> {
     // Decode `req`.
     let enc_balance = req
       .encrypted_balance()?;
     // Decode ConfidentialAccount from database.
     let keys = self
       .account
-      .encryption_keys()
-      .ok_or_else(|| format!("Failed to get account from database."))?;
+      .encryption_keys()?;
     // Decrypt balance.
     let balance = keys.secret.decrypt_with_hint(&enc_balance, 0, MAX_TOTAL_SUPPLY)
-      .ok_or_else(|| format!("Failed to decrypt balance."))?;
+      .ok_or_else(|| Error::other("Failed to decrypt balance."))?;
     // Update account balance.
     Ok(UpdateAccountAsset {
       account_id: self.account.account_id,
@@ -345,10 +340,8 @@ pub struct UpdateAccountAssetBalanceRequest {
 
 #[cfg(feature = "backend")]
 impl UpdateAccountAssetBalanceRequest {
-  pub fn encrypted_balance(&self) -> Result<CipherText, String> {
-    Ok(CipherText::decode(&mut self.encrypted_balance.as_slice())
-      .map_err(|e| format!("Failed to decode 'encrypted_balance': {e:?}"))?,
-    )
+  pub fn encrypted_balance(&self) -> Result<CipherText> {
+    Ok(CipherText::decode(&mut self.encrypted_balance.as_slice())?)
   }
 }
 
@@ -390,19 +383,16 @@ pub struct PublicKey(
 
 #[cfg(feature = "backend")]
 impl PublicKey {
-  pub fn decode(&self) -> Result<ElgamalPublicKey, String> {
-    ElgamalPublicKey::decode(&mut self.0.as_slice())
-      .map_err(|e| format!("Failed to decode PublicKey: {e:?}"))
+  pub fn decode(&self) -> Result<ElgamalPublicKey> {
+    Ok(ElgamalPublicKey::decode(&mut self.0.as_slice())?)
   }
 
-  pub fn as_confidential_account(&self) -> Result<ConfidentialAccount, String> {
-    ConfidentialAccount::decode(&mut self.0.as_slice())
-      .map_err(|e| format!("Failed to decode PublicKey: {e:?}"))
+  pub fn as_confidential_account(&self) -> Result<ConfidentialAccount> {
+    Ok(ConfidentialAccount::decode(&mut self.0.as_slice())?)
   }
 
-  pub fn as_mediator_account(&self) -> Result<MediatorAccount, String> {
-    MediatorAccount::decode(&mut self.0.as_slice())
-      .map_err(|e| format!("Failed to decode PublicKey: {e:?}"))
+  pub fn as_mediator_account(&self) -> Result<MediatorAccount> {
+    Ok(MediatorAccount::decode(&mut self.0.as_slice())?)
   }
 }
 
@@ -416,9 +406,8 @@ pub struct SenderProof(
 
 #[cfg(feature = "backend")]
 impl SenderProof {
-  pub fn decode(&self) -> Result<ConfidentialTransferProof, String> {
-    ConfidentialTransferProof::decode(&mut self.0.as_slice())
-      .map_err(|e| format!("Failed to decode 'sender_proof': {e:?}"))
+  pub fn decode(&self) -> Result<ConfidentialTransferProof> {
+    Ok(ConfidentialTransferProof::decode(&mut self.0.as_slice())?)
   }
 }
 
@@ -443,27 +432,22 @@ pub struct SenderProofRequest {
 
 #[cfg(feature = "backend")]
 impl SenderProofRequest {
-  pub fn encrypted_balance(&self) -> Result<Option<CipherText>, String> {
+  pub fn encrypted_balance(&self) -> Result<Option<CipherText>> {
     Ok(if self.encrypted_balance.is_empty() {
       None
     } else {
-      Some(
-        CipherText::decode(&mut self.encrypted_balance.as_slice())
-          .map_err(|e| format!("Failed to decode 'encrypted_balance': {e:?}"))?,
-      )
+      Some(CipherText::decode(&mut self.encrypted_balance.as_slice())?)
     })
   }
 
-  pub fn receiver(&self) -> Result<ElgamalPublicKey, String> {
-    self.receiver.decode()
-      .map_err(|e| format!("Failed to decode 'receiver': {e:?}"))
+  pub fn receiver(&self) -> Result<ElgamalPublicKey> {
+    Ok(self.receiver.decode()?)
   }
 
-  pub fn auditors(&self) -> Result<Vec<ElgamalPublicKey>, String> {
+  pub fn auditors(&self) -> Result<Vec<ElgamalPublicKey>> {
     Ok(self.auditors.iter().map(|k| {
       k.decode()
-        .map_err(|e| format!("Failed to decode 'auditor': {e:?}"))
-    }).collect::<Result<Vec<_>, String>>()?)
+    }).collect::<Result<Vec<_>>>()?)
   }
 }
 
@@ -482,7 +466,7 @@ pub struct AuditorVerifyRequest {
 
 #[cfg(feature = "backend")]
 impl AuditorVerifyRequest {
-  pub fn sender_proof(&self) -> Result<ConfidentialTransferProof, String> {
+  pub fn sender_proof(&self) -> Result<ConfidentialTransferProof> {
     self.sender_proof.decode()
   }
 }
@@ -499,7 +483,7 @@ pub struct ReceiverVerifyRequest {
 
 #[cfg(feature = "backend")]
 impl ReceiverVerifyRequest {
-  pub fn sender_proof(&self) -> Result<ConfidentialTransferProof, String> {
+  pub fn sender_proof(&self) -> Result<ConfidentialTransferProof> {
     self.sender_proof.decode()
   }
 }

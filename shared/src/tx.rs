@@ -16,6 +16,7 @@ use polymesh_api::{
 };
 
 use crate::proofs::PublicKey;
+use crate::error::Result;
 
 #[derive(Clone, Copy, Debug, Default, Deserialize, Serialize, ToSchema)]
 pub enum AuditorRole {
@@ -34,20 +35,20 @@ impl AuditorRole {
   }
 }
 
-pub fn bytes_to_ticker(val: &[u8]) -> Result<Ticker, String> {
+pub fn bytes_to_ticker(val: &[u8]) -> Ticker {
   let mut ticker = [0u8; 12];
   for (idx, b) in val.iter().take(12).enumerate() {
     ticker[idx] = *b;
   }
-  Ok(Ticker(ticker))
+  Ticker(ticker)
 }
 
-pub fn str_to_ticker(val: &str) -> Result<Ticker, String> {
+pub fn str_to_ticker(val: &str) -> Result<Ticker> {
   if val.starts_with("0x") {
-    let b = hex::decode(&val.as_bytes()[2..]).map_err(|e| e.to_string())?;
-    bytes_to_ticker(b.as_slice())
+    let b = hex::decode(&val.as_bytes()[2..])?;
+    Ok(bytes_to_ticker(b.as_slice()))
   } else {
-    bytes_to_ticker(val.as_bytes())
+    Ok(bytes_to_ticker(val.as_bytes()))
   }
 }
 
@@ -67,11 +68,11 @@ pub struct CreateConfidentialAsset {
 
 #[cfg(feature = "backend")]
 impl CreateConfidentialAsset {
-  pub fn ticker(&self) -> Result<Ticker, String> {
+  pub fn ticker(&self) -> Result<Ticker> {
     str_to_ticker(&self.ticker)
   }
 
-  pub fn auditors(&self) -> Result<BTreeMap<MediatorAccount, ConfidentialTransactionRole>, String> {
+  pub fn auditors(&self) -> Result<BTreeMap<MediatorAccount, ConfidentialTransactionRole>> {
     let mut auditors = BTreeMap::new();
     for (key, role) in &self.auditors {
       auditors.insert(key.as_mediator_account()?, role.into_role());

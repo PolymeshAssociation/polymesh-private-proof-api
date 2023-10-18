@@ -4,12 +4,13 @@ version = "0.1.0"
 edition = "2021"
 
 [features]
-default = [ "std", "simd_backend", "discrete_log" ]
+default = [ "std", "backend", "simd_backend", "discrete_log" ]
 
 backend = [
 	"std",
 	"sqlx",
 	"sp-core",
+	"actix-web",
 	"confidential_assets",
 	"rand",
 	"codec"
@@ -23,12 +24,18 @@ discrete_log = [ "confidential_assets?/rayon", "confidential_assets?/discrete_lo
 
 std = [
 	"sp-core?/std",
+	"polymesh-api/default",
 	"confidential_assets?/std",
 	"rand?/std",
 	"codec?/std"
 ]
 
 [dependencies]
+thiserror = { workspace = true }
+
+rand = { workspace = true, default-features = false, features = ["alloc"], optional = true }
+zeroize = { workspace = true }
+
 # OpenAPI
 utoipa = { workspace = true }
 
@@ -40,8 +47,8 @@ polymesh-api = { workspace = true, default-features = false, features = ["downlo
 # For signing key pairs.
 sp-core = { workspace = true, default-features = false, optional = true }
 
-rand = { workspace = true, default-features = false, features = ["alloc"], optional = true }
-zeroize = { workspace = true }
+# actix
+actix-web = { workspace = true, optional = true }
 
 # encoding
 hex = { workspace = true, default-features = false, features = ["alloc"] }

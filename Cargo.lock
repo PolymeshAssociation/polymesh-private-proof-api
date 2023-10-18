@@ -854,6 +854,7 @@ dependencies = [
 name = "confidential-proof-shared"
 version = "0.1.0"
 dependencies = [
+ "actix-web",
  "chrono",
  "confidential_assets",
  "hex",
@@ -867,6 +868,7 @@ dependencies = [
  "serde_json",
  "sp-core",
  "sqlx",
+ "thiserror",
  "utoipa",
  "uuid",
  "zeroize",

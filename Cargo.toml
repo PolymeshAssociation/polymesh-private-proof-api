@@ -29,6 +29,7 @@ utoipa-swagger-ui = { version = "4.0", features = ["actix-web"] }
 utoipa-redoc = { version = "1.0", features = ["actix-web"] }
 utoipa-rapidoc = { version = "1.0", features = ["actix-web"] }
 
+thiserror = "1.0"
 rand = { version = "0.8", default-features = false, features = ["alloc"] }
 zeroize = { version = "1.6.0", features = ["derive"] }
 

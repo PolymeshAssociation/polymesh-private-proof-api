@@ -10,6 +10,9 @@ use sp_core::{
   sr25519
 };
 
+pub mod error;
+pub use error::*;
+
 mod tx;
 pub use tx::*;
 
@@ -42,9 +45,8 @@ pub struct SignerWithSecret {
 
 #[cfg(feature = "backend")]
 impl SignerWithSecret {
-  pub fn keypair(&self) -> Result<sr25519::Pair, String> {
-    sr25519::Pair::from_seed_slice(self.secret_key.as_slice())
-      .map_err(|e| format!("Invalid `secret_key`: {e:?}"))
+  pub fn keypair(&self) -> Result<sr25519::Pair> {
+    Ok(sr25519::Pair::from_seed_slice(self.secret_key.as_slice())?)
   }
 }
 
@@ -58,9 +60,8 @@ pub struct CreateSigner {
 
 #[cfg(feature = "backend")]
 impl CreateSigner {
-  pub fn as_signer_with_secret(&self) -> Result<SignerWithSecret, String> {
-    let pair = sr25519::Pair::from_string(&self.secret_uri, None)
-      .map_err(|e| format!("Invalid `secret_uri`: {e:?}"))?;
+  pub fn as_signer_with_secret(&self) -> Result<SignerWithSecret> {
+    let pair = sr25519::Pair::from_string(&self.secret_uri, None)?;
     Ok(SignerWithSecret {
       signer_name: self.signer_name.clone(),
       public_key: pair.public().to_string(),

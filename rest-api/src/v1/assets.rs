@@ -11,7 +11,7 @@ use polymesh_api::types::{
 use polymesh_api::client::PairSigner;
 use polymesh_api::Api;
 
-use confidential_proof_shared::{CreateAsset, CreateConfidentialAsset};
+use confidential_proof_shared::{error::Error, CreateAsset, CreateConfidentialAsset};
 
 use crate::repo::Repository;
 
@@ -31,10 +31,8 @@ pub fn service(cfg: &mut web::ServiceConfig) {
 )]
 #[get("/assets")]
 pub async fn get_all_assets(repo: web::Data<Repository>) -> Result<impl Responder> {
-  Ok(match repo.get_assets().await {
-    Ok(assets) => HttpResponse::Ok().json(assets),
-    Err(e) => HttpResponse::NotFound().body(format!("Internal server error: {:?}", e)),
-  })
+  let assets = repo.get_assets().await?;
+  Ok(HttpResponse::Ok().json(assets))
 }
 
 /// Get an asset.
@@ -44,11 +42,11 @@ pub async fn get_all_assets(repo: web::Data<Repository>) -> Result<impl Responde
   )
 )]
 #[get("/assets/{asset_id}")]
-pub async fn get_asset(asset_id: web::Path<i64>, repo: web::Data<Repository>) -> HttpResponse {
-  match repo.get_asset(*asset_id).await {
-    Ok(asset) => HttpResponse::Ok().json(asset),
-    Err(_) => HttpResponse::NotFound().body("Not found"),
-  }
+pub async fn get_asset(asset_id: web::Path<i64>, repo: web::Data<Repository>) -> Result<impl Responder> {
+  Ok(match repo.get_asset(*asset_id).await? {
+    Some(asset) => HttpResponse::Ok().json(asset),
+    None => HttpResponse::NotFound().body("Not found"),
+  })
 }
 
 /// Create an asset.
@@ -61,11 +59,9 @@ pub async fn get_asset(asset_id: web::Path<i64>, repo: web::Data<Repository>) ->
 pub async fn create_asset(
   asset: web::Json<CreateAsset>,
   repo: web::Data<Repository>,
-) -> HttpResponse {
-  match repo.create_asset(&asset).await {
-    Ok(asset) => HttpResponse::Ok().json(asset),
-    Err(e) => HttpResponse::InternalServerError().body(format!("Internal server error: {:?}", e)),
-  }
+) -> Result<impl Responder> {
+  let asset = repo.create_asset(&asset).await?;
+  Ok(HttpResponse::Ok().json(asset))
 }
 
 /// Create confidential asset on-chain.
@@ -79,23 +75,16 @@ pub async fn tx_create_asset(
   asset: web::Json<CreateConfidentialAsset>,
   repo: web::Data<Repository>,
   api: web::Data<Api>,
-) -> HttpResponse {
-  let mut signer = match repo.get_signer_with_secret(&asset.signer).await {
-    Ok(signer) => PairSigner::new(signer.keypair().expect("Keypair from db.")),
-    Err(e) => return HttpResponse::InternalServerError().body(format!("Internal server error: {:?}", e)),
-  };
+) -> Result<impl Responder> {
+  let mut signer = repo.get_signer_with_secret(&asset.signer).await?
+    .ok_or_else(|| Error::not_found("Signer"))
+    .and_then(|signer| Ok(PairSigner::new(signer.keypair()?)))?;
 
-  let auditors = match asset.auditors() {
-    Ok(auditors) => auditors,
-    Err(e) => return HttpResponse::InternalServerError().body(format!("Internal server error: {:?}", e)),
-  };
+  let auditors = asset.auditors()?;
 
-  let ticker = match asset.ticker() {
-    Ok(ticker) => ticker,
-    Err(e) => return HttpResponse::InternalServerError().body(format!("Internal server error: {:?}", e)),
-  };
+  let ticker = asset.ticker()?;
 
-  let res = api.call()
+  let _res = api.call()
     .confidential_asset()
     .create_confidential_asset(
       AssetName(asset.name.as_bytes().into()),
@@ -107,5 +96,5 @@ pub async fn tx_create_asset(
     .submit_and_watch(&mut signer)
     .await;
 
-  HttpResponse::Ok().json(true)
+  Ok(HttpResponse::Ok().json(true))
 }

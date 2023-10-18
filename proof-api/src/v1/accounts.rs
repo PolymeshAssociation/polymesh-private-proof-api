@@ -1,6 +1,6 @@
 use actix_web::{get, post, web, HttpResponse, Responder, Result};
 
-use confidential_proof_shared::{AuditorVerifyRequest, CreateAccount};
+use confidential_proof_shared::{error::Error, AuditorVerifyRequest, CreateAccount};
 
 use super::account_assets;
 use crate::repo::Repository;
@@ -22,10 +22,8 @@ pub fn service(cfg: &mut web::ServiceConfig) {
 )]
 #[get("/accounts")]
 pub async fn get_all_accounts(repo: web::Data<Repository>) -> Result<impl Responder> {
-  Ok(match repo.get_accounts().await {
-    Ok(accounts) => HttpResponse::Ok().json(accounts),
-    Err(e) => HttpResponse::NotFound().body(format!("Internal server error: {:?}", e)),
-  })
+  let accounts = repo.get_accounts().await?;
+  Ok(HttpResponse::Ok().json(accounts))
 }
 
 /// Get one account.
@@ -35,11 +33,10 @@ pub async fn get_all_accounts(repo: web::Data<Repository>) -> Result<impl Respon
   )
 )]
 #[get("/accounts/{account_id}")]
-pub async fn get_account(account_id: web::Path<i64>, repo: web::Data<Repository>) -> HttpResponse {
-  match repo.get_account(*account_id).await {
-    Ok(account) => HttpResponse::Ok().json(account),
-    Err(_) => HttpResponse::NotFound().body("Not found"),
-  }
+pub async fn get_account(account_id: web::Path<i64>, repo: web::Data<Repository>) -> Result<impl Responder> {
+  let account = repo.get_account(*account_id).await?
+    .ok_or_else(|| Error::not_found("Account"))?;
+  Ok(HttpResponse::Ok().json(account))
 }
 
 /// Create a new account.
@@ -49,12 +46,10 @@ pub async fn get_account(account_id: web::Path<i64>, repo: web::Data<Repository>
   )
 )]
 #[post("/accounts")]
-pub async fn create_account(repo: web::Data<Repository>) -> HttpResponse {
+pub async fn create_account(repo: web::Data<Repository>) -> Result<impl Responder> {
   let account = CreateAccount::new();
-  match repo.create_account(&account).await {
-    Ok(account) => HttpResponse::Ok().json(account),
-    Err(e) => HttpResponse::InternalServerError().body(format!("Internal server error: {:?}", e)),
-  }
+  let account = repo.create_account(&account).await?;
+  Ok(HttpResponse::Ok().json(account))
 }
 
 /// Verify a sender proof as an auditor.
@@ -68,23 +63,19 @@ pub async fn auditor_verify_request(
   account_id: web::Path<i64>,
   req: web::Json<AuditorVerifyRequest>,
   repo: web::Data<Repository>,
-) -> HttpResponse {
+) -> Result<impl Responder> {
   // Get the account with secret key.
-  let account = match repo.get_account_with_secret(*account_id).await {
-    Ok(account) => account,
-    Err(_) => {
-      return HttpResponse::NotFound().body("Account not found");
-    }
-  };
+  let account = repo.get_account_with_secret(*account_id).await?
+    .ok_or_else(|| Error::not_found("Account"))?;
 
   // Verify the sender's proof.
-  match account.auditor_verify_proof(&req) {
+  Ok(match account.auditor_verify_proof(&req) {
     Ok(is_valid) => {
-      return HttpResponse::Ok().json(is_valid);
+      HttpResponse::Ok().json(is_valid)
     }
     Err(e) => {
-      return HttpResponse::InternalServerError()
-        .body(format!("Sender proof verification failed: {e:?}"));
+      HttpResponse::InternalServerError()
+        .body(format!("Sender proof verification failed: {e:?}"))
     }
-  }
+  })
 }

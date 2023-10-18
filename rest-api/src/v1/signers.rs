@@ -19,10 +19,8 @@ pub fn service(cfg: &mut web::ServiceConfig) {
 )]
 #[get("/signers")]
 pub async fn get_all_signers(repo: web::Data<Repository>) -> Result<impl Responder> {
-  Ok(match repo.get_signers().await {
-    Ok(signers) => HttpResponse::Ok().json(signers),
-    Err(e) => HttpResponse::NotFound().body(format!("Internal server error: {:?}", e)),
-  })
+  let signers = repo.get_signers().await?;
+  Ok(HttpResponse::Ok().json(signers))
 }
 
 /// Get one signer.
@@ -32,11 +30,11 @@ pub async fn get_all_signers(repo: web::Data<Repository>) -> Result<impl Respond
   )
 )]
 #[get("/signers/{signer}")]
-pub async fn get_signer(signer: web::Path<String>, repo: web::Data<Repository>) -> HttpResponse {
-  match repo.get_signer(&signer).await {
-    Ok(signer) => HttpResponse::Ok().json(signer),
-    Err(_) => HttpResponse::NotFound().body("Not found"),
-  }
+pub async fn get_signer(signer: web::Path<String>, repo: web::Data<Repository>) -> Result<impl Responder> {
+  Ok(match repo.get_signer(&signer).await? {
+    Some(signer) => HttpResponse::Ok().json(signer),
+    None => HttpResponse::NotFound().body("Not found"),
+  })
 }
 
 /// Create a new signer.
@@ -46,13 +44,8 @@ pub async fn get_signer(signer: web::Path<String>, repo: web::Data<Repository>) 
   )
 )]
 #[post("/signers")]
-pub async fn create_signer(signer: web::Json<CreateSigner>, repo: web::Data<Repository>) -> HttpResponse {
-  let signer = match signer.as_signer_with_secret() {
-    Ok(signer) => signer,
-    Err(e) => return HttpResponse::InternalServerError().body(format!("Internal server error: {:?}", e)),
-  };
-  match repo.create_signer(&signer).await {
-    Ok(signer) => HttpResponse::Ok().json(signer),
-    Err(e) => HttpResponse::InternalServerError().body(format!("Internal server error: {:?}", e)),
-  }
+pub async fn create_signer(signer: web::Json<CreateSigner>, repo: web::Data<Repository>) -> Result<impl Responder> {
+  let signer = signer.as_signer_with_secret()?;
+  let signer = repo.create_signer(&signer).await?;
+  Ok(HttpResponse::Ok().json(signer))
 }
