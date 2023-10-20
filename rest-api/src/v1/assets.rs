@@ -11,13 +11,9 @@ use polymesh_api::types::{
 use polymesh_api::Api;
 
 use confidential_proof_shared::{
-  error::Error, CreateAsset, CreateConfidentialAsset, SenderProofVerifyRequest,
-  SenderProofVerifyResult,
-  TransactionResult,
-  AllowVenues,
-  TransactionArgs,
-  CreateConfidentialSettlement,
-  ExecuteConfidentialSettlement,
+  error::Error, AllowVenues, CreateAsset, CreateConfidentialAsset, CreateConfidentialSettlement,
+  ExecuteConfidentialSettlement, SenderProofVerifyRequest, SenderProofVerifyResult,
+  TransactionArgs, TransactionResult,
 };
 
 use crate::repo::Repository;
@@ -77,7 +73,9 @@ pub async fn tx_allow_venues(
   repo: web::Data<Repository>,
   api: web::Data<Api>,
 ) -> Result<impl Responder> {
-  let ticker = repo.get_asset(*asset_id).await?
+  let ticker = repo
+    .get_asset(*asset_id)
+    .await?
     .ok_or_else(|| Error::not_found("Asset"))?
     .ticker()?;
   let mut signer = repo

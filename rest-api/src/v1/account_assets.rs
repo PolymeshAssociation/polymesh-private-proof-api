@@ -3,23 +3,14 @@ use actix_web::{get, post, web, HttpResponse, Responder, Result};
 use codec::Encode;
 
 use polymesh_api::client::PairSigner;
-use polymesh_api::types::{
-  pallet_confidential_asset::{
-    AffirmLeg, AffirmParty,
-    SenderProof,
-  }
-};
+use polymesh_api::types::pallet_confidential_asset::{AffirmLeg, AffirmParty, SenderProof};
 use polymesh_api::Api;
 
 use confidential_proof_shared::{
-  error::Error, AccountAssetWithProof, AccountMintAsset, CreateAccountAsset, ReceiverVerifyRequest,
-  SenderProofRequest, SenderProofVerifyResult, UpdateAccountAssetBalanceRequest,
-  TransactionResult,
-  TransactionArgs,
-  MintRequest,
-  AffirmTransactionLegRequest,
-  confidential_account_to_key, mediator_account_to_key,
-  scale_convert,
+  confidential_account_to_key, error::Error, mediator_account_to_key, scale_convert,
+  AccountAssetWithProof, AccountMintAsset, AffirmTransactionLegRequest, CreateAccountAsset,
+  MintRequest, ReceiverVerifyRequest, SenderProofRequest, SenderProofVerifyResult, TransactionArgs,
+  TransactionResult, UpdateAccountAssetBalanceRequest,
 };
 
 use crate::repo::Repository;
@@ -127,7 +118,9 @@ pub async fn tx_init_account(
     .await?
     .ok_or_else(|| Error::not_found("Account"))?
     .as_confidential_account()?;
-  let ticker = repo.get_asset(asset_id).await?
+  let ticker = repo
+    .get_asset(asset_id)
+    .await?
     .ok_or_else(|| Error::not_found("Asset"))?
     .ticker()?;
 
@@ -218,7 +211,9 @@ pub async fn tx_apply_incoming(
     .await?
     .ok_or_else(|| Error::not_found("Account"))?
     .as_confidential_account()?;
-  let ticker = repo.get_asset(asset_id).await?
+  let ticker = repo
+    .get_asset(asset_id)
+    .await?
     .ok_or_else(|| Error::not_found("Asset"))?
     .ticker()?;
 
@@ -271,18 +266,25 @@ pub async fn tx_sender_affirm_leg(
   let leg = api
     .query()
     .confidential_asset()
-    .transaction_legs(transaction_id, leg_id).await
+    .transaction_legs(transaction_id, leg_id)
+    .await
     .map_err(|err| Error::from(err))?
     .ok_or_else(|| Error::not_found("Transaction Leg"))?;
   let receiver = confidential_account_to_key(&leg.receiver);
-  let auditors = leg.auditors.auditors.keys().into_iter()
-    .map(mediator_account_to_key).collect();
+  let auditors = leg
+    .auditors
+    .auditors
+    .keys()
+    .into_iter()
+    .map(mediator_account_to_key)
+    .collect();
 
   // Query the chain for the sender's current balance.
   let enc_balance = api
     .query()
     .confidential_asset()
-    .account_balance(leg.sender, leg.ticker).await
+    .account_balance(leg.sender, leg.ticker)
+    .await
     .map_err(|err| Error::from(err))?
     .ok_or_else(|| Error::not_found("Sender account balance"))?;
   // Convert from on-chain `CipherText`.
@@ -343,7 +345,9 @@ pub async fn tx_mint(
     .await?
     .ok_or_else(|| Error::not_found("Account"))?
     .as_confidential_account()?;
-  let ticker = repo.get_asset(asset_id).await?
+  let ticker = repo
+    .get_asset(asset_id)
+    .await?
     .ok_or_else(|| Error::not_found("Asset"))?
     .ticker()?;
 

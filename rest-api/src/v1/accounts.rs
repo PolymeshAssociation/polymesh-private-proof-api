@@ -1,18 +1,12 @@
 use actix_web::{get, post, web, HttpResponse, Responder, Result};
 
 use polymesh_api::client::PairSigner;
-use polymesh_api::types::{
-  pallet_confidential_asset::{
-    AffirmLeg, AffirmParty,
-  }
-};
+use polymesh_api::types::pallet_confidential_asset::{AffirmLeg, AffirmParty};
 use polymesh_api::Api;
 
 use confidential_proof_shared::{
-  error::Error, AuditorVerifyRequest, CreateAccount, SenderProofVerifyResult,
-  TransactionResult,
-  TransactionArgs,
-  AffirmTransactionLegRequest,
+  error::Error, AffirmTransactionLegRequest, AuditorVerifyRequest, CreateAccount,
+  SenderProofVerifyResult, TransactionArgs, TransactionResult,
 };
 
 use super::account_assets;

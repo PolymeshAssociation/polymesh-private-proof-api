@@ -4,38 +4,34 @@ use serde::{Deserialize, Serialize};
 
 use utoipa::ToSchema;
 
-use codec::{Encode, Decode};
+use codec::{Decode, Encode};
 
 #[cfg(feature = "backend")]
 use polymesh_api::{
-  TransactionResults,
   client::{
-    ExtrinsicResult,
     basic_types::{AccountId, IdentityId},
     block::EventRecords,
+    ExtrinsicResult,
   },
   types::{
     pallet_confidential_asset::{
-        ConfidentialTransactionRole,
-        ConfidentialAccount, ConfidentialAuditors, SenderProof,
-        TransactionId, TransactionLeg, TransactionLegId,
-        MediatorAccount,
+      ConfidentialAccount, ConfidentialAuditors, ConfidentialTransactionRole, MediatorAccount,
+      SenderProof, TransactionId, TransactionLeg, TransactionLegId,
     },
     polymesh_common_utilities::traits::checkpoint::ScheduleId,
     polymesh_primitives::{
       asset::CheckpointId,
-      ticker::Ticker,
       settlement::{InstructionId, VenueId},
+      ticker::Ticker,
       Memo,
     },
     runtime::{events::*, RuntimeEvent},
   },
+  TransactionResults,
 };
 
 #[cfg(feature = "backend")]
-use confidential_assets::{
-  Balance, ElgamalPublicKey,
-};
+use confidential_assets::{Balance, ElgamalPublicKey};
 
 use crate::error::Result;
 use crate::proofs::PublicKey;
@@ -136,24 +132,26 @@ impl ProcessedEvents {
           processed.push(ProcessedEvent::ConfidentialVenueCreated(*id));
         }
         RuntimeEvent::ConfidentialAsset(ConfidentialAssetEvent::TransactionCreated(
-            _,
-            _,
-            id,
-            ..,
+          _,
+          _,
+          id,
+          ..,
         )) => {
           processed.push(ProcessedEvent::ConfidentialTransactionCreated(*id));
         }
         RuntimeEvent::ConfidentialAsset(ConfidentialAssetEvent::TransactionAffirmed(
-            _,
-            tx_id,
-            leg_id,
-            sender_proof,
+          _,
+          tx_id,
+          leg_id,
+          sender_proof,
         )) => {
-          processed.push(ProcessedEvent::ConfidentialTransactionAffirmed(TransactionAffirmed {
-            transaction_id: *tx_id,
-            leg_id: *leg_id,
-            sender_proof: sender_proof.clone()
-          }));
+          processed.push(ProcessedEvent::ConfidentialTransactionAffirmed(
+            TransactionAffirmed {
+              transaction_id: *tx_id,
+              leg_id: *leg_id,
+              sender_proof: sender_proof.clone(),
+            },
+          ));
         }
         _ => (),
       }
@@ -189,7 +187,8 @@ impl TransactionResult {
       tx_res.wait_finalized().await?
     } else {
       tx_res.wait_in_block().await?
-    }.unwrap_or_default();
+    }
+    .unwrap_or_default();
     res.block_hash = format!("{block_hash:#x}");
 
     // Process events.
@@ -297,9 +296,7 @@ impl CreateConfidentialAsset {
     for (key, role) in &self.auditors {
       auditors.insert(key.as_mediator_account()?, role.into_role());
     }
-    Ok(ConfidentialAuditors {
-      auditors,
-    })
+    Ok(ConfidentialAuditors { auditors })
   }
 }
 
@@ -352,9 +349,7 @@ impl ConfidentialSettlementLeg {
     for (key, role) in &self.auditors {
       auditors.insert(key.as_mediator_account()?, role.into_role());
     }
-    Ok(ConfidentialAuditors {
-      auditors,
-    })
+    Ok(ConfidentialAuditors { auditors })
   }
 }
 

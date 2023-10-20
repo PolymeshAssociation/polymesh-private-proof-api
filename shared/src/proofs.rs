@@ -9,13 +9,9 @@ use zeroize::{Zeroize, ZeroizeOnDrop};
 use codec::{Decode, Encode};
 
 #[cfg(feature = "backend")]
-use polymesh_api::{
-  types::{
-    pallet_confidential_asset::{ConfidentialAccount, MediatorAccount},
-    polymesh_primitives::{
-      ticker::Ticker,
-    },
-  },
+use polymesh_api::types::{
+  pallet_confidential_asset::{ConfidentialAccount, MediatorAccount},
+  polymesh_primitives::ticker::Ticker,
 };
 
 #[cfg(feature = "backend")]
@@ -25,8 +21,8 @@ use confidential_assets::{
   Balance, ElgamalKeys, ElgamalPublicKey, ElgamalSecretKey, Scalar,
 };
 
-use crate::tx::str_to_ticker;
 use crate::error::*;
+use crate::tx::str_to_ticker;
 
 #[cfg(not(feature = "backend"))]
 pub type Balance = u64;
@@ -102,7 +98,9 @@ pub struct Account {
 #[cfg(feature = "backend")]
 impl Account {
   pub fn as_confidential_account(&self) -> Result<ConfidentialAccount> {
-    Ok(ConfidentialAccount::decode(&mut self.public_key.as_slice())?)
+    Ok(ConfidentialAccount::decode(
+      &mut self.public_key.as_slice(),
+    )?)
   }
 
   pub fn as_mediator_account(&self) -> Result<MediatorAccount> {

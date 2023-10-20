@@ -8,9 +8,7 @@ use actix_web::{
 };
 
 #[cfg(feature = "backend")]
-use polymesh_api::{
-  client::Error as PolymeshClientError,
-};
+use polymesh_api::client::Error as PolymeshClientError;
 
 #[derive(Error, Debug)]
 pub enum Error {
