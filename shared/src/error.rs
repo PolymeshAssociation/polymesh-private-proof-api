@@ -7,11 +7,20 @@ use actix_web::{
   HttpResponse,
 };
 
+#[cfg(feature = "backend")]
+use polymesh_api::{
+  client::Error as PolymeshClientError,
+};
+
 #[derive(Error, Debug)]
 pub enum Error {
   #[error("Confidential asset error: {0}")]
   #[cfg(feature = "backend")]
   ConfidentialAssetError(#[from] confidential_assets::Error),
+
+  #[error("Polymesh client error: {0}")]
+  #[cfg(feature = "backend")]
+  PolymeshClientError(#[from] PolymeshClientError),
 
   #[error("other error: {0}")]
   Other(String),

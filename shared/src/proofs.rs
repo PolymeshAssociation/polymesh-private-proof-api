@@ -9,7 +9,14 @@ use zeroize::{Zeroize, ZeroizeOnDrop};
 use codec::{Decode, Encode};
 
 #[cfg(feature = "backend")]
-use polymesh_api::types::pallet_confidential_asset::{ConfidentialAccount, MediatorAccount};
+use polymesh_api::{
+  types::{
+    pallet_confidential_asset::{ConfidentialAccount, MediatorAccount},
+    polymesh_primitives::{
+      ticker::Ticker,
+    },
+  },
+};
 
 #[cfg(feature = "backend")]
 use confidential_assets::{
@@ -18,6 +25,7 @@ use confidential_assets::{
   Balance, ElgamalKeys, ElgamalPublicKey, ElgamalSecretKey, Scalar,
 };
 
+use crate::tx::str_to_ticker;
 use crate::error::*;
 
 #[cfg(not(feature = "backend"))]
@@ -61,6 +69,12 @@ pub struct Asset {
   pub updated_at: chrono::NaiveDateTime,
 }
 
+impl Asset {
+  pub fn ticker(&self) -> Result<Ticker> {
+    str_to_ticker(&self.ticker)
+  }
+}
+
 /// Create an asset.
 #[derive(Clone, Debug, Default, Deserialize, Serialize, ToSchema)]
 pub struct CreateAsset {
@@ -83,6 +97,17 @@ pub struct Account {
 
   pub created_at: chrono::NaiveDateTime,
   pub updated_at: chrono::NaiveDateTime,
+}
+
+#[cfg(feature = "backend")]
+impl Account {
+  pub fn as_confidential_account(&self) -> Result<ConfidentialAccount> {
+    Ok(ConfidentialAccount::decode(&mut self.public_key.as_slice())?)
+  }
+
+  pub fn as_mediator_account(&self) -> Result<MediatorAccount> {
+    Ok(MediatorAccount::decode(&mut self.public_key.as_slice())?)
+  }
 }
 
 /// Account with secret key.  Not allowed to be serialized.
@@ -225,18 +250,18 @@ impl AccountAssetWithSecret {
 
   pub fn create_send_proof(
     &self,
-    req: &SenderProofRequest,
+    enc_balance: Option<CipherText>,
+    receiver: ElgamalPublicKey,
+    auditors: Vec<ElgamalPublicKey>,
+    amount: Balance,
   ) -> Result<(UpdateAccountAsset, ConfidentialTransferProof)> {
     // Decode ConfidentialAccount from database.
     let sender = self.account.encryption_keys()?;
-    // Decode `req`.
-    let enc_balance = req
-      .encrypted_balance()?
+    // Get sender's balance.
+    let enc_balance = enc_balance
       .or_else(|| self.enc_balance().ok())
       .ok_or_else(|| Error::other("No encrypted balance."))?;
-    let receiver = req.receiver()?;
-    let auditors = req
-      .auditors()?
+    let auditors = auditors
       .into_iter()
       .enumerate()
       .map(|(idx, auditor)| (AuditorId(idx as _), auditor))
@@ -250,14 +275,14 @@ impl AccountAssetWithSecret {
       sender_balance,
       &receiver,
       &auditors,
-      req.amount,
+      amount,
       &mut rng,
     )?;
     // Update account balance.
     let update = UpdateAccountAsset {
       account_id: self.account.account_id,
       asset_id: self.asset_id,
-      balance: (self.balance as u64) - req.amount,
+      balance: (self.balance as u64) - amount,
       enc_balance: enc_balance - proof.sender_amount(),
     };
 
@@ -423,7 +448,7 @@ pub struct SenderProofRequest {
   auditors: Vec<PublicKey>,
   /// Transaction amount.
   #[schema(example = 1000, value_type = u64)]
-  amount: Balance,
+  pub amount: Balance,
 }
 
 #[cfg(feature = "backend")]

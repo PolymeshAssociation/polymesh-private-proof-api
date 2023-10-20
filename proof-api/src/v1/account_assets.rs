@@ -131,8 +131,13 @@ pub async fn request_sender_proof(
     .await?
     .ok_or_else(|| Error::not_found("Account Asset"))?;
 
+  let enc_balance = req.encrypted_balance()?;
+  let receiver = req.receiver()?;
+  let auditors = req.auditors()?;
+  let amount = req.amount;
+
   // Generate sender proof.
-  let (update, proof) = account_asset.create_send_proof(&req)?;
+  let (update, proof) = account_asset.create_send_proof(enc_balance, receiver, auditors, amount)?;
 
   // Update account balance.
   let account_asset = repo
