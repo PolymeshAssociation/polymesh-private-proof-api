@@ -137,14 +137,18 @@ impl AccountWithSecret {
     }
   }
 
-  pub fn auditor_verify_proof(&self, req: &AuditorVerifyRequest) -> Result<SenderProofVerifyResult> {
+  pub fn auditor_verify_proof(
+    &self,
+    req: &AuditorVerifyRequest,
+  ) -> Result<SenderProofVerifyResult> {
     // Decode ConfidentialAccount from database.
     let auditor = self.encryption_keys()?;
 
     // Decode sender proof from request.
     let sender_proof = req.sender_proof()?;
 
-    let res = sender_proof.auditor_verify(AuditorId(req.auditor_id), &auditor, req.amount)
+    let res = sender_proof
+      .auditor_verify(AuditorId(req.auditor_id), &auditor, req.amount)
       .map(|b| Some(b));
     Ok(SenderProofVerifyResult::from_result(res))
   }
@@ -283,14 +287,18 @@ impl AccountAssetWithSecret {
     Ok((update, proof))
   }
 
-  pub fn receiver_verify_proof(&self, req: &ReceiverVerifyRequest) -> Result<SenderProofVerifyResult> {
+  pub fn receiver_verify_proof(
+    &self,
+    req: &ReceiverVerifyRequest,
+  ) -> Result<SenderProofVerifyResult> {
     // Decode ConfidentialAccount from database.
     let receiver = self.account.encryption_keys()?;
 
     // Decode sender proof from request.
     let sender_proof = req.sender_proof()?;
 
-    let res = sender_proof.receiver_verify(receiver, req.amount)
+    let res = sender_proof
+      .receiver_verify(receiver, req.amount)
       .map(|b| Some(b));
     Ok(SenderProofVerifyResult::from_result(res))
   }
@@ -537,7 +545,8 @@ impl SenderProofVerifyRequest {
     let mut rng = rand::thread_rng();
     let sender_proof = self.sender_proof()?;
 
-    let res = sender_proof.verify(&sender, &sender_balance, &receiver, &auditors, &mut rng)
+    let res = sender_proof
+      .verify(&sender, &sender_balance, &receiver, &auditors, &mut rng)
       .map(|_| None);
     Ok(SenderProofVerifyResult::from_result(res))
   }
@@ -570,7 +579,7 @@ impl SenderProofVerifyResult {
         is_valid: false,
         amount: None,
         err_msg: Some(format!("Invalid proof: {err:?}")),
-      }
+      },
     }
   }
 }

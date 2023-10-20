@@ -1,8 +1,6 @@
 use actix_web::{get, post, web, HttpResponse, Responder, Result};
 
-use confidential_proof_shared::{
-  error::Error, AuditorVerifyRequest, CreateAccount,
-};
+use confidential_proof_shared::{error::Error, AuditorVerifyRequest, CreateAccount};
 
 use super::account_assets;
 use crate::repo::Repository;

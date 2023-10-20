@@ -12,8 +12,7 @@ use polymesh_api::Api;
 
 use confidential_proof_shared::{
   error::Error, AllowVenues, CreateAsset, CreateConfidentialAsset, CreateConfidentialSettlement,
-  ExecuteConfidentialSettlement, SenderProofVerifyRequest,
-  TransactionArgs, TransactionResult,
+  ExecuteConfidentialSettlement, SenderProofVerifyRequest, TransactionArgs, TransactionResult,
 };
 
 use crate::repo::Repository;

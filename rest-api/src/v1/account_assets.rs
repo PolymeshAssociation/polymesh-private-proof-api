@@ -9,8 +9,8 @@ use polymesh_api::Api;
 use confidential_proof_shared::{
   confidential_account_to_key, error::Error, mediator_account_to_key, scale_convert,
   AccountAssetWithProof, AccountMintAsset, AffirmTransactionLegRequest, CreateAccountAsset,
-  MintRequest, ReceiverVerifyRequest, SenderProofRequest, TransactionArgs,
-  TransactionResult, UpdateAccountAssetBalanceRequest,
+  MintRequest, ReceiverVerifyRequest, SenderProofRequest, TransactionArgs, TransactionResult,
+  UpdateAccountAssetBalanceRequest,
 };
 
 use crate::repo::Repository;

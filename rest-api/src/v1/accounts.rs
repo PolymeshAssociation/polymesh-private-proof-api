@@ -5,8 +5,8 @@ use polymesh_api::types::pallet_confidential_asset::{AffirmLeg, AffirmParty};
 use polymesh_api::Api;
 
 use confidential_proof_shared::{
-  error::Error, AffirmTransactionLegRequest, AuditorVerifyRequest, CreateAccount,
-  TransactionArgs, TransactionResult,
+  error::Error, AffirmTransactionLegRequest, AuditorVerifyRequest, CreateAccount, TransactionArgs,
+  TransactionResult,
 };
 
 use super::account_assets;
