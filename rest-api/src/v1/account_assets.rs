@@ -9,7 +9,7 @@ use polymesh_api::Api;
 use confidential_proof_shared::{
   confidential_account_to_key, error::Error, mediator_account_to_key, scale_convert,
   AccountAssetWithProof, AccountMintAsset, AffirmTransactionLegRequest, CreateAccountAsset,
-  MintRequest, ReceiverVerifyRequest, SenderProofRequest, SenderProofVerifyResult, TransactionArgs,
+  MintRequest, ReceiverVerifyRequest, SenderProofRequest, TransactionArgs,
   TransactionResult, UpdateAccountAssetBalanceRequest,
 };
 
@@ -458,8 +458,8 @@ pub async fn receiver_verify_request(
     .ok_or_else(|| Error::not_found("Account Asset"))?;
 
   // Verify the sender's proof.
-  let res = account_asset.receiver_verify_proof(&req);
-  Ok(HttpResponse::Ok().json(SenderProofVerifyResult::from_result(res)))
+  let res = account_asset.receiver_verify_proof(&req)?;
+  Ok(HttpResponse::Ok().json(res))
 }
 
 /// Update an account's encrypted balance.

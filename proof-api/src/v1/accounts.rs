@@ -1,7 +1,7 @@
 use actix_web::{get, post, web, HttpResponse, Responder, Result};
 
 use confidential_proof_shared::{
-  error::Error, AuditorVerifyRequest, CreateAccount, SenderProofVerifyResult,
+  error::Error, AuditorVerifyRequest, CreateAccount,
 };
 
 use super::account_assets;
@@ -78,6 +78,6 @@ pub async fn auditor_verify_request(
     .ok_or_else(|| Error::not_found("Account"))?;
 
   // Verify the sender's proof.
-  let res = account.auditor_verify_proof(&req);
-  Ok(HttpResponse::Ok().json(SenderProofVerifyResult::from_result(res)))
+  let res = account.auditor_verify_proof(&req)?;
+  Ok(HttpResponse::Ok().json(res))
 }

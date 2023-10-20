@@ -908,7 +908,7 @@ dependencies = [
 [[package]]
 name = "confidential_assets"
 version = "1.0.0"
-source = "git+ssh://git@github.com/PolymeshAssociation/confidential_assets.git?branch=main#4e376fa30e49f85d618e330d299564506d5d29d6"
+source = "git+ssh://git@github.com/PolymeshAssociation/confidential_assets.git?branch=main#6cf1b68a7c939699c76b3c46c190258871e660cb"
 dependencies = [
  "bincode",
  "bulletproofs",
@@ -5343,7 +5343,7 @@ checksum = "97fee6b57c6a41524a810daee9286c02d7752c4253064d0b05472833a438f675"
 dependencies = [
  "cfg-if",
  "digest 0.10.7",
- "rand 0.8.5",
+ "rand 0.7.3",
  "static_assertions",
 ]
 

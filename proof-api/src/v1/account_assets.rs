@@ -2,7 +2,7 @@ use actix_web::{get, post, web, HttpResponse, Responder, Result};
 
 use confidential_proof_shared::{
   error::Error, AccountAssetWithProof, AccountMintAsset, CreateAccountAsset, ReceiverVerifyRequest,
-  SenderProofRequest, SenderProofVerifyResult, UpdateAccountAssetBalanceRequest,
+  SenderProofRequest, UpdateAccountAssetBalanceRequest,
 };
 
 use crate::repo::Repository;
@@ -170,8 +170,8 @@ pub async fn receiver_verify_request(
     .ok_or_else(|| Error::not_found("Account Asset"))?;
 
   // Verify the sender's proof.
-  let res = account_asset.receiver_verify_proof(&req);
-  Ok(HttpResponse::Ok().json(SenderProofVerifyResult::from_result(res)))
+  let res = account_asset.receiver_verify_proof(&req)?;
+  Ok(HttpResponse::Ok().json(res))
 }
 
 /// Update an account's encrypted balance.

@@ -49,6 +49,7 @@ async fn start_server() -> anyhow::Result<()> {
         assets::get_all_assets,
         assets::get_asset,
         assets::create_asset,
+        assets::sender_proof_verify,
         assets::tx_create_asset,
         assets::tx_create_venue,
         assets::tx_allow_venues,
@@ -86,6 +87,7 @@ async fn start_server() -> anyhow::Result<()> {
           AuditorVerifyRequest,
           ReceiverVerifyRequest,
           SenderProofRequest,
+          SenderProofVerifyRequest,
           SenderProofVerifyResult,
           UpdateAccountAssetBalanceRequest,
 

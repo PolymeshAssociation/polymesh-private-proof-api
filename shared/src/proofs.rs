@@ -137,20 +137,16 @@ impl AccountWithSecret {
     }
   }
 
-  pub fn auditor_verify_proof(&self, req: &AuditorVerifyRequest) -> Result<bool> {
+  pub fn auditor_verify_proof(&self, req: &AuditorVerifyRequest) -> Result<SenderProofVerifyResult> {
     // Decode ConfidentialAccount from database.
     let auditor = self.encryption_keys()?;
 
-    // Decode request.
+    // Decode sender proof from request.
     let sender_proof = req.sender_proof()?;
 
-    let amount = sender_proof.auditor_verify(AuditorId(req.auditor_id), &auditor)?;
-    if amount != req.amount {
-      return Err(Error::other(
-        "Failed to verify sender proof: Invalid transaction amount",
-      ));
-    }
-    Ok(true)
+    let res = sender_proof.auditor_verify(AuditorId(req.auditor_id), &auditor, req.amount)
+      .map(|b| Some(b));
+    Ok(SenderProofVerifyResult::from_result(res))
   }
 }
 
@@ -287,14 +283,16 @@ impl AccountAssetWithSecret {
     Ok((update, proof))
   }
 
-  pub fn receiver_verify_proof(&self, req: &ReceiverVerifyRequest) -> Result<bool> {
+  pub fn receiver_verify_proof(&self, req: &ReceiverVerifyRequest) -> Result<SenderProofVerifyResult> {
     // Decode ConfidentialAccount from database.
     let receiver = self.account.encryption_keys()?;
 
-    // Decode request.
+    // Decode sender proof from request.
     let sender_proof = req.sender_proof()?;
-    sender_proof.receiver_verify(receiver, req.amount)?;
-    Ok(true)
+
+    let res = sender_proof.receiver_verify(receiver, req.amount)
+      .map(|b| Some(b));
+    Ok(SenderProofVerifyResult::from_result(res))
   }
 
   pub fn update_balance(
@@ -523,7 +521,7 @@ impl SenderProofVerifyRequest {
     self.sender_proof.decode()
   }
 
-  pub fn verify_proof(&self) -> Result<bool> {
+  pub fn verify_proof(&self) -> Result<SenderProofVerifyResult> {
     // Decode sender's balance.
     let sender_balance = self.sender_balance()?;
     // Decode sender & receiver.
@@ -538,8 +536,10 @@ impl SenderProofVerifyRequest {
 
     let mut rng = rand::thread_rng();
     let sender_proof = self.sender_proof()?;
-    sender_proof.verify(&sender, &sender_balance, &receiver, &auditors, &mut rng)?;
-    Ok(true)
+
+    let res = sender_proof.verify(&sender, &sender_balance, &receiver, &auditors, &mut rng)
+      .map(|_| None);
+    Ok(SenderProofVerifyResult::from_result(res))
   }
 }
 
@@ -549,6 +549,9 @@ pub struct SenderProofVerifyResult {
   /// Is the sender proof valid.
   #[schema(example = true)]
   is_valid: bool,
+  /// The decrypted transaction amount (Only available when the receiver/auditor verified).
+  #[schema(example = 1000, value_type = u64)]
+  amount: Option<Balance>,
   /// If `is_valid` is false, then provide an error message.
   #[schema(example = json!(null))]
   err_msg: Option<String>,
@@ -556,13 +559,19 @@ pub struct SenderProofVerifyResult {
 
 #[cfg(feature = "backend")]
 impl SenderProofVerifyResult {
-  pub fn from_result(res: Result<bool>) -> Self {
-    let (is_valid, err_msg) = match res {
-      Ok(true) => (true, None),
-      Ok(false) => (false, Some("Invalid proof".to_string())),
-      Err(err) => (false, Some(format!("Invalid proof: {err:?}"))),
-    };
-    Self { is_valid, err_msg }
+  pub fn from_result<E: core::fmt::Debug>(res: Result<Option<Balance>, E>) -> Self {
+    match res {
+      Ok(amount) => Self {
+        is_valid: true,
+        amount,
+        err_msg: None,
+      },
+      Err(err) => Self {
+        is_valid: false,
+        amount: None,
+        err_msg: Some(format!("Invalid proof: {err:?}")),
+      }
+    }
   }
 }
 
@@ -575,8 +584,8 @@ pub struct AuditorVerifyRequest {
   #[schema(example = 0, value_type = u32)]
   auditor_id: u32,
   /// Transaction amount.
-  #[schema(example = 1000, value_type = u64)]
-  amount: Balance,
+  #[schema(example = json!(null), value_type = u64)]
+  amount: Option<Balance>,
 }
 
 #[cfg(feature = "backend")]
@@ -592,8 +601,8 @@ pub struct ReceiverVerifyRequest {
   /// Sender proof.
   sender_proof: SenderProof,
   /// Transaction amount.
-  #[schema(example = 1000, value_type = u64)]
-  amount: Balance,
+  #[schema(example = json!(null), value_type = u64)]
+  amount: Option<Balance>,
 }
 
 #[cfg(feature = "backend")]

@@ -1,6 +1,6 @@
 use actix_web::{get, post, web, HttpResponse, Responder, Result};
 
-use confidential_proof_shared::{CreateAsset, SenderProofVerifyRequest, SenderProofVerifyResult};
+use confidential_proof_shared::{CreateAsset, SenderProofVerifyRequest};
 
 use crate::repo::Repository;
 
@@ -67,6 +67,6 @@ pub async fn sender_proof_verify(
   req: web::Json<SenderProofVerifyRequest>,
 ) -> Result<impl Responder> {
   // Verify the sender's proof.
-  let res = req.verify_proof();
-  Ok(HttpResponse::Ok().json(SenderProofVerifyResult::from_result(res)))
+  let res = req.verify_proof()?;
+  Ok(HttpResponse::Ok().json(res))
 }

@@ -12,7 +12,7 @@ use polymesh_api::Api;
 
 use confidential_proof_shared::{
   error::Error, AllowVenues, CreateAsset, CreateConfidentialAsset, CreateConfidentialSettlement,
-  ExecuteConfidentialSettlement, SenderProofVerifyRequest, SenderProofVerifyResult,
+  ExecuteConfidentialSettlement, SenderProofVerifyRequest,
   TransactionArgs, TransactionResult,
 };
 
@@ -273,6 +273,6 @@ pub async fn sender_proof_verify(
   req: web::Json<SenderProofVerifyRequest>,
 ) -> Result<impl Responder> {
   // Verify the sender's proof.
-  let res = req.verify_proof();
-  Ok(HttpResponse::Ok().json(SenderProofVerifyResult::from_result(res)))
+  let res = req.verify_proof()?;
+  Ok(HttpResponse::Ok().json(res))
 }

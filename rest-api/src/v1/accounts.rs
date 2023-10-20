@@ -6,7 +6,7 @@ use polymesh_api::Api;
 
 use confidential_proof_shared::{
   error::Error, AffirmTransactionLegRequest, AuditorVerifyRequest, CreateAccount,
-  SenderProofVerifyResult, TransactionArgs, TransactionResult,
+  TransactionArgs, TransactionResult,
 };
 
 use super::account_assets;
@@ -172,6 +172,6 @@ pub async fn auditor_verify_request(
     .ok_or_else(|| Error::not_found("Account"))?;
 
   // Verify the sender's proof.
-  let res = account.auditor_verify_proof(&req);
-  Ok(HttpResponse::Ok().json(SenderProofVerifyResult::from_result(res)))
+  let res = account.auditor_verify_proof(&req)?;
+  Ok(HttpResponse::Ok().json(res))
 }
