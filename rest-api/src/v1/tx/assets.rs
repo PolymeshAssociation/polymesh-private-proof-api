@@ -16,7 +16,7 @@ use confidential_proof_shared::{
   ExecuteConfidentialSettlement, TransactionArgs, TransactionResult,
 };
 
-use crate::signing::SigningManager;
+use crate::signing::AppSigningManager;
 
 pub fn service(cfg: &mut web::ServiceConfig) {
   cfg
@@ -38,7 +38,7 @@ pub async fn tx_allow_venues(
   asset_id: web::Path<i64>,
   req: web::Json<AllowVenues>,
   repo: web::Data<Repository>,
-  signing: web::Data<SigningManager>,
+  signing: AppSigningManager,
   api: web::Data<Api>,
 ) -> Result<impl Responder> {
   let ticker = repo
@@ -77,7 +77,7 @@ pub async fn tx_allow_venues(
 #[post("/tx/assets/create_asset")]
 pub async fn tx_create_asset(
   req: web::Json<CreateConfidentialAsset>,
-  signing: web::Data<SigningManager>,
+  signing: AppSigningManager,
   api: web::Data<Api>,
 ) -> Result<impl Responder> {
   let mut signer = signing
@@ -120,7 +120,7 @@ pub async fn tx_create_asset(
 pub async fn tx_create_settlement(
   venue_id: web::Path<u64>,
   req: web::Json<CreateConfidentialSettlement>,
-  signing: web::Data<SigningManager>,
+  signing: AppSigningManager,
   api: web::Data<Api>,
 ) -> Result<impl Responder> {
   let mut signer = signing
@@ -157,7 +157,7 @@ pub async fn tx_create_settlement(
 pub async fn tx_execute_settlement(
   transaction_id: web::Path<u64>,
   req: web::Json<ExecuteConfidentialSettlement>,
-  signing: web::Data<SigningManager>,
+  signing: AppSigningManager,
   api: web::Data<Api>,
 ) -> Result<impl Responder> {
   let mut signer = signing
@@ -191,7 +191,7 @@ pub async fn tx_execute_settlement(
 #[post("/tx/assets/create_venue")]
 pub async fn tx_create_venue(
   req: web::Json<TransactionArgs>,
-  signing: web::Data<SigningManager>,
+  signing: AppSigningManager,
   api: web::Data<Api>,
 ) -> Result<impl Responder> {
   let mut signer = signing

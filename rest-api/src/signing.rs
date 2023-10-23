@@ -1,3 +1,5 @@
+use actix_web::web::Data;
+
 use async_trait::async_trait;
 use confidential_proof_shared::{error::Result, Signer, SignerWithSecret};
 
@@ -5,7 +7,7 @@ mod db;
 
 pub use db::SqliteSigningManager;
 
-pub type SigningManager = Box<dyn SigningManagerTrait>;
+pub type AppSigningManager = Data<dyn SigningManagerTrait>;
 
 #[cfg_attr(test, mockall::automock)]
 #[async_trait]

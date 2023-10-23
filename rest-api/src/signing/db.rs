@@ -1,15 +1,23 @@
+use std::sync::Arc;
+
+use actix_web::web::Data;
+
 use async_trait::async_trait;
 use confidential_proof_shared::{error::Result, Signer, SignerWithSecret};
 
-use super::{SigningManager, SigningManagerTrait};
+use super::{AppSigningManager, SigningManagerTrait};
 
 pub struct SqliteSigningManager {
   pool: sqlx::SqlitePool,
 }
 
 impl SqliteSigningManager {
-  pub fn new(pool: &sqlx::SqlitePool) -> SigningManager {
-    Box::new(Self { pool: pool.clone() })
+  pub fn new(pool: &sqlx::SqlitePool) -> Arc<dyn SigningManagerTrait> {
+    Arc::new(Self { pool: pool.clone() })
+  }
+
+  pub fn new_app_data(pool: &sqlx::SqlitePool) -> AppSigningManager {
+    Data::from(Self::new(pool))
   }
 }
 

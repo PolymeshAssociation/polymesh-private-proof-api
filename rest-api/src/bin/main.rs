@@ -45,7 +45,7 @@ async fn start_server() -> anyhow::Result<()> {
   log::info!("Repository initialized");
 
   // Signing manager.
-  let signing = web::Data::new(signing::SqliteSigningManager::new(&pool));
+  let signing = signing::SqliteSigningManager::new_app_data(&pool);
 
   let polymesh_url = std::env::var("POLYMESH_URL").unwrap_or("ws://localhost:9944/".to_string());
   let polymesh_api = web::Data::new(Api::new(&polymesh_url).await?);
