@@ -1,9 +1,7 @@
 use async_trait::async_trait;
-use confidential_proof_shared::{
-  error::Result, Signer, SignerWithSecret,
-};
+use confidential_proof_shared::{error::Result, Signer, SignerWithSecret};
 
-use super::{SigningManagerTrait, SigningManager};
+use super::{SigningManager, SigningManagerTrait};
 
 pub struct SqliteSigningManager {
   pool: sqlx::SqlitePool,

@@ -6,12 +6,11 @@ use polymesh_api::client::PairSigner;
 use polymesh_api::types::pallet_confidential_asset::{AffirmLeg, AffirmParty, SenderProof};
 use polymesh_api::Api;
 
+use confidential_proof_api::repo::Repository;
 use confidential_proof_shared::{
   confidential_account_to_key, error::Error, mediator_account_to_key, scale_convert,
-  AffirmTransactionLegRequest,
-  MintRequest, TransactionArgs, TransactionResult,
+  AffirmTransactionLegRequest, MintRequest, TransactionArgs, TransactionResult,
 };
-use confidential_proof_api::repo::Repository;
 
 use crate::signing::SigningManager;
 

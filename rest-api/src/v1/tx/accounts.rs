@@ -4,11 +4,10 @@ use polymesh_api::client::PairSigner;
 use polymesh_api::types::pallet_confidential_asset::{AffirmLeg, AffirmParty};
 use polymesh_api::Api;
 
-use confidential_proof_shared::{
-  error::Error, AffirmTransactionLegRequest, TransactionArgs,
-  TransactionResult,
-};
 use confidential_proof_api::repo::Repository;
+use confidential_proof_shared::{
+  error::Error, AffirmTransactionLegRequest, TransactionArgs, TransactionResult,
+};
 
 use super::account_assets;
 use crate::signing::SigningManager;

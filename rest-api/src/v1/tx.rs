@@ -5,6 +5,5 @@ pub mod accounts;
 pub mod assets;
 
 pub fn service(cfg: &mut web::ServiceConfig) {
-  cfg.configure(assets::service)
-     .configure(accounts::service);
+  cfg.configure(assets::service).configure(accounts::service);
 }

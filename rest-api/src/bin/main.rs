@@ -10,9 +10,9 @@ use utoipa_swagger_ui::SwaggerUi;
 
 use polymesh_api::Api;
 
-use confidential_proof_shared::*;
 use confidential_proof_api as proof_api;
 use confidential_proof_api::{repo, v1::*};
+use confidential_proof_shared::*;
 use confidential_rest_api::{signing, v1::*};
 
 pub fn v1_service(cfg: &mut web::ServiceConfig) {
