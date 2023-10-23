@@ -3,15 +3,15 @@ use confidential_proof_shared::{
   error::Result, Signer, SignerWithSecret,
 };
 
-use super::SigningManagerTrait;
+use super::{SigningManagerTrait, SigningManager};
 
 pub struct SqliteSigningManager {
   pool: sqlx::SqlitePool,
 }
 
 impl SqliteSigningManager {
-  pub fn new(pool: sqlx::SqlitePool) -> Self {
-    Self { pool }
+  pub fn new(pool: &sqlx::SqlitePool) -> SigningManager {
+    Box::new(Self { pool: pool.clone() })
   }
 }
 

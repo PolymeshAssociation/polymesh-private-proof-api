@@ -27,7 +27,7 @@ async fn start_server() -> anyhow::Result<()> {
   // Open database.
   let pool = get_db_pool().await?;
   // Repository.
-  let repo = web::Data::new(Box::new(repo::SqliteConfidentialRepository::new(pool.clone())));
+  let repo = web::Data::new(repo::SqliteConfidentialRepository::new(&pool));
   log::info!("Repository initialized");
 
   // starting the server

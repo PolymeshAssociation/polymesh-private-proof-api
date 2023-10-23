@@ -884,6 +884,7 @@ dependencies = [
  "anyhow",
  "async-trait",
  "chrono",
+ "confidential-proof-api",
  "confidential-proof-shared",
  "confidential_assets",
  "dotenv",

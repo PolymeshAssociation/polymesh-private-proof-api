@@ -11,8 +11,20 @@ use utoipa_swagger_ui::SwaggerUi;
 use polymesh_api::Api;
 
 use confidential_proof_shared::*;
-use confidential_rest_api as rest_api;
-use confidential_rest_api::{repo, signing, v1::*};
+use confidential_proof_api as proof_api;
+use confidential_proof_api::{repo, v1::*};
+use confidential_rest_api::{signing, v1::*};
+
+pub fn v1_service(cfg: &mut web::ServiceConfig) {
+  cfg.service(
+    web::scope("/v1")
+      .configure(users::service)
+      .configure(assets::service)
+      .configure(accounts::service)
+      .configure(signers::service)
+      .configure(tx::service),
+  );
+}
 
 async fn get_db_pool() -> anyhow::Result<SqlitePool> {
   let conn_str = std::env::var("DATABASE_URL")?;
@@ -29,11 +41,11 @@ async fn start_server() -> anyhow::Result<()> {
   // Open database.
   let pool = get_db_pool().await?;
   // Repository.
-  let repo = web::Data::new(Box::new(repo::SqliteConfidentialRepository::new(pool.clone())));
+  let repo = web::Data::new(repo::SqliteConfidentialRepository::new(&pool));
   log::info!("Repository initialized");
 
   // Signing manager.
-  let signing = web::Data::new(Box::new(signing::SqliteSigningManager::new(pool)));
+  let signing = web::Data::new(signing::SqliteSigningManager::new(&pool));
 
   let polymesh_url = std::env::var("POLYMESH_URL").unwrap_or("ws://localhost:9944/".to_string());
   let polymesh_api = web::Data::new(Api::new(&polymesh_url).await?);
@@ -54,29 +66,29 @@ async fn start_server() -> anyhow::Result<()> {
         assets::get_asset,
         assets::create_asset,
         assets::sender_proof_verify,
-        assets::tx_create_asset,
-        assets::tx_create_venue,
-        assets::tx_allow_venues,
-        assets::tx_create_settlement,
-        assets::tx_execute_settlement,
         accounts::get_all_accounts,
         accounts::get_account,
         accounts::create_account,
-        accounts::tx_add_mediator,
-        accounts::tx_mediator_affirm_leg,
         accounts::auditor_verify_request,
         account_assets::get_all_account_assets,
         account_assets::get_account_asset,
         account_assets::create_account_asset,
-        account_assets::tx_init_account,
-        account_assets::tx_sender_affirm_leg,
-        account_assets::tx_receiver_affirm_leg,
-        account_assets::tx_apply_incoming,
-        account_assets::tx_mint,
         account_assets::asset_issuer_mint,
         account_assets::request_sender_proof,
         account_assets::receiver_verify_request,
         account_assets::update_balance_request,
+        tx::assets::tx_create_asset,
+        tx::assets::tx_create_venue,
+        tx::assets::tx_allow_venues,
+        tx::assets::tx_create_settlement,
+        tx::assets::tx_execute_settlement,
+        tx::accounts::tx_add_mediator,
+        tx::accounts::tx_mediator_affirm_leg,
+        tx::account_assets::tx_init_account,
+        tx::account_assets::tx_sender_affirm_leg,
+        tx::account_assets::tx_receiver_affirm_leg,
+        tx::account_assets::tx_apply_incoming,
+        tx::account_assets::tx_mint,
       ),
       components(
         schemas(
@@ -129,8 +141,8 @@ async fn start_server() -> anyhow::Result<()> {
           .app_data(repo.clone())
           .app_data(signing.clone())
           .app_data(polymesh_api.clone())
-          .configure(rest_api::health::service)
-          .configure(rest_api::v1::service),
+          .configure(proof_api::health::service)
+          .configure(v1_service),
       )
       .service(Redoc::with_url("/redoc", openapi.clone()))
       .service(SwaggerUi::new("/swagger-ui/{_:.*}").url("/api-docs/openapi.json", openapi.clone()))

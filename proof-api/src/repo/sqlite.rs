@@ -4,15 +4,15 @@ use confidential_proof_shared::{
   CreateAccount, CreateAsset, CreateUser, UpdateAccountAsset, User,
 };
 
-use super::ConfidentialRepository;
+use super::{ConfidentialRepository, Repository};
 
 pub struct SqliteConfidentialRepository {
   pool: sqlx::SqlitePool,
 }
 
 impl SqliteConfidentialRepository {
-  pub fn new(pool: sqlx::SqlitePool) -> Self {
-    Self { pool }
+  pub fn new(pool: &sqlx::SqlitePool) -> Repository {
+    Box::new(Self { pool: pool.clone() })
   }
 }
 
