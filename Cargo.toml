@@ -10,6 +10,8 @@ resolver = "2"
 confidential_assets = { git = "ssh://git@github.com/PolymeshAssociation/confidential_assets.git", branch = "main" }
 #confidential_assets = { path = "../confidential_assets/" }
 bulletproofs = { version = "4.0.0", git = "https://github.com/PolymeshAssociation/bulletproofs", branch = "polymesh" }
+polymesh-api = { path = "../polymesh-api/" }
+polymesh-api-client = { path = "../polymesh-api/crates/polymesh-api-client/" }
 
 [workspace.dependencies]
 # internal
@@ -23,6 +25,7 @@ confidential_assets = { version = "1.0.0", default-features = false }
 # Polymesh API
 polymesh-api = { version = "3.2.0", default-features = false }
 sp-core = { version = "21.0.0", default-features = false }
+sp-runtime = { version = "24.0", default-features = false }
 
 # OpenAPI
 utoipa = { version = "4.0", features = ["actix_extras", "chrono", "uuid", "decimal"] }
@@ -40,11 +43,18 @@ codec = { package = "parity-scale-codec", version = "3.0.0", default-features = 
 serde = { version = "1", default-features = false, features = ["alloc", "derive"] }
 serde_json = { version = "1.0", default-features = false, features = ["alloc"] }
 serde-hex = { version = "0.1.0" }
+serde_with = { version = "3.4.0", default-features = false, features = ["alloc", "macros"] }
+base64 = { version = "0.21" }
 
 # actix
 actix-cors = "0.6"
 actix-web = "4.3"
 actix-web-lab = "0.19"
+
+# HTTP client
+reqwest = { version = "0.11", features = ["json"] }
+url = { version = "2.4" }
+http = { version = "0.2" }
 
 # types
 uuid = { version = "1.2", features = ["serde", "v4"] }

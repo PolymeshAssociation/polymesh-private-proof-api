@@ -3,9 +3,11 @@ use std::sync::Arc;
 use actix_web::web::Data;
 
 use async_trait::async_trait;
-use confidential_proof_shared::{error::Result, Signer, SignerWithSecret};
+use confidential_proof_shared::{error::Result, SignerInfo, SignerWithSecret, CreateSigner};
 
-use super::{AppSigningManager, SigningManagerTrait};
+use polymesh_api::client::PairSigner;
+
+use super::{AppSigningManager, SigningManagerTrait, TxSigner};
 
 pub struct SqliteSigningManager {
   pool: sqlx::SqlitePool,
@@ -23,10 +25,10 @@ impl SqliteSigningManager {
 
 #[async_trait]
 impl SigningManagerTrait for SqliteSigningManager {
-  async fn get_signers(&self) -> Result<Vec<Signer>> {
+  async fn get_signers(&self) -> Result<Vec<SignerInfo>> {
     Ok(
       sqlx::query_as!(
-        Signer,
+        SignerInfo,
         r#"SELECT signer_name as name, public_key, created_at FROM signers"#,
       )
       .fetch_all(&self.pool)
@@ -34,10 +36,10 @@ impl SigningManagerTrait for SqliteSigningManager {
     )
   }
 
-  async fn get_signer(&self, signer: &str) -> Result<Option<Signer>> {
+  async fn get_signer_info(&self, signer: &str) -> Result<Option<SignerInfo>> {
     Ok(
       sqlx::query_as!(
-        Signer,
+        SignerInfo,
         r#"SELECT signer_name as name, public_key, created_at
         FROM signers WHERE signer_name = ?"#,
         signer
@@ -47,23 +49,29 @@ impl SigningManagerTrait for SqliteSigningManager {
     )
   }
 
-  async fn get_signer_with_secret(&self, signer: &str) -> Result<Option<SignerWithSecret>> {
-    Ok(
-      sqlx::query_as!(
+  async fn get_signer(&self, signer: &str) -> Result<Option<TxSigner>> {
+    let signer = sqlx::query_as!(
         SignerWithSecret,
         r#"SELECT signer_name as name, public_key, secret_key
         FROM signers WHERE signer_name = ?"#,
         signer
       )
       .fetch_optional(&self.pool)
-      .await?,
-    )
+      .await?;
+    match signer {
+      Some(signer) => {
+        let signer = PairSigner::new(signer.keypair()?);
+        Ok(Some(Box::new(signer)))
+      }
+      None => Ok(None),
+    }
   }
 
-  async fn create_signer(&self, signer: &SignerWithSecret) -> Result<Signer> {
+  async fn create_signer(&self, signer: &CreateSigner) -> Result<SignerInfo> {
+    let signer = signer.as_signer_with_secret()?;
     Ok(
       sqlx::query_as!(
-        Signer,
+        SignerInfo,
         r#"
       INSERT INTO signers (signer_name, public_key, secret_key)
       VALUES (?, ?, ?)

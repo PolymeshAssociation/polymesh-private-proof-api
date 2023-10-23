@@ -1,6 +1,5 @@
 use actix_web::{post, web, HttpResponse, Responder, Result};
 
-use polymesh_api::client::PairSigner;
 use polymesh_api::types::pallet_confidential_asset::{AffirmLeg, AffirmParty};
 use polymesh_api::Api;
 
@@ -34,10 +33,9 @@ pub async fn tx_add_mediator(
   api: web::Data<Api>,
 ) -> Result<impl Responder> {
   let mut signer = signing
-    .get_signer_with_secret(&req.signer)
+    .get_signer(&req.signer)
     .await?
-    .ok_or_else(|| Error::not_found("Signer"))
-    .and_then(|signer| Ok(PairSigner::new(signer.keypair()?)))?;
+    .ok_or_else(|| Error::not_found("Signer"))?;
   // Get the account.
   let account = repo
     .get_account(*account_id)
@@ -76,10 +74,9 @@ pub async fn tx_mediator_affirm_leg(
 ) -> Result<impl Responder> {
   let account_id = path.into_inner();
   let mut signer = signing
-    .get_signer_with_secret(&req.signer)
+    .get_signer(&req.signer)
     .await?
-    .ok_or_else(|| Error::not_found("Signer"))
-    .and_then(|signer| Ok(PairSigner::new(signer.keypair()?)))?;
+    .ok_or_else(|| Error::not_found("Signer"))?;
   // Get the account.
   let account = repo
     .get_account(account_id)

@@ -2,7 +2,6 @@ use actix_web::{post, web, HttpResponse, Responder, Result};
 
 use codec::Encode;
 
-use polymesh_api::client::PairSigner;
 use polymesh_api::types::pallet_confidential_asset::{AffirmLeg, AffirmParty, SenderProof};
 use polymesh_api::Api;
 
@@ -39,10 +38,9 @@ pub async fn tx_init_account(
 ) -> Result<impl Responder> {
   let (account_id, asset_id) = path.into_inner();
   let mut signer = signing
-    .get_signer_with_secret(&req.signer)
+    .get_signer(&req.signer)
     .await?
-    .ok_or_else(|| Error::not_found("Signer"))
-    .and_then(|signer| Ok(PairSigner::new(signer.keypair()?)))?;
+    .ok_or_else(|| Error::not_found("Signer"))?;
   // Get the account.
   let account = repo
     .get_account(account_id)
@@ -86,10 +84,9 @@ pub async fn tx_receiver_affirm_leg(
 ) -> Result<impl Responder> {
   let (account_id, asset_id) = path.into_inner();
   let mut signer = signing
-    .get_signer_with_secret(&req.signer)
+    .get_signer(&req.signer)
     .await?
-    .ok_or_else(|| Error::not_found("Signer"))
-    .and_then(|signer| Ok(PairSigner::new(signer.keypair()?)))?;
+    .ok_or_else(|| Error::not_found("Signer"))?;
   // Get the account asset with account secret key.
   let _account_asset = repo
     .get_account_asset_with_secret(account_id, asset_id)
@@ -134,10 +131,9 @@ pub async fn tx_apply_incoming(
 ) -> Result<impl Responder> {
   let (account_id, asset_id) = path.into_inner();
   let mut signer = signing
-    .get_signer_with_secret(&req.signer)
+    .get_signer(&req.signer)
     .await?
-    .ok_or_else(|| Error::not_found("Signer"))
-    .and_then(|signer| Ok(PairSigner::new(signer.keypair()?)))?;
+    .ok_or_else(|| Error::not_found("Signer"))?;
   // Get the account.
   let account = repo
     .get_account(account_id)
@@ -182,10 +178,9 @@ pub async fn tx_sender_affirm_leg(
 ) -> Result<impl Responder> {
   let (account_id, asset_id) = path.into_inner();
   let mut signer = signing
-    .get_signer_with_secret(&req.signer)
+    .get_signer(&req.signer)
     .await?
-    .ok_or_else(|| Error::not_found("Signer"))
-    .and_then(|signer| Ok(PairSigner::new(signer.keypair()?)))?;
+    .ok_or_else(|| Error::not_found("Signer"))?;
   // Get the account asset with account secret key.
   let account_asset = repo
     .get_account_asset_with_secret(account_id, asset_id)
@@ -270,10 +265,9 @@ pub async fn tx_mint(
 ) -> Result<impl Responder> {
   let (account_id, asset_id) = path.into_inner();
   let mut signer = signing
-    .get_signer_with_secret(&req.signer)
+    .get_signer(&req.signer)
     .await?
-    .ok_or_else(|| Error::not_found("Signer"))
-    .and_then(|signer| Ok(PairSigner::new(signer.keypair()?)))?;
+    .ok_or_else(|| Error::not_found("Signer"))?;
   // Get the account.
   let account = repo
     .get_account(account_id)

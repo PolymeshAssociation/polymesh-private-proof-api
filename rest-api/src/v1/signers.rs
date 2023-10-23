@@ -34,7 +34,7 @@ pub async fn get_signer(
   signer: web::Path<String>,
   signing: AppSigningManager,
 ) -> Result<impl Responder> {
-  Ok(match signing.get_signer(&signer).await? {
+  Ok(match signing.get_signer_info(&signer).await? {
     Some(signer) => HttpResponse::Ok().json(signer),
     None => HttpResponse::NotFound().body("Not found"),
   })
@@ -51,7 +51,6 @@ pub async fn create_signer(
   signer: web::Json<CreateSigner>,
   signing: AppSigningManager,
 ) -> Result<impl Responder> {
-  let signer = signer.as_signer_with_secret()?;
   let signer = signing.create_signer(&signer).await?;
   Ok(HttpResponse::Ok().json(signer))
 }

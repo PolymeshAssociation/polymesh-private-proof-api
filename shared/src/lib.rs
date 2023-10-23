@@ -18,7 +18,7 @@ pub use proofs::*;
 
 #[cfg_attr(feature = "backend", derive(sqlx::FromRow))]
 #[derive(Clone, Debug, Default, Deserialize, Serialize, ToSchema)]
-pub struct Signer {
+pub struct SignerInfo {
   #[schema(example = "Alice")]
   pub name: String,
   #[schema(example = "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY")]
@@ -48,13 +48,16 @@ pub struct CreateSigner {
   #[schema(example = "Alice")]
   pub name: String,
   #[schema(example = "//Alice")]
-  pub secret_uri: String,
+  pub secret_uri: Option<String>,
 }
 
 #[cfg(feature = "backend")]
 impl CreateSigner {
   pub fn as_signer_with_secret(&self) -> Result<SignerWithSecret> {
-    let pair = sr25519::Pair::from_string(&self.secret_uri, None)?;
+    let pair = match &self.secret_uri {
+      Some(secret_uri) => sr25519::Pair::from_string(secret_uri, None)?,
+      None => sr25519::Pair::generate().0,
+    };
     Ok(SignerWithSecret {
       name: self.name.clone(),
       public_key: pair.public().to_string(),

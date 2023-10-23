@@ -26,11 +26,26 @@ pub enum Error {
   #[error("Database error: {0}")]
   Database(#[from] sqlx::Error),
 
+  #[error("Reqwest client error: {0}")]
+  Reqwest(#[from] reqwest::Error),
+
+  #[error("Invalid HTTP Header: {0}")]
+  InvalidHeaderValue(#[from] reqwest::header::InvalidHeaderValue),
+
+  #[error("Url parse error: {0}")]
+  UrlParse(#[from] url::ParseError),
+
+  #[error("Invalid HTTP Method: {0}")]
+  InvalidMethod(#[from] http::method::InvalidMethod),
+
   #[error("Json error: {0}")]
   Json(#[from] serde_json::Error),
 
   #[error("hex error: {0}")]
   Hex(#[from] hex::FromHexError),
+
+  #[error("base64 decode error: {0}")]
+  Base64Decode(#[from] base64::DecodeError),
 
   #[error("parity-scale-codec error: {0}")]
   #[cfg(feature = "backend")]

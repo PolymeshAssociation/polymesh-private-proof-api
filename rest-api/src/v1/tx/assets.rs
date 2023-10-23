@@ -1,6 +1,5 @@
 use actix_web::{post, web, HttpResponse, Responder, Result};
 
-use polymesh_api::client::PairSigner;
 use polymesh_api::types::{
   pallet_confidential_asset::TransactionId,
   polymesh_primitives::{
@@ -47,10 +46,9 @@ pub async fn tx_allow_venues(
     .ok_or_else(|| Error::not_found("Asset"))?
     .ticker()?;
   let mut signer = signing
-    .get_signer_with_secret(&req.signer)
+    .get_signer(&req.signer)
     .await?
-    .ok_or_else(|| Error::not_found("Signer"))
-    .and_then(|signer| Ok(PairSigner::new(signer.keypair()?)))?;
+    .ok_or_else(|| Error::not_found("Signer"))?;
 
   let venues = req.venues();
   let res = api
@@ -81,10 +79,9 @@ pub async fn tx_create_asset(
   api: web::Data<Api>,
 ) -> Result<impl Responder> {
   let mut signer = signing
-    .get_signer_with_secret(&req.signer)
+    .get_signer(&req.signer)
     .await?
-    .ok_or_else(|| Error::not_found("Signer"))
-    .and_then(|signer| Ok(PairSigner::new(signer.keypair()?)))?;
+    .ok_or_else(|| Error::not_found("Signer"))?;
 
   let auditors = req.auditors()?;
 
@@ -124,10 +121,9 @@ pub async fn tx_create_settlement(
   api: web::Data<Api>,
 ) -> Result<impl Responder> {
   let mut signer = signing
-    .get_signer_with_secret(&req.signer)
+    .get_signer(&req.signer)
     .await?
-    .ok_or_else(|| Error::not_found("Signer"))
-    .and_then(|signer| Ok(PairSigner::new(signer.keypair()?)))?;
+    .ok_or_else(|| Error::not_found("Signer"))?;
 
   let venue_id = VenueId(*venue_id);
   let memo = req.memo()?;
@@ -161,10 +157,9 @@ pub async fn tx_execute_settlement(
   api: web::Data<Api>,
 ) -> Result<impl Responder> {
   let mut signer = signing
-    .get_signer_with_secret(&req.signer)
+    .get_signer(&req.signer)
     .await?
-    .ok_or_else(|| Error::not_found("Signer"))
-    .and_then(|signer| Ok(PairSigner::new(signer.keypair()?)))?;
+    .ok_or_else(|| Error::not_found("Signer"))?;
 
   let transaction_id = TransactionId(*transaction_id);
   let res = api
@@ -195,10 +190,9 @@ pub async fn tx_create_venue(
   api: web::Data<Api>,
 ) -> Result<impl Responder> {
   let mut signer = signing
-    .get_signer_with_secret(&req.signer)
+    .get_signer(&req.signer)
     .await?
-    .ok_or_else(|| Error::not_found("Signer"))
-    .and_then(|signer| Ok(PairSigner::new(signer.keypair()?)))?;
+    .ok_or_else(|| Error::not_found("Signer"))?;
 
   let res = api
     .call()

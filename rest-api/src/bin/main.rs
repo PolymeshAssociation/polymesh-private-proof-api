@@ -33,6 +33,23 @@ async fn get_db_pool() -> anyhow::Result<SqlitePool> {
   Ok(pool)
 }
 
+fn get_signing_manager(pool: &SqlitePool) -> anyhow::Result<signing::AppSigningManager> {
+  let manager = std::env::var("SIGNING_MANAGER").ok();
+  match manager.as_ref().map(|s| s.as_str()) {
+    Some("DB" | "LOCAL") | None => {
+      Ok(signing::SqliteSigningManager::new_app_data(pool))
+    }
+    Some("VAULT") => {
+      let base = std::env::var("VAULT_TRANSIT_URL")?;
+      let token = std::env::var("VAULT_TOKEN")?;
+      Ok(signing::VaultSigningManager::new_app_data(base, token)?)
+    }
+    Some(manager) => {
+      Err(anyhow::anyhow!("Unknown Signing Manager: {manager:?}"))
+    }
+  }
+}
+
 async fn start_server() -> anyhow::Result<()> {
   // building address
   let port = std::env::var("PORT").unwrap_or("8080".to_string());
@@ -45,7 +62,7 @@ async fn start_server() -> anyhow::Result<()> {
   log::info!("Repository initialized");
 
   // Signing manager.
-  let signing = signing::SqliteSigningManager::new_app_data(&pool);
+  let signing = get_signing_manager(&pool)?;
 
   let polymesh_url = std::env::var("POLYMESH_URL").unwrap_or("ws://localhost:9944/".to_string());
   let polymesh_api = web::Data::new(Api::new(&polymesh_url).await?);
@@ -93,7 +110,7 @@ async fn start_server() -> anyhow::Result<()> {
       components(
         schemas(
           User, CreateUser,
-          Signer, CreateSigner,
+          SignerInfo, CreateSigner,
           Asset, CreateAsset,
           Account,
           AccountAsset, CreateAccountAsset,
