@@ -29,7 +29,7 @@ pub fn service(cfg: &mut web::ServiceConfig) {
 pub async fn tx_add_mediator(
   account_id: web::Path<i64>,
   req: web::Json<TransactionArgs>,
-  repo: web::Data<Repository>,
+  repo: Repository,
   signing: AppSigningManager,
   api: web::Data<Api>,
 ) -> Result<impl Responder> {
@@ -70,7 +70,7 @@ pub async fn tx_add_mediator(
 pub async fn tx_mediator_affirm_leg(
   path: web::Path<i64>,
   req: web::Json<AffirmTransactionLegRequest>,
-  repo: web::Data<Repository>,
+  repo: Repository,
   signing: AppSigningManager,
   api: web::Data<Api>,
 ) -> Result<impl Responder> {

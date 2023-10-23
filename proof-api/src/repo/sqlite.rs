@@ -1,3 +1,7 @@
+use std::sync::Arc;
+
+use actix_web::web::Data;
+
 use async_trait::async_trait;
 use confidential_proof_shared::{
   error::Result, Account, AccountAsset, AccountAssetWithSecret, AccountWithSecret, Asset,
@@ -11,8 +15,12 @@ pub struct SqliteConfidentialRepository {
 }
 
 impl SqliteConfidentialRepository {
-  pub fn new(pool: &sqlx::SqlitePool) -> Repository {
-    Box::new(Self { pool: pool.clone() })
+  pub fn new(pool: &sqlx::SqlitePool) -> Arc<dyn ConfidentialRepository> {
+    Arc::new(Self { pool: pool.clone() })
+  }
+
+  pub fn new_app_data(pool: &sqlx::SqlitePool) -> Repository {
+    Data::from(Self::new(pool))
   }
 }
 

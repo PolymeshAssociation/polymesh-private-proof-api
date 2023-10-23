@@ -27,7 +27,7 @@ pub fn service(cfg: &mut web::ServiceConfig) {
 #[get("/accounts/{account_id}/assets")]
 pub async fn get_all_account_assets(
   account_id: web::Path<i64>,
-  repo: web::Data<Repository>,
+  repo: Repository,
 ) -> Result<impl Responder> {
   let account_assets = repo.get_account_assets(*account_id).await?;
   Ok(HttpResponse::Ok().json(account_assets))
@@ -42,7 +42,7 @@ pub async fn get_all_account_assets(
 #[get("/accounts/{account_id}/assets/{asset_id}")]
 pub async fn get_account_asset(
   path: web::Path<(i64, i64)>,
-  repo: web::Data<Repository>,
+  repo: Repository,
 ) -> Result<impl Responder> {
   let (account_id, asset_id) = path.into_inner();
   let account_asset = repo
@@ -62,7 +62,7 @@ pub async fn get_account_asset(
 pub async fn create_account_asset(
   account_id: web::Path<i64>,
   create_account_asset: web::Json<CreateAccountAsset>,
-  repo: web::Data<Repository>,
+  repo: Repository,
 ) -> Result<impl Responder> {
   // Get the account's secret key.
   let account = repo
@@ -90,7 +90,7 @@ pub async fn create_account_asset(
 pub async fn asset_issuer_mint(
   path: web::Path<(i64, i64)>,
   account_mint_asset: web::Json<AccountMintAsset>,
-  repo: web::Data<Repository>,
+  repo: Repository,
 ) -> Result<impl Responder> {
   let (account_id, asset_id) = path.into_inner();
   // Get the account asset with account secret key.
@@ -122,7 +122,7 @@ pub async fn asset_issuer_mint(
 pub async fn request_sender_proof(
   path: web::Path<(i64, i64)>,
   req: web::Json<SenderProofRequest>,
-  repo: web::Data<Repository>,
+  repo: Repository,
 ) -> Result<impl Responder> {
   let (account_id, asset_id) = path.into_inner();
   // Get the account asset with account secret key.
@@ -160,7 +160,7 @@ pub async fn request_sender_proof(
 pub async fn receiver_verify_request(
   path: web::Path<(i64, i64)>,
   req: web::Json<ReceiverVerifyRequest>,
-  repo: web::Data<Repository>,
+  repo: Repository,
 ) -> Result<impl Responder> {
   let (account_id, asset_id) = path.into_inner();
   // Get the account asset with account secret key.
@@ -184,7 +184,7 @@ pub async fn receiver_verify_request(
 pub async fn update_balance_request(
   path: web::Path<(i64, i64)>,
   req: web::Json<UpdateAccountAssetBalanceRequest>,
-  repo: web::Data<Repository>,
+  repo: Repository,
 ) -> Result<impl Responder> {
   let (account_id, asset_id) = path.into_inner();
   // Get the account asset with account secret key.

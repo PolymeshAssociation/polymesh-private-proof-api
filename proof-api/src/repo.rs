@@ -1,3 +1,5 @@
+use actix_web::web::Data;
+
 use async_trait::async_trait;
 use confidential_proof_shared::{
   error::Result, Account, AccountAsset, AccountAssetWithSecret, AccountWithSecret, Asset,
@@ -8,7 +10,7 @@ mod sqlite;
 
 pub use sqlite::SqliteConfidentialRepository;
 
-pub type Repository = Box<dyn ConfidentialRepository>;
+pub type Repository = Data<dyn ConfidentialRepository>;
 
 #[cfg_attr(test, mockall::automock)]
 #[async_trait]

@@ -37,7 +37,7 @@ pub fn service(cfg: &mut web::ServiceConfig) {
 pub async fn tx_allow_venues(
   asset_id: web::Path<i64>,
   req: web::Json<AllowVenues>,
-  repo: web::Data<Repository>,
+  repo: Repository,
   signing: AppSigningManager,
   api: web::Data<Api>,
 ) -> Result<impl Responder> {

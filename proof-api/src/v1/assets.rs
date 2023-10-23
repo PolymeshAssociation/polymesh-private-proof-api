@@ -19,7 +19,7 @@ pub fn service(cfg: &mut web::ServiceConfig) {
   )
 )]
 #[get("/assets")]
-pub async fn get_all_assets(repo: web::Data<Repository>) -> Result<impl Responder> {
+pub async fn get_all_assets(repo: Repository) -> Result<impl Responder> {
   let assets = repo.get_assets().await?;
   Ok(HttpResponse::Ok().json(assets))
 }
@@ -31,10 +31,7 @@ pub async fn get_all_assets(repo: web::Data<Repository>) -> Result<impl Responde
   )
 )]
 #[get("/assets/{asset_id}")]
-pub async fn get_asset(
-  asset_id: web::Path<i64>,
-  repo: web::Data<Repository>,
-) -> Result<impl Responder> {
+pub async fn get_asset(asset_id: web::Path<i64>, repo: Repository) -> Result<impl Responder> {
   Ok(match repo.get_asset(*asset_id).await? {
     Some(asset) => HttpResponse::Ok().json(asset),
     None => HttpResponse::NotFound().body("Not found"),
@@ -50,7 +47,7 @@ pub async fn get_asset(
 #[post("/assets")]
 pub async fn create_asset(
   asset: web::Json<CreateAsset>,
-  repo: web::Data<Repository>,
+  repo: Repository,
 ) -> Result<impl Responder> {
   let asset = repo.create_asset(&asset).await?;
   Ok(HttpResponse::Ok().json(asset))

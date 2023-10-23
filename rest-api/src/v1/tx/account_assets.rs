@@ -33,7 +33,7 @@ pub fn service(cfg: &mut web::ServiceConfig) {
 pub async fn tx_init_account(
   path: web::Path<(i64, i64)>,
   req: web::Json<TransactionArgs>,
-  repo: web::Data<Repository>,
+  repo: Repository,
   signing: AppSigningManager,
   api: web::Data<Api>,
 ) -> Result<impl Responder> {
@@ -80,7 +80,7 @@ pub async fn tx_init_account(
 pub async fn tx_receiver_affirm_leg(
   path: web::Path<(i64, i64)>,
   req: web::Json<AffirmTransactionLegRequest>,
-  repo: web::Data<Repository>,
+  repo: Repository,
   signing: AppSigningManager,
   api: web::Data<Api>,
 ) -> Result<impl Responder> {
@@ -128,7 +128,7 @@ pub async fn tx_receiver_affirm_leg(
 pub async fn tx_apply_incoming(
   path: web::Path<(i64, i64)>,
   req: web::Json<TransactionArgs>,
-  repo: web::Data<Repository>,
+  repo: Repository,
   signing: AppSigningManager,
   api: web::Data<Api>,
 ) -> Result<impl Responder> {
@@ -176,7 +176,7 @@ pub async fn tx_apply_incoming(
 pub async fn tx_sender_affirm_leg(
   path: web::Path<(i64, i64)>,
   req: web::Json<AffirmTransactionLegRequest>,
-  repo: web::Data<Repository>,
+  repo: Repository,
   signing: AppSigningManager,
   api: web::Data<Api>,
 ) -> Result<impl Responder> {
@@ -264,7 +264,7 @@ pub async fn tx_sender_affirm_leg(
 pub async fn tx_mint(
   path: web::Path<(i64, i64)>,
   req: web::Json<MintRequest>,
-  repo: web::Data<Repository>,
+  repo: Repository,
   signing: AppSigningManager,
   api: web::Data<Api>,
 ) -> Result<impl Responder> {

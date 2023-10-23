@@ -21,7 +21,7 @@ pub fn service(cfg: &mut web::ServiceConfig) {
   )
 )]
 #[get("/accounts")]
-pub async fn get_all_accounts(repo: web::Data<Repository>) -> Result<impl Responder> {
+pub async fn get_all_accounts(repo: Repository) -> Result<impl Responder> {
   let accounts = repo.get_accounts().await?;
   Ok(HttpResponse::Ok().json(accounts))
 }
@@ -33,10 +33,7 @@ pub async fn get_all_accounts(repo: web::Data<Repository>) -> Result<impl Respon
   )
 )]
 #[get("/accounts/{account_id}")]
-pub async fn get_account(
-  account_id: web::Path<i64>,
-  repo: web::Data<Repository>,
-) -> Result<impl Responder> {
+pub async fn get_account(account_id: web::Path<i64>, repo: Repository) -> Result<impl Responder> {
   let account = repo
     .get_account(*account_id)
     .await?
@@ -51,7 +48,7 @@ pub async fn get_account(
   )
 )]
 #[post("/accounts")]
-pub async fn create_account(repo: web::Data<Repository>) -> Result<impl Responder> {
+pub async fn create_account(repo: Repository) -> Result<impl Responder> {
   let account = CreateAccount::new();
   let account = repo.create_account(&account).await?;
   Ok(HttpResponse::Ok().json(account))
@@ -67,7 +64,7 @@ pub async fn create_account(repo: web::Data<Repository>) -> Result<impl Responde
 pub async fn auditor_verify_request(
   account_id: web::Path<i64>,
   req: web::Json<AuditorVerifyRequest>,
-  repo: web::Data<Repository>,
+  repo: Repository,
 ) -> Result<impl Responder> {
   // Get the account with secret key.
   let account = repo
