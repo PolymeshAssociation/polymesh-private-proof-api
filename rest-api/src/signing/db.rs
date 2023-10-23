@@ -27,7 +27,7 @@ impl SigningManagerTrait for SqliteSigningManager {
     Ok(
       sqlx::query_as!(
         Signer,
-        r#"SELECT signer_id, signer_name, public_key, created_at, updated_at FROM signers"#,
+        r#"SELECT signer_name as name, public_key, created_at FROM signers"#,
       )
       .fetch_all(&self.pool)
       .await?,
@@ -38,7 +38,7 @@ impl SigningManagerTrait for SqliteSigningManager {
     Ok(
       sqlx::query_as!(
         Signer,
-        r#"SELECT signer_id, signer_name, public_key, created_at, updated_at
+        r#"SELECT signer_name as name, public_key, created_at
         FROM signers WHERE signer_name = ?"#,
         signer
       )
@@ -51,7 +51,7 @@ impl SigningManagerTrait for SqliteSigningManager {
     Ok(
       sqlx::query_as!(
         SignerWithSecret,
-        r#"SELECT signer_id, signer_name, public_key, secret_key
+        r#"SELECT signer_name as name, public_key, secret_key
         FROM signers WHERE signer_name = ?"#,
         signer
       )
@@ -67,9 +67,9 @@ impl SigningManagerTrait for SqliteSigningManager {
         r#"
       INSERT INTO signers (signer_name, public_key, secret_key)
       VALUES (?, ?, ?)
-      RETURNING signer_id, signer_name, public_key, created_at, updated_at
+      RETURNING signer_name as name, public_key, created_at
       "#,
-        signer.signer_name,
+        signer.name,
         signer.public_key,
         signer.secret_key,
       )
