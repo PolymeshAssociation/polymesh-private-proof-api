@@ -14,6 +14,7 @@ use confidential_proof_shared::{
 };
 
 use crate::repo::Repository;
+use crate::signing::SigningManager;
 
 pub fn service(cfg: &mut web::ServiceConfig) {
   cfg
@@ -104,10 +105,11 @@ pub async fn tx_init_account(
   path: web::Path<(i64, i64)>,
   req: web::Json<TransactionArgs>,
   repo: web::Data<Repository>,
+  signing: web::Data<SigningManager>,
   api: web::Data<Api>,
 ) -> Result<impl Responder> {
   let (account_id, asset_id) = path.into_inner();
-  let mut signer = repo
+  let mut signer = signing
     .get_signer_with_secret(&req.signer)
     .await?
     .ok_or_else(|| Error::not_found("Signer"))
@@ -150,10 +152,11 @@ pub async fn tx_receiver_affirm_leg(
   path: web::Path<(i64, i64)>,
   req: web::Json<AffirmTransactionLegRequest>,
   repo: web::Data<Repository>,
+  signing: web::Data<SigningManager>,
   api: web::Data<Api>,
 ) -> Result<impl Responder> {
   let (account_id, asset_id) = path.into_inner();
-  let mut signer = repo
+  let mut signer = signing
     .get_signer_with_secret(&req.signer)
     .await?
     .ok_or_else(|| Error::not_found("Signer"))
@@ -197,10 +200,11 @@ pub async fn tx_apply_incoming(
   path: web::Path<(i64, i64)>,
   req: web::Json<TransactionArgs>,
   repo: web::Data<Repository>,
+  signing: web::Data<SigningManager>,
   api: web::Data<Api>,
 ) -> Result<impl Responder> {
   let (account_id, asset_id) = path.into_inner();
-  let mut signer = repo
+  let mut signer = signing
     .get_signer_with_secret(&req.signer)
     .await?
     .ok_or_else(|| Error::not_found("Signer"))
@@ -244,10 +248,11 @@ pub async fn tx_sender_affirm_leg(
   path: web::Path<(i64, i64)>,
   req: web::Json<AffirmTransactionLegRequest>,
   repo: web::Data<Repository>,
+  signing: web::Data<SigningManager>,
   api: web::Data<Api>,
 ) -> Result<impl Responder> {
   let (account_id, asset_id) = path.into_inner();
-  let mut signer = repo
+  let mut signer = signing
     .get_signer_with_secret(&req.signer)
     .await?
     .ok_or_else(|| Error::not_found("Signer"))
@@ -331,10 +336,11 @@ pub async fn tx_mint(
   path: web::Path<(i64, i64)>,
   req: web::Json<MintRequest>,
   repo: web::Data<Repository>,
+  signing: web::Data<SigningManager>,
   api: web::Data<Api>,
 ) -> Result<impl Responder> {
   let (account_id, asset_id) = path.into_inner();
-  let mut signer = repo
+  let mut signer = signing
     .get_signer_with_secret(&req.signer)
     .await?
     .ok_or_else(|| Error::not_found("Signer"))

@@ -12,11 +12,11 @@ use confidential_proof_api as proof_api;
 use confidential_proof_api::{repo, v1::*};
 use confidential_proof_shared::*;
 
-async fn get_repo() -> anyhow::Result<repo::Repository> {
+async fn get_db_pool() -> anyhow::Result<SqlitePool> {
   let conn_str = std::env::var("DATABASE_URL")?;
   let pool = SqlitePool::connect(&conn_str).await?;
   sqlx::migrate!().run(&pool).await?;
-  Ok(Box::new(repo::SqliteConfidentialRepository::new(pool)))
+  Ok(pool)
 }
 
 async fn start_server() -> anyhow::Result<()> {
@@ -24,9 +24,10 @@ async fn start_server() -> anyhow::Result<()> {
   let port = std::env::var("PORT").unwrap_or("8080".to_string());
   let address = format!("0.0.0.0:{}", port);
 
-  // repository
-  let repo = get_repo().await?;
-  let repo = web::Data::new(repo);
+  // Open database.
+  let pool = get_db_pool().await?;
+  // Repository.
+  let repo = web::Data::new(Box::new(repo::SqliteConfidentialRepository::new(pool.clone())));
   log::info!("Repository initialized");
 
   // starting the server

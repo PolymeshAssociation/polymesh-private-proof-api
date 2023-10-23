@@ -16,6 +16,7 @@ use confidential_proof_shared::{
 };
 
 use crate::repo::Repository;
+use crate::signing::SigningManager;
 
 pub fn service(cfg: &mut web::ServiceConfig) {
   cfg
@@ -70,6 +71,7 @@ pub async fn tx_allow_venues(
   asset_id: web::Path<i64>,
   req: web::Json<AllowVenues>,
   repo: web::Data<Repository>,
+  signing: web::Data<SigningManager>,
   api: web::Data<Api>,
 ) -> Result<impl Responder> {
   let ticker = repo
@@ -77,7 +79,7 @@ pub async fn tx_allow_venues(
     .await?
     .ok_or_else(|| Error::not_found("Asset"))?
     .ticker()?;
-  let mut signer = repo
+  let mut signer = signing
     .get_signer_with_secret(&req.signer)
     .await?
     .ok_or_else(|| Error::not_found("Signer"))
@@ -123,10 +125,10 @@ pub async fn create_asset(
 #[post("/assets/tx/create_asset")]
 pub async fn tx_create_asset(
   req: web::Json<CreateConfidentialAsset>,
-  repo: web::Data<Repository>,
+  signing: web::Data<SigningManager>,
   api: web::Data<Api>,
 ) -> Result<impl Responder> {
-  let mut signer = repo
+  let mut signer = signing
     .get_signer_with_secret(&req.signer)
     .await?
     .ok_or_else(|| Error::not_found("Signer"))
@@ -166,10 +168,10 @@ pub async fn tx_create_asset(
 pub async fn tx_create_settlement(
   venue_id: web::Path<u64>,
   req: web::Json<CreateConfidentialSettlement>,
-  repo: web::Data<Repository>,
+  signing: web::Data<SigningManager>,
   api: web::Data<Api>,
 ) -> Result<impl Responder> {
-  let mut signer = repo
+  let mut signer = signing
     .get_signer_with_secret(&req.signer)
     .await?
     .ok_or_else(|| Error::not_found("Signer"))
@@ -203,10 +205,10 @@ pub async fn tx_create_settlement(
 pub async fn tx_execute_settlement(
   transaction_id: web::Path<u64>,
   req: web::Json<ExecuteConfidentialSettlement>,
-  repo: web::Data<Repository>,
+  signing: web::Data<SigningManager>,
   api: web::Data<Api>,
 ) -> Result<impl Responder> {
-  let mut signer = repo
+  let mut signer = signing
     .get_signer_with_secret(&req.signer)
     .await?
     .ok_or_else(|| Error::not_found("Signer"))
@@ -237,10 +239,10 @@ pub async fn tx_execute_settlement(
 #[post("/assets/tx/create_venue")]
 pub async fn tx_create_venue(
   req: web::Json<TransactionArgs>,
-  repo: web::Data<Repository>,
+  signing: web::Data<SigningManager>,
   api: web::Data<Api>,
 ) -> Result<impl Responder> {
-  let mut signer = repo
+  let mut signer = signing
     .get_signer_with_secret(&req.signer)
     .await?
     .ok_or_else(|| Error::not_found("Signer"))

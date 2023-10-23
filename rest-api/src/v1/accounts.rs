@@ -11,6 +11,7 @@ use confidential_proof_shared::{
 
 use super::account_assets;
 use crate::repo::Repository;
+use crate::signing::SigningManager;
 
 pub fn service(cfg: &mut web::ServiceConfig) {
   cfg
@@ -77,9 +78,10 @@ pub async fn tx_add_mediator(
   account_id: web::Path<i64>,
   req: web::Json<TransactionArgs>,
   repo: web::Data<Repository>,
+  signing: web::Data<SigningManager>,
   api: web::Data<Api>,
 ) -> Result<impl Responder> {
-  let mut signer = repo
+  let mut signer = signing
     .get_signer_with_secret(&req.signer)
     .await?
     .ok_or_else(|| Error::not_found("Signer"))
@@ -117,10 +119,11 @@ pub async fn tx_mediator_affirm_leg(
   path: web::Path<i64>,
   req: web::Json<AffirmTransactionLegRequest>,
   repo: web::Data<Repository>,
+  signing: web::Data<SigningManager>,
   api: web::Data<Api>,
 ) -> Result<impl Responder> {
   let account_id = path.into_inner();
-  let mut signer = repo
+  let mut signer = signing
     .get_signer_with_secret(&req.signer)
     .await?
     .ok_or_else(|| Error::not_found("Signer"))

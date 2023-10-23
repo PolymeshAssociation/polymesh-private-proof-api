@@ -12,13 +12,13 @@ use polymesh_api::Api;
 
 use confidential_proof_shared::*;
 use confidential_rest_api as rest_api;
-use confidential_rest_api::{repo, v1::*};
+use confidential_rest_api::{repo, signing, v1::*};
 
-async fn get_repo() -> anyhow::Result<repo::Repository> {
+async fn get_db_pool() -> anyhow::Result<SqlitePool> {
   let conn_str = std::env::var("DATABASE_URL")?;
   let pool = SqlitePool::connect(&conn_str).await?;
   sqlx::migrate!().run(&pool).await?;
-  Ok(Box::new(repo::SqliteConfidentialRepository::new(pool)))
+  Ok(pool)
 }
 
 async fn start_server() -> anyhow::Result<()> {
@@ -26,13 +26,17 @@ async fn start_server() -> anyhow::Result<()> {
   let port = std::env::var("PORT").unwrap_or("8080".to_string());
   let address = format!("0.0.0.0:{}", port);
 
+  // Open database.
+  let pool = get_db_pool().await?;
+  // Repository.
+  let repo = web::Data::new(Box::new(repo::SqliteConfidentialRepository::new(pool.clone())));
+  log::info!("Repository initialized");
+
+  // Signing manager.
+  let signing = web::Data::new(Box::new(signing::SqliteSigningManager::new(pool)));
+
   let polymesh_url = std::env::var("POLYMESH_URL").unwrap_or("ws://localhost:9944/".to_string());
   let polymesh_api = web::Data::new(Api::new(&polymesh_url).await?);
-
-  // repository
-  let repo = get_repo().await?;
-  let repo = web::Data::new(repo);
-  log::info!("Repository initialized");
 
   // starting the server
   log::info!("🚀🚀🚀 Starting Actix server at {}", address);
@@ -123,6 +127,7 @@ async fn start_server() -> anyhow::Result<()> {
       .service(
         web::scope("/api")
           .app_data(repo.clone())
+          .app_data(signing.clone())
           .app_data(polymesh_api.clone())
           .configure(rest_api::health::service)
           .configure(rest_api::v1::service),
