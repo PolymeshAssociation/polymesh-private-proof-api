@@ -52,7 +52,7 @@ struct ListKeys {
   keys: Vec<String>,
 }
 
-#[derive(Default, Debug, Deserialize)]
+#[derive(Default, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "lowercase")]
 pub enum KeyType {
   #[default]
@@ -107,6 +107,13 @@ pub struct ReadKey {
   pub supports_derivation: bool,
   pub supports_signing: bool,
   pub imported: Option<bool>,
+}
+
+#[derive(Default, Debug, Deserialize, Serialize)]
+pub struct CreateKeyRequest {
+  #[serde(rename = "type")]
+  pub key_type: KeyType,
+  pub key_size: Option<u64>,
 }
 
 #[serde_as]
@@ -246,6 +253,19 @@ impl VaultSigningManager {
     let url = self.get_key_url(key)?;
     Ok(self.vault_request(Method::GET, url).await?)
   }
+
+  pub async fn create_key(&self, key: &str) -> Result<Option<ReadKey>> {
+    let req = CreateKeyRequest {
+      key_type: KeyType::Ed25519,
+      ..Default::default()
+    };
+    let url = self.get_key_url(key)?;
+    let resp = self.client.post(url)
+      .json(&req)
+      .send()
+      .await?;
+    Ok(VaultResponse::<ReadKey>::from_response(resp).await?)
+  }
 }
 
 #[async_trait]
@@ -313,7 +333,17 @@ impl SigningManagerTrait for VaultSigningManager {
     Ok(None)
   }
 
-  async fn create_signer(&self, _signer: &CreateSigner) -> Result<SignerInfo> {
-    Ok(Default::default())
+  async fn create_signer(&self, signer: &CreateSigner) -> Result<SignerInfo> {
+    if signer.secret_uri.is_some() {
+      return Err(Error::other("VAULT signing manager doesn't support `secret_uri`."));
+    }
+    match self.create_key(&signer.name).await? {
+      Some(details) if details.keys.len() > 0 => {
+        let key = details.keys.get(&1)
+          .ok_or_else(|| Error::other("No key returned"))?;
+        Ok(key.as_signer(&details.name, 1)?)
+      }
+      _ => Err(Error::other("Failed to create key")),
+    }
   }
 }

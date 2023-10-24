@@ -26,7 +26,7 @@ pub async fn get_all_signers(signing: AppSigningManager) -> Result<impl Responde
 /// Get one signer.
 #[utoipa::path(
   responses(
-    (status = 200, body = Signer)
+    (status = 200, body = SignerInfo)
   )
 )]
 #[get("/signers/{signer}")]
@@ -43,7 +43,7 @@ pub async fn get_signer(
 /// Create a new signer.
 #[utoipa::path(
   responses(
-    (status = 200, body = Signer)
+    (status = 200, body = SignerInfo)
   )
 )]
 #[post("/signers")]

@@ -47,6 +47,8 @@ impl SignerWithSecret {
 pub struct CreateSigner {
   #[schema(example = "Alice")]
   pub name: String,
+  /// Only used for "DB" signing manager.  The "VAULT" signing manager doesn't support
+  /// importing keys from a secret.
   #[schema(example = "//Alice")]
   pub secret_uri: Option<String>,
 }
