@@ -3,7 +3,7 @@ use std::sync::Arc;
 use actix_web::web::Data;
 
 use async_trait::async_trait;
-use confidential_proof_shared::{error::Result, SignerInfo, SignerWithSecret, CreateSigner};
+use confidential_proof_shared::{error::Result, CreateSigner, SignerInfo, SignerWithSecret};
 
 use polymesh_api::client::PairSigner;
 
@@ -51,13 +51,13 @@ impl SigningManagerTrait for SqliteSigningManager {
 
   async fn get_signer(&self, signer: &str) -> Result<Option<TxSigner>> {
     let signer = sqlx::query_as!(
-        SignerWithSecret,
-        r#"SELECT signer_name as name, public_key, secret_key
+      SignerWithSecret,
+      r#"SELECT signer_name as name, public_key, secret_key
         FROM signers WHERE signer_name = ?"#,
-        signer
-      )
-      .fetch_optional(&self.pool)
-      .await?;
+      signer
+    )
+    .fetch_optional(&self.pool)
+    .await?;
     match signer {
       Some(signer) => {
         let signer = PairSigner::new(signer.keypair()?);

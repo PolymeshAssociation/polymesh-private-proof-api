@@ -1,22 +1,20 @@
-use std::sync::Arc;
 use std::collections::BTreeMap;
+use std::sync::Arc;
 
-use serde::{Deserialize, de, Serialize};
-use serde_with::{serde_as, base64::Base64};
-use base64::{Engine as _, engine::general_purpose::STANDARD};
+use base64::{engine::general_purpose::STANDARD, Engine as _};
+use serde::{de, Deserialize, Serialize};
+use serde_with::{base64::Base64, serde_as};
 
 use actix_web::web::Data;
 
-use reqwest::{Client, Url, header, Method};
+use reqwest::{header, Client, Method, Url};
 
 use dashmap::DashMap;
 
 use async_trait::async_trait;
-use confidential_proof_shared::{error::*, SignerInfo, CreateSigner};
+use confidential_proof_shared::{error::*, CreateSigner, SignerInfo};
 
-use polymesh_api::client::{
-  AccountId, Signer, Error as ClientError,
-};
+use polymesh_api::client::{AccountId, Error as ClientError, Signer};
 use sp_core::ed25519::Signature;
 use sp_runtime::MultiSignature;
 
@@ -31,18 +29,17 @@ struct VaultResponse<T> {
 }
 
 impl<T> VaultResponse<T>
-  where
-    T: std::fmt::Debug + std::default::Default + de::DeserializeOwned
+where
+  T: std::fmt::Debug + std::default::Default + de::DeserializeOwned,
 {
   async fn from_response(resp: reqwest::Response) -> Result<Option<T>> {
     let res: Self = resp.json().await?;
     match res {
-      Self { errors: Some(errors), .. } => {
-        Err(Error::Other(format!("Vault error: {errors:?}")))
-      }
-      Self { errors: None, data } => {
-        Ok(data)
-      }
+      Self {
+        errors: Some(errors),
+        ..
+      } => Err(Error::Other(format!("Vault error: {errors:?}"))),
+      Self { errors: None, data } => Ok(data),
     }
   }
 }
@@ -132,21 +129,15 @@ pub struct SignResponse {
 
 impl SignResponse {
   pub fn into_signature(self) -> Result<MultiSignature> {
-    let sig = self.signature.strip_prefix("vault:v1:")
-      .and_then(|encoded| {
-        STANDARD.decode(encoded).ok()
-      })
-      .and_then(|data| {
-        Signature::from_slice(data.as_slice())
-      });
+    let sig = self
+      .signature
+      .strip_prefix("vault:v1:")
+      .and_then(|encoded| STANDARD.decode(encoded).ok())
+      .and_then(|data| Signature::from_slice(data.as_slice()));
 
     match sig {
-      Some(sig) => {
-        Ok(sig.into())
-      }
-      None => {
-        Err(Error::other("Invalid signature from vault."))
-      }
+      Some(sig) => Ok(sig.into()),
+      None => Err(Error::other("Invalid signature from vault.")),
     }
   }
 }
@@ -161,14 +152,12 @@ pub struct VaultSigner {
 impl VaultSigner {
   async fn sign_data(&self, msg: &[u8]) -> Result<MultiSignature> {
     let req = SignRequest {
-        key_version: self.key_version,
-        input: msg.into(),
-      };
-    let resp = self.client.post(self.url.clone())
-      .json(&req)
-      .send()
-      .await?;
-    let signed = VaultResponse::<SignResponse>::from_response(resp).await?
+      key_version: self.key_version,
+      input: msg.into(),
+    };
+    let resp = self.client.post(self.url.clone()).json(&req).send().await?;
+    let signed = VaultResponse::<SignResponse>::from_response(resp)
+      .await?
       .ok_or_else(|| Error::other("No signature from vault"))?;
     Ok(signed.into_signature()?)
   }
@@ -184,12 +173,15 @@ impl Signer for VaultSigner {
     None
   }
 
-  async fn set_nonce(&mut self, _nonce: u32) {
-  }
+  async fn set_nonce(&mut self, _nonce: u32) {}
 
   async fn sign(&self, msg: &[u8]) -> Result<MultiSignature, ClientError> {
-    Ok(self.sign_data(msg).await
-      .map_err(|e| ClientError::SigningTransactionFailed(format!("{e:?}")))?)
+    Ok(
+      self
+        .sign_data(msg)
+        .await
+        .map_err(|e| ClientError::SigningTransactionFailed(format!("{e:?}")))?,
+    )
   }
 }
 
@@ -208,9 +200,7 @@ impl VaultSigningManager {
     let base = Url::parse(&base)?;
     let mut headers = header::HeaderMap::new();
     headers.insert("X-Vault-Token", header::HeaderValue::from_str(&token)?);
-    let client = Client::builder()
-      .default_headers(headers)
-      .build()?;
+    let client = Client::builder().default_headers(headers).build()?;
     Ok(Arc::new(Self {
       client,
       list_url: base.join("./keys")?,
@@ -236,16 +226,16 @@ impl VaultSigningManager {
 
   async fn vault_request<T>(&self, method: Method, url: Url) -> Result<Option<T>>
   where
-    T: std::fmt::Debug + std::default::Default + de::DeserializeOwned
+    T: std::fmt::Debug + std::default::Default + de::DeserializeOwned,
   {
-    let resp = self.client.request(method, url)
-      .send()
-      .await?;
+    let resp = self.client.request(method, url).send().await?;
     Ok(VaultResponse::from_response(resp).await?)
   }
 
   pub async fn fetch_keys(&self) -> Result<Vec<String>> {
-    let data = self.vault_request::<ListKeys>(self.list.clone(), self.list_url.clone()).await?;
+    let data = self
+      .vault_request::<ListKeys>(self.list.clone(), self.list_url.clone())
+      .await?;
     Ok(data.unwrap_or_default().keys)
   }
 
@@ -260,10 +250,7 @@ impl VaultSigningManager {
       ..Default::default()
     };
     let url = self.get_key_url(key)?;
-    let resp = self.client.post(url)
-      .json(&req)
-      .send()
-      .await?;
+    let resp = self.client.post(url).json(&req).send().await?;
     Ok(VaultResponse::<ReadKey>::from_response(resp).await?)
   }
 }
@@ -290,7 +277,8 @@ impl SigningManagerTrait for VaultSigningManager {
 
   async fn get_signer_info(&self, name: &str) -> Result<Option<SignerInfo>> {
     // Try to split `{name}-{version}`.
-    let (name, version) = name.rsplit_once('-')
+    let (name, version) = name
+      .rsplit_once('-')
       .and_then(|(name, v)| v.parse().ok().map(|v| (name, v)))
       .unwrap_or_else(|| (name, 1));
     match self.fetch_key(name).await? {
@@ -310,7 +298,8 @@ impl SigningManagerTrait for VaultSigningManager {
 
   async fn get_signer(&self, name: &str) -> Result<Option<TxSigner>> {
     // Try to split `{name}-{version}`.
-    let (name, version) = name.rsplit_once('-')
+    let (name, version) = name
+      .rsplit_once('-')
       .and_then(|(name, v)| v.parse().ok().map(|v| (name, v)))
       .unwrap_or_else(|| (name, 1));
     match self.fetch_key(name).await? {
@@ -335,11 +324,15 @@ impl SigningManagerTrait for VaultSigningManager {
 
   async fn create_signer(&self, signer: &CreateSigner) -> Result<SignerInfo> {
     if signer.secret_uri.is_some() {
-      return Err(Error::other("VAULT signing manager doesn't support `secret_uri`."));
+      return Err(Error::other(
+        "VAULT signing manager doesn't support `secret_uri`.",
+      ));
     }
     match self.create_key(&signer.name).await? {
       Some(details) if details.keys.len() > 0 => {
-        let key = details.keys.get(&1)
+        let key = details
+          .keys
+          .get(&1)
           .ok_or_else(|| Error::other("No key returned"))?;
         Ok(key.as_signer(&details.name, 1)?)
       }

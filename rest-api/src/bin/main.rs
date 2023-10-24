@@ -36,17 +36,13 @@ async fn get_db_pool() -> anyhow::Result<SqlitePool> {
 fn get_signing_manager(pool: &SqlitePool) -> anyhow::Result<signing::AppSigningManager> {
   let manager = std::env::var("SIGNING_MANAGER").ok();
   match manager.as_ref().map(|s| s.as_str()) {
-    Some("DB" | "LOCAL") | None => {
-      Ok(signing::SqliteSigningManager::new_app_data(pool))
-    }
+    Some("DB" | "LOCAL") | None => Ok(signing::SqliteSigningManager::new_app_data(pool)),
     Some("VAULT") => {
       let base = std::env::var("VAULT_TRANSIT_URL")?;
       let token = std::env::var("VAULT_TOKEN")?;
       Ok(signing::VaultSigningManager::new_app_data(base, token)?)
     }
-    Some(manager) => {
-      Err(anyhow::anyhow!("Unknown Signing Manager: {manager:?}"))
-    }
+    Some(manager) => Err(anyhow::anyhow!("Unknown Signing Manager: {manager:?}")),
   }
 }
 
