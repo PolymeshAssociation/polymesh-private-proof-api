@@ -1,8 +1,8 @@
 use actix_web::{get, post, web, HttpResponse, Responder, Result};
 
 use confidential_proof_shared::{
-  error::Error, AccountAssetWithProof, AccountMintAsset, CreateAccountAsset, ReceiverVerifyRequest,
-  SenderProofRequest, UpdateAccountAssetBalanceRequest,
+  error::Error, AccountAssetDecryptRequest, AccountAssetWithProof, CreateAccountAsset,
+  ReceiverVerifyRequest, SenderProofRequest, UpdateAccountAssetBalanceRequest,
 };
 
 use crate::repo::Repository;
@@ -12,9 +12,9 @@ pub fn service(cfg: &mut web::ServiceConfig) {
     .service(get_all_account_assets)
     .service(get_account_asset)
     .service(create_account_asset)
-    .service(asset_issuer_mint)
     .service(request_sender_proof)
     .service(receiver_verify_request)
+    .service(decrypt_request)
     .service(update_balance_request);
 }
 
@@ -80,38 +80,6 @@ pub async fn create_account_asset(
   Ok(HttpResponse::Ok().json(account_asset))
 }
 
-/// Asset issuer updates their account balance when minting.
-#[utoipa::path(
-  responses(
-    (status = 200, body = AccountAsset)
-  )
-)]
-#[post("/accounts/{account_id}/assets/{asset_id}/mint")]
-pub async fn asset_issuer_mint(
-  path: web::Path<(i64, i64)>,
-  account_mint_asset: web::Json<AccountMintAsset>,
-  repo: Repository,
-) -> Result<impl Responder> {
-  let (account_id, asset_id) = path.into_inner();
-  // Get the account asset with account secret key.
-  let account_asset = repo
-    .get_account_asset_with_secret(account_id, asset_id)
-    .await?
-    .ok_or_else(|| Error::not_found("Account Asset"))?;
-
-  // Mint asset.
-  let update = account_asset.mint(account_mint_asset.amount)?;
-
-  // Update account balance.
-  let account_asset = repo
-    .update_account_asset(&update)
-    .await?
-    .ok_or_else(|| Error::not_found("Account Asset"))?;
-
-  // Return account_asset.
-  Ok(HttpResponse::Ok().json(account_asset))
-}
-
 /// Generate a sender proof.
 #[utoipa::path(
   responses(
@@ -172,6 +140,32 @@ pub async fn receiver_verify_request(
   // Verify the sender's proof.
   let res = account_asset.receiver_verify_proof(&req)?;
   Ok(HttpResponse::Ok().json(res))
+}
+
+/// Decrypt a `CipherText` value.
+#[utoipa::path(
+  responses(
+    (status = 200, body = DecryptedResponse)
+  )
+)]
+#[post("/accounts/{account_id}/assets/{asset_id}/decrypt")]
+pub async fn decrypt_request(
+  path: web::Path<(i64, i64)>,
+  req: web::Json<AccountAssetDecryptRequest>,
+  repo: Repository,
+) -> Result<impl Responder> {
+  let (account_id, asset_id) = path.into_inner();
+  // Get the account asset with account secret key.
+  let account_asset = repo
+    .get_account_asset_with_secret(account_id, asset_id)
+    .await?
+    .ok_or_else(|| Error::not_found("Account Asset"))?;
+
+  // Decrypt the value.
+  let resp = account_asset.decrypt(&req)?;
+
+  // Return the decrypted value.
+  Ok(HttpResponse::Ok().json(resp))
 }
 
 /// Update an account's encrypted balance.

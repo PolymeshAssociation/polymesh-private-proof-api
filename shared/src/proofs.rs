@@ -303,6 +303,20 @@ impl AccountAssetWithSecret {
     Ok(SenderProofVerifyResult::from_result(res))
   }
 
+  pub fn decrypt(&self, req: &AccountAssetDecryptRequest) -> Result<DecryptedResponse> {
+    // Decode `req`.
+    let enc_value = req.encrypted_value()?;
+    // Decode ConfidentialAccount from database.
+    let keys = self.account.encryption_keys()?;
+    // Decrypt value.
+    let value = keys
+      .secret
+      .decrypt_with_hint(&enc_value, 0, MAX_TOTAL_SUPPLY)
+      .ok_or_else(|| Error::other("Failed to decrypt value."))?;
+    // Return the decrypted value.
+    Ok(DecryptedResponse { value })
+  }
+
   pub fn update_balance(
     &self,
     req: &UpdateAccountAssetBalanceRequest,
@@ -352,6 +366,30 @@ impl UpdateAccountAsset {
   }
 }
 
+/// Decrypt a `CipherText` value request.
+#[derive(Clone, Serialize, Deserialize, ToSchema)]
+pub struct AccountAssetDecryptRequest {
+  /// Encrypted value.
+  #[schema(value_type = String, format = Binary, example = "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000")]
+  #[serde(default, with = "SerHexSeq::<StrictPfx>")]
+  encrypted_value: Vec<u8>,
+}
+
+#[cfg(feature = "backend")]
+impl AccountAssetDecryptRequest {
+  pub fn encrypted_value(&self) -> Result<CipherText> {
+    Ok(CipherText::decode(&mut self.encrypted_value.as_slice())?)
+  }
+}
+
+/// Decrypted value response.
+#[derive(Clone, Serialize, Deserialize, ToSchema)]
+pub struct DecryptedResponse {
+  /// Decrypted value.
+  #[schema(example = 1000)]
+  pub value: u64,
+}
+
 /// Update account asset balance request.
 #[derive(Clone, Serialize, Deserialize, ToSchema)]
 pub struct UpdateAccountAssetBalanceRequest {
@@ -366,14 +404,6 @@ impl UpdateAccountAssetBalanceRequest {
   pub fn encrypted_balance(&self) -> Result<CipherText> {
     Ok(CipherText::decode(&mut self.encrypted_balance.as_slice())?)
   }
-}
-
-/// Mint assets.
-#[derive(Clone, Debug, Default, Deserialize, Serialize, ToSchema)]
-pub struct AccountMintAsset {
-  /// Amount to mint.
-  #[schema(example = 1000, value_type = u64)]
-  pub amount: Balance,
 }
 
 /// Account asset with sender proof.

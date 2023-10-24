@@ -50,10 +50,10 @@ async fn start_server() -> anyhow::Result<()> {
         account_assets::get_all_account_assets,
         account_assets::get_account_asset,
         account_assets::create_account_asset,
-        account_assets::asset_issuer_mint,
         account_assets::request_sender_proof,
         account_assets::receiver_verify_request,
         account_assets::update_balance_request,
+        account_assets::decrypt_request,
       ),
       components(
         schemas(
@@ -61,7 +61,6 @@ async fn start_server() -> anyhow::Result<()> {
           Asset, CreateAsset,
           Account,
           AccountAsset, CreateAccountAsset,
-          AccountMintAsset,
           AccountAssetWithProof,
           PublicKey, SenderProof,
           AuditorVerifyRequest,
@@ -69,6 +68,8 @@ async fn start_server() -> anyhow::Result<()> {
           SenderProofRequest,
           SenderProofVerifyRequest,
           SenderProofVerifyResult,
+          AccountAssetDecryptRequest,
+          DecryptedResponse,
           UpdateAccountAssetBalanceRequest,
         ),
       ),
