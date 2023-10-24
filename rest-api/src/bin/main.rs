@@ -60,7 +60,8 @@ async fn start_server() -> anyhow::Result<()> {
   // Signing manager.
   let signing = get_signing_manager(&pool)?;
 
-  let polymesh_url = std::env::var("POLYMESH_URL").unwrap_or("ws://localhost:9944/".to_string());
+  let polymesh_url =
+    std::env::var("POLYMESH_NODE_URL").unwrap_or("ws://localhost:9944/".to_string());
   let polymesh_api = web::Data::new(Api::new(&polymesh_url).await?);
 
   // starting the server

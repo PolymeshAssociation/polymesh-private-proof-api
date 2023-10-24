@@ -10,8 +10,8 @@ resolver = "2"
 confidential_assets = { git = "ssh://git@github.com/PolymeshAssociation/confidential_assets.git", branch = "main" }
 #confidential_assets = { path = "../confidential_assets/" }
 bulletproofs = { version = "4.0.0", git = "https://github.com/PolymeshAssociation/bulletproofs", branch = "polymesh" }
-polymesh-api = { path = "../polymesh-api/" }
-polymesh-api-client = { path = "../polymesh-api/crates/polymesh-api-client/" }
+#polymesh-api = { path = "../polymesh-api/" }
+#polymesh-api-client = { path = "../polymesh-api/crates/polymesh-api-client/" }
 
 [workspace.dependencies]
 # internal
