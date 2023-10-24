@@ -14,7 +14,7 @@ pub fn service(cfg: &mut web::ServiceConfig) {
 /// Get all signers.
 #[utoipa::path(
   responses(
-    (status = 200, body = [Signer])
+    (status = 200, body = [SignerInfo])
   )
 )]
 #[get("/signers")]
