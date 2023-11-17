@@ -46,6 +46,7 @@ actix-cors = { workspace = true }
 actix-web = { workspace = true }
 actix-web-lab = { workspace = true }
 async-trait = "0.1"
+futures-util = { version = "0.3" }
 
 # HTTP client
 reqwest = { workspace = true, features = ["json"] }

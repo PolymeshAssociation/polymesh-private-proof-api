@@ -76,6 +76,8 @@ async fn start_server() -> anyhow::Result<()> {
         signers::get_all_signers,
         signers::get_signer,
         signers::create_signer,
+        signers::get_signer_identity,
+        signers::get_signer_venues,
         assets::get_all_assets,
         assets::get_asset,
         assets::create_asset,
