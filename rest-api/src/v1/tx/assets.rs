@@ -1,7 +1,10 @@
 use actix_web::{post, web, HttpResponse, Responder, Result};
 
 use polymesh_api::types::{
-  pallet_confidential_asset::TransactionId,
+  pallet_confidential_asset::{
+    TransactionId,
+    ConfidentialTransactionRole,
+  },
   polymesh_primitives::{
     asset::{AssetName, AssetType},
     settlement::VenueId,
@@ -84,6 +87,23 @@ pub async fn tx_create_asset(
     .ok_or_else(|| Error::not_found("Signer"))?;
 
   let auditors = req.auditors()?;
+
+  // Get only the mediators.
+  let mediators = auditors.auditors.iter()
+    .filter_map(|(account, role)| match role {
+      ConfidentialTransactionRole::Mediator => Some(account),
+      _ => None,
+    });
+  // Check if the mediators exist on-chain.
+  for mediator in mediators {
+    api
+      .query()
+      .confidential_asset()
+      .mediator_account_did(*mediator)
+      .await
+      .map_err(|err| Error::from(err))?
+      .ok_or_else(|| Error::other("Mediator account hasn't been registered on-chain"))?;
+  }
 
   let ticker = req.ticker()?;
 
