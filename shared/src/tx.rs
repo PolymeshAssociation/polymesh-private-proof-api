@@ -15,8 +15,8 @@ use polymesh_api::{
   },
   types::{
     pallet_confidential_asset::{
-      ConfidentialAccount, ConfidentialAuditors, ConfidentialTransactionRole, MediatorAccount,
-      SenderProof, TransactionId, TransactionLeg, TransactionLegId,
+      AffirmParty, ConfidentialAccount, ConfidentialAuditors, ConfidentialTransactionRole, MediatorAccount,
+      TransactionId, TransactionLeg, TransactionLegId,
     },
     polymesh_common_utilities::traits::checkpoint::ScheduleId,
     polymesh_primitives::{
@@ -34,7 +34,7 @@ use polymesh_api::{
 use confidential_assets::{Balance, ElgamalPublicKey};
 
 use crate::error::Result;
-use crate::proofs::PublicKey;
+use crate::proofs::{SenderProof, PublicKey};
 
 pub fn scale_convert<T1: Encode, T2: Decode>(t1: &T1) -> T2 {
   let buf = t1.encode();
@@ -55,6 +55,9 @@ pub struct TransactionAffirmed {
   /// Confidential transaction id.
   #[schema(value_type = u64)]
   pub transaction_id: TransactionId,
+  /// Confidential transaction pending affirmations.
+  #[schema(value_type = u32)]
+  pub pending_affirms: u32,
   /// Confidential transaction leg id.
   #[schema(value_type = u64)]
   pub leg_id: TransactionLegId,
@@ -143,13 +146,31 @@ impl ProcessedEvents {
           _,
           tx_id,
           leg_id,
-          sender_proof,
+          AffirmParty::Sender(sender_proof),
+          pending,
         )) => {
           processed.push(ProcessedEvent::ConfidentialTransactionAffirmed(
             TransactionAffirmed {
               transaction_id: *tx_id,
+              pending_affirms: *pending,
               leg_id: *leg_id,
-              sender_proof: sender_proof.clone(),
+              sender_proof: Some(SenderProof(sender_proof.encode())),
+            },
+          ));
+        }
+        RuntimeEvent::ConfidentialAsset(ConfidentialAssetEvent::TransactionAffirmed(
+          _,
+          tx_id,
+          leg_id,
+          _,
+          pending,
+        )) => {
+          processed.push(ProcessedEvent::ConfidentialTransactionAffirmed(
+            TransactionAffirmed {
+              transaction_id: *tx_id,
+              pending_affirms: *pending,
+              leg_id: *leg_id,
+              sender_proof: None,
             },
           ));
         }

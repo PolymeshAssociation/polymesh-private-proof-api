@@ -1,3 +1,5 @@
+use std::str::FromStr;
+
 use serde::{Deserialize, Serialize};
 
 use utoipa::ToSchema;
@@ -16,6 +18,11 @@ pub use tx::*;
 mod proofs;
 pub use proofs::*;
 
+#[cfg(feature = "backend")]
+use polymesh_api::{
+  client::basic_types::AccountId,
+};
+
 #[cfg_attr(feature = "backend", derive(sqlx::FromRow))]
 #[derive(Clone, Debug, Default, Deserialize, Serialize, ToSchema)]
 pub struct SignerInfo {
@@ -25,6 +32,13 @@ pub struct SignerInfo {
   pub public_key: String,
 
   pub created_at: chrono::NaiveDateTime,
+}
+
+#[cfg(feature = "backend")]
+impl SignerInfo {
+  pub fn account_id(&self) -> Result<AccountId> {
+    Ok(AccountId::from_str(&self.public_key)?)
+  }
 }
 
 #[cfg_attr(feature = "backend", derive(sqlx::FromRow))]
@@ -49,7 +63,7 @@ pub struct CreateSigner {
   pub name: String,
   /// Only used for "DB" signing manager.  The "VAULT" signing manager doesn't support
   /// importing keys from a secret.
-  #[schema(example = "//Alice")]
+  #[schema(example = json!(null))]
   pub secret_uri: Option<String>,
 }
 

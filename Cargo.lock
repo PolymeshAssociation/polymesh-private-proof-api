@@ -895,6 +895,7 @@ dependencies = [
  "dashmap",
  "dotenv",
  "env_logger",
+ "futures-util",
  "hex",
  "log",
  "parity-scale-codec",
@@ -919,7 +920,7 @@ dependencies = [
 [[package]]
 name = "confidential_assets"
 version = "1.0.0"
-source = "git+ssh://git@github.com/PolymeshAssociation/confidential_assets.git?branch=main#6cf1b68a7c939699c76b3c46c190258871e660cb"
+source = "git+ssh://git@github.com/PolymeshAssociation/confidential_assets.git?branch=MESH-2112-improve_proofs#3f4f3d18ccd7d8e94a3c3b920876ff6ed9dfd488"
 dependencies = [
  "bincode",
  "bulletproofs",
@@ -4664,7 +4665,7 @@ dependencies = [
 [[package]]
 name = "sp-std"
 version = "5.0.0"
-source = "git+https://github.com/PolymeshAssociation/substrate?branch=polymesh-v6-monthly-2023-03#497e3a771f6951815613af339a1d2936af0e3cb6"
+source = "git+https://github.com/PolymeshAssociation/substrate?branch=polymesh-v6-monthly-2023-03#7854710a5de4066a874ec6e786665f65c439616a"
 
 [[package]]
 name = "sp-std"
@@ -5517,7 +5518,7 @@ checksum = "97fee6b57c6a41524a810daee9286c02d7752c4253064d0b05472833a438f675"
 dependencies = [
  "cfg-if",
  "digest 0.10.7",
- "rand 0.8.5",
+ "rand 0.7.3",
  "static_assertions",
 ]
 

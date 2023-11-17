@@ -17,7 +17,7 @@ use polymesh_api::types::{
 #[cfg(feature = "backend")]
 use confidential_assets::{
   elgamal::CipherText,
-  transaction::{AuditorId, ConfidentialTransferProof, MAX_TOTAL_SUPPLY},
+  transaction::{ConfidentialTransferProof, MAX_TOTAL_SUPPLY},
   Balance, ElgamalKeys, ElgamalPublicKey, ElgamalSecretKey, Scalar,
 };
 
@@ -148,7 +148,7 @@ impl AccountWithSecret {
     let sender_proof = req.sender_proof()?;
 
     let res = sender_proof
-      .auditor_verify(AuditorId(req.auditor_id), &auditor, req.amount)
+      .auditor_verify(req.auditor_id as u8, &auditor, req.amount)
       .map(|b| Some(b));
     Ok(SenderProofVerifyResult::from_result(res))
   }
@@ -261,8 +261,6 @@ impl AccountAssetWithSecret {
       .ok_or_else(|| Error::other("No encrypted balance."))?;
     let auditors = auditors
       .into_iter()
-      .enumerate()
-      .map(|(idx, auditor)| (AuditorId(idx as _), auditor))
       .collect();
 
     let mut rng = rand::thread_rng();
@@ -452,11 +450,11 @@ impl PublicKey {
 }
 
 /// Confidential transfer sender proof.
-#[derive(Clone, Serialize, Deserialize, ToSchema)]
+#[derive(Clone, Debug, Serialize, Deserialize, ToSchema)]
 pub struct SenderProof(
   #[schema(example = "<Hex encoded sender proof>")]
   #[serde(with = "SerHexSeq::<StrictPfx>")]
-  Vec<u8>,
+  pub Vec<u8>,
 );
 
 #[cfg(feature = "backend")]
@@ -568,8 +566,6 @@ impl SenderProofVerifyRequest {
     let auditors = self
       .auditors()?
       .into_iter()
-      .enumerate()
-      .map(|(idx, auditor)| (AuditorId(idx as _), auditor))
       .collect();
 
     let mut rng = rand::thread_rng();
