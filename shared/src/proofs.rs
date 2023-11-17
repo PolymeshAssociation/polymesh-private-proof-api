@@ -208,8 +208,20 @@ pub struct AccountAsset {
 
 #[cfg(feature = "backend")]
 impl AccountAsset {
-  pub fn enc_balance(&self) -> Option<CipherText> {
-    CipherText::decode(&mut self.enc_balance.as_slice()).ok()
+  pub fn enc_balance(&self) -> Result<CipherText> {
+    Ok(CipherText::decode(&mut self.enc_balance.as_slice())?)
+  }
+
+  pub fn mint(&self, amount: Balance) -> Result<UpdateAccountAsset> {
+    // Decode `enc_balance`.
+    let enc_balance = self.enc_balance()?;
+    // Update account balance.
+    Ok(UpdateAccountAsset {
+      account_id: self.account_id,
+      asset_id: self.asset_id,
+      balance: (self.balance as u64) + amount,
+      enc_balance: enc_balance + CipherText::value(amount.into()),
+    })
   }
 }
 
@@ -232,18 +244,6 @@ pub struct AccountAssetWithSecret {
 impl AccountAssetWithSecret {
   pub fn enc_balance(&self) -> Result<CipherText> {
     Ok(CipherText::decode(&mut self.enc_balance.as_slice())?)
-  }
-
-  pub fn mint(&self, amount: Balance) -> Result<UpdateAccountAsset> {
-    // Decode `enc_balance`.
-    let enc_balance = self.enc_balance()?;
-    // Update account balance.
-    Ok(UpdateAccountAsset {
-      account_id: self.account.account_id,
-      asset_id: self.asset_id,
-      balance: (self.balance as u64) + amount,
-      enc_balance: enc_balance + CipherText::value(amount.into()),
-    })
   }
 
   pub fn create_send_proof(
@@ -301,7 +301,18 @@ impl AccountAssetWithSecret {
     Ok(SenderProofVerifyResult::from_result(res))
   }
 
-  pub fn decrypt(&self, req: &AccountAssetDecryptRequest) -> Result<DecryptedResponse> {
+  pub fn decrypt(&self, enc_value: &CipherText) -> Result<Balance> {
+    // Decode ConfidentialAccount from database.
+    let keys = self.account.encryption_keys()?;
+    // Decrypt value.
+    let value = keys
+      .secret
+      .decrypt_with_hint(enc_value, 0, MAX_TOTAL_SUPPLY)
+      .ok_or_else(|| Error::other("Failed to decrypt value."))?;
+    Ok(value)
+  }
+
+  pub fn decrypt_request(&self, req: &AccountAssetDecryptRequest) -> Result<DecryptedResponse> {
     // Decode `req`.
     let enc_value = req.encrypted_value()?;
     // Decode ConfidentialAccount from database.
@@ -334,6 +345,25 @@ impl AccountAssetWithSecret {
       asset_id: self.asset_id,
       balance,
       enc_balance,
+    })
+  }
+
+  pub fn apply_incoming(&self, enc_incoming: CipherText) -> Result<UpdateAccountAsset> {
+    // Decode ConfidentialAccount from database.
+    let keys = self.account.encryption_keys()?;
+    // Decrypt incoming balance.
+    let incoming_balance = keys
+      .secret
+      .decrypt_with_hint(&enc_incoming, 0, MAX_TOTAL_SUPPLY)
+      .ok_or_else(|| Error::other("Failed to decrypt incoming balance."))?;
+    // Decode `enc_balance` from local DB.
+    let enc_balance = self.enc_balance()?;
+    // Update account balance.
+    Ok(UpdateAccountAsset {
+      account_id: self.account.account_id,
+      asset_id: self.asset_id,
+      balance: (self.balance as u64) + incoming_balance,
+      enc_balance: enc_balance + enc_incoming,
     })
   }
 }

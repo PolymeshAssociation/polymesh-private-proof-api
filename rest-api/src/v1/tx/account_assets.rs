@@ -145,6 +145,23 @@ pub async fn tx_apply_incoming(
     .await?
     .ok_or_else(|| Error::not_found("Asset"))?
     .ticker()?;
+  // Get the account asset with account secret key.
+  let account_asset = repo
+    .get_account_asset_with_secret(account_id, asset_id)
+    .await?
+    .ok_or_else(|| Error::not_found("Account Asset"))?;
+
+  // Get pending incoming balance.
+  let incoming_balance = api
+    .query()
+    .confidential_asset()
+    .incoming_balance(account, ticker)
+    .await
+    .map_err(|err| Error::from(err))?
+    .ok_or_else(|| Error::other("No incoming balance"))?;
+  // Convert from on-chain `CipherText`.
+  let enc_incoming = scale_convert(&incoming_balance);
+  let update = account_asset.apply_incoming(enc_incoming)?;
 
   let res = api
     .call()
@@ -157,7 +174,14 @@ pub async fn tx_apply_incoming(
 
   // Wait for transaction results.
   let res = TransactionResult::wait_for_results(res, req.finalize).await?;
-  // TODO: Update balance in database.
+
+  // Update account balance.
+  if res.success {
+    repo
+      .update_account_asset(&update)
+      .await?
+      .ok_or_else(|| Error::not_found("Account Asset"))?;
+  }
 
   Ok(HttpResponse::Ok().json(res))
 }
@@ -279,6 +303,14 @@ pub async fn tx_mint(
     .await?
     .ok_or_else(|| Error::not_found("Asset"))?
     .ticker()?;
+  // Get the account asset.
+  let account_asset = repo
+    .get_account_asset(account_id, asset_id)
+    .await?
+    .ok_or_else(|| Error::not_found("Account Asset"))?;
+
+  // Prepare to update account balance.
+  let update = account_asset.mint(req.amount)?;
 
   let res = api
     .call()
@@ -292,7 +324,13 @@ pub async fn tx_mint(
   // Wait for transaction results.
   let res = TransactionResult::wait_for_results(res, req.finalize).await?;
 
-  // TODO: Update balance
+  // Update account balance.
+  if res.success {
+    repo
+      .update_account_asset(&update)
+      .await?
+      .ok_or_else(|| Error::not_found("Account Asset"))?;
+  }
 
   Ok(HttpResponse::Ok().json(res))
 }

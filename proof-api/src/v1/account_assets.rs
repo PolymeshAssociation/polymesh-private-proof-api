@@ -162,7 +162,7 @@ pub async fn decrypt_request(
     .ok_or_else(|| Error::not_found("Account Asset"))?;
 
   // Decrypt the value.
-  let resp = account_asset.decrypt(&req)?;
+  let resp = account_asset.decrypt_request(&req)?;
 
   // Return the decrypted value.
   Ok(HttpResponse::Ok().json(resp))
