@@ -11,6 +11,7 @@ use confidential_proof_shared::{
   AffirmTransactionLegRequest, MintRequest, TransactionArgs, TransactionResult,
   DecryptedIncomingBalance,
   str_to_ticker,
+  PublicKey,
 };
 
 use crate::signing::AppSigningManager;
@@ -31,15 +32,15 @@ pub fn service(cfg: &mut web::ServiceConfig) {
     (status = 200, body = TransactionResult)
   )
 )]
-#[post("/tx/accounts/{account_id}/assets/{ticker}/init_account")]
+#[post("/tx/accounts/{public_key}/assets/{ticker}/init_account")]
 pub async fn tx_init_account(
-  path: web::Path<(i64, String)>,
+  path: web::Path<(PublicKey, String)>,
   req: web::Json<TransactionArgs>,
   repo: Repository,
   signing: AppSigningManager,
   api: web::Data<Api>,
 ) -> Result<impl Responder> {
-  let (account_id, ticker) = path.into_inner();
+  let (public_key, ticker) = path.into_inner();
   let ticker = str_to_ticker(&ticker)?;
   let mut signer = signing
     .get_signer(&req.signer)
@@ -47,7 +48,7 @@ pub async fn tx_init_account(
     .ok_or_else(|| Error::not_found("Signer"))?;
   // Get the account.
   let account = repo
-    .get_account(account_id)
+    .get_account(&public_key)
     .await?
     .ok_or_else(|| Error::not_found("Account"))?
     .as_confidential_account()?;
@@ -73,22 +74,22 @@ pub async fn tx_init_account(
     (status = 200, body = TransactionResult)
   )
 )]
-#[post("/tx/accounts/{account_id}/assets/{ticker}/receiver_affirm_leg")]
+#[post("/tx/accounts/{public_key}/assets/{ticker}/receiver_affirm_leg")]
 pub async fn tx_receiver_affirm_leg(
-  path: web::Path<(i64, String)>,
+  path: web::Path<(PublicKey, String)>,
   req: web::Json<AffirmTransactionLegRequest>,
   repo: Repository,
   signing: AppSigningManager,
   api: web::Data<Api>,
 ) -> Result<impl Responder> {
-  let (account_id, ticker) = path.into_inner();
+  let (public_key, ticker) = path.into_inner();
   let mut signer = signing
     .get_signer(&req.signer)
     .await?
     .ok_or_else(|| Error::not_found("Signer"))?;
   // Get the account asset with account secret key.
   let _account_asset = repo
-    .get_account_asset_with_secret(account_id, &ticker)
+    .get_account_asset_with_secret(&public_key, &ticker)
     .await?
     .ok_or_else(|| Error::not_found("Account Asset"))?;
 
@@ -120,22 +121,22 @@ pub async fn tx_receiver_affirm_leg(
     (status = 200, body = DecryptedIncomingBalance)
   )
 )]
-#[get("/tx/accounts/{account_id}/assets/{ticker}/incoming_balance")]
+#[get("/tx/accounts/{public_key}/assets/{ticker}/incoming_balance")]
 pub async fn get_incoming_balance(
-  path: web::Path<(i64, String)>,
+  path: web::Path<(PublicKey, String)>,
   repo: Repository,
   api: web::Data<Api>,
 ) -> Result<impl Responder> {
-  let (account_id, ticker) = path.into_inner();
+  let (public_key, ticker) = path.into_inner();
   // Get the account.
   let account = repo
-    .get_account(account_id)
+    .get_account(&public_key)
     .await?
     .ok_or_else(|| Error::not_found("Account"))?
     .as_confidential_account()?;
   // Get the account asset with account secret key.
   let account_asset = repo
-    .get_account_asset_with_secret(account_id, &ticker)
+    .get_account_asset_with_secret(&public_key, &ticker)
     .await?
     .ok_or_else(|| Error::not_found("Account Asset"))?;
   let ticker = str_to_ticker(&ticker)?;
@@ -167,28 +168,28 @@ pub async fn get_incoming_balance(
     (status = 200, body = TransactionResult)
   )
 )]
-#[post("/tx/accounts/{account_id}/assets/{ticker}/apply_incoming")]
+#[post("/tx/accounts/{public_key}/assets/{ticker}/apply_incoming")]
 pub async fn tx_apply_incoming(
-  path: web::Path<(i64, String)>,
+  path: web::Path<(PublicKey, String)>,
   req: web::Json<TransactionArgs>,
   repo: Repository,
   signing: AppSigningManager,
   api: web::Data<Api>,
 ) -> Result<impl Responder> {
-  let (account_id, ticker) = path.into_inner();
+  let (public_key, ticker) = path.into_inner();
   let mut signer = signing
     .get_signer(&req.signer)
     .await?
     .ok_or_else(|| Error::not_found("Signer"))?;
   // Get the account.
   let account = repo
-    .get_account(account_id)
+    .get_account(&public_key)
     .await?
     .ok_or_else(|| Error::not_found("Account"))?
     .as_confidential_account()?;
   // Get the account asset with account secret key.
   let account_asset = repo
-    .get_account_asset_with_secret(account_id, &ticker)
+    .get_account_asset_with_secret(&public_key, &ticker)
     .await?
     .ok_or_else(|| Error::not_found("Account Asset"))?;
   let ticker = str_to_ticker(&ticker)?;
@@ -234,22 +235,22 @@ pub async fn tx_apply_incoming(
     (status = 200, body = TransactionResult)
   )
 )]
-#[post("/tx/accounts/{account_id}/assets/{ticker}/sender_affirm_leg")]
+#[post("/tx/accounts/{public_key}/assets/{ticker}/sender_affirm_leg")]
 pub async fn tx_sender_affirm_leg(
-  path: web::Path<(i64, String)>,
+  path: web::Path<(PublicKey, String)>,
   req: web::Json<AffirmTransactionLegRequest>,
   repo: Repository,
   signing: AppSigningManager,
   api: web::Data<Api>,
 ) -> Result<impl Responder> {
-  let (account_id, ticker) = path.into_inner();
+  let (public_key, ticker) = path.into_inner();
   let mut signer = signing
     .get_signer(&req.signer)
     .await?
     .ok_or_else(|| Error::not_found("Signer"))?;
   // Get the account asset with account secret key.
   let account_asset = repo
-    .get_account_asset_with_secret(account_id, &ticker)
+    .get_account_asset_with_secret(&public_key, &ticker)
     .await?
     .ok_or_else(|| Error::not_found("Account Asset"))?;
 
@@ -321,28 +322,28 @@ pub async fn tx_sender_affirm_leg(
     (status = 200, body = TransactionResult)
   )
 )]
-#[post("/tx/accounts/{account_id}/assets/{ticker}/mint")]
+#[post("/tx/accounts/{public_key}/assets/{ticker}/mint")]
 pub async fn tx_mint(
-  path: web::Path<(i64, String)>,
+  path: web::Path<(PublicKey, String)>,
   req: web::Json<MintRequest>,
   repo: Repository,
   signing: AppSigningManager,
   api: web::Data<Api>,
 ) -> Result<impl Responder> {
-  let (account_id, ticker) = path.into_inner();
+  let (public_key, ticker) = path.into_inner();
   let mut signer = signing
     .get_signer(&req.signer)
     .await?
     .ok_or_else(|| Error::not_found("Signer"))?;
   // Get the account.
   let account = repo
-    .get_account(account_id)
+    .get_account(&public_key)
     .await?
     .ok_or_else(|| Error::not_found("Account"))?
     .as_confidential_account()?;
   // Get the account asset.
   let account_asset = repo
-    .get_account_asset(account_id, &ticker)
+    .get_account_asset(&public_key, &ticker)
     .await?
     .ok_or_else(|| Error::not_found("Account Asset"))?;
   let ticker = str_to_ticker(&ticker)?;

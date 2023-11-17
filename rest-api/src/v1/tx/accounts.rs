@@ -6,6 +6,7 @@ use polymesh_api::Api;
 use confidential_proof_api::repo::Repository;
 use confidential_proof_shared::{
   error::Error, AffirmTransactionLegRequest, TransactionArgs, TransactionResult,
+  PublicKey,
 };
 
 use super::account_assets;
@@ -24,9 +25,9 @@ pub fn service(cfg: &mut web::ServiceConfig) {
     (status = 200, body = TransactionResult)
   )
 )]
-#[post("/tx/accounts/{account_id}/add_mediator")]
+#[post("/tx/accounts/{public_key}/add_mediator")]
 pub async fn tx_add_mediator(
-  account_id: web::Path<i64>,
+  public_key: web::Path<PublicKey>,
   req: web::Json<TransactionArgs>,
   repo: Repository,
   signing: AppSigningManager,
@@ -38,7 +39,7 @@ pub async fn tx_add_mediator(
     .ok_or_else(|| Error::not_found("Signer"))?;
   // Get the account.
   let account = repo
-    .get_account(*account_id)
+    .get_account(&public_key)
     .await?
     .ok_or_else(|| Error::not_found("Account"))?
     .as_mediator_account()?;
@@ -64,22 +65,22 @@ pub async fn tx_add_mediator(
     (status = 200, body = TransactionResult)
   )
 )]
-#[post("/tx/accounts/{account_id}/mediator_affirm_leg")]
+#[post("/tx/accounts/{public_key}/mediator_affirm_leg")]
 pub async fn tx_mediator_affirm_leg(
-  path: web::Path<i64>,
+  path: web::Path<PublicKey>,
   req: web::Json<AffirmTransactionLegRequest>,
   repo: Repository,
   signing: AppSigningManager,
   api: web::Data<Api>,
 ) -> Result<impl Responder> {
-  let account_id = path.into_inner();
+  let public_key = path.into_inner();
   let mut signer = signing
     .get_signer(&req.signer)
     .await?
     .ok_or_else(|| Error::not_found("Signer"))?;
   // Get the account.
   let account = repo
-    .get_account(account_id)
+    .get_account(&public_key)
     .await?
     .ok_or_else(|| Error::not_found("Account"))?
     .as_mediator_account()?;

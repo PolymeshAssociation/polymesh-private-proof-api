@@ -1,6 +1,6 @@
 use actix_web::{get, post, web, HttpResponse, Responder, Result};
 
-use confidential_proof_shared::{error::Error, AuditorVerifyRequest, CreateAccount};
+use confidential_proof_shared::{error::Error, AuditorVerifyRequest, CreateAccount, PublicKey};
 
 use super::account_assets;
 use crate::repo::Repository;
@@ -32,10 +32,10 @@ pub async fn get_all_accounts(repo: Repository) -> Result<impl Responder> {
     (status = 200, body = Account)
   )
 )]
-#[get("/accounts/{account_id}")]
-pub async fn get_account(account_id: web::Path<i64>, repo: Repository) -> Result<impl Responder> {
+#[get("/accounts/{public_key}")]
+pub async fn get_account(public_key: web::Path<PublicKey>, repo: Repository) -> Result<impl Responder> {
   let account = repo
-    .get_account(*account_id)
+    .get_account(&public_key)
     .await?
     .ok_or_else(|| Error::not_found("Account"))?;
   Ok(HttpResponse::Ok().json(account))
@@ -60,15 +60,15 @@ pub async fn create_account(repo: Repository) -> Result<impl Responder> {
     (status = 200, body = SenderProofVerifyResult)
   )
 )]
-#[post("/accounts/{account_id}/auditor_verify")]
+#[post("/accounts/{public_key}/auditor_verify")]
 pub async fn auditor_verify_request(
-  account_id: web::Path<i64>,
+  public_key: web::Path<PublicKey>,
   req: web::Json<AuditorVerifyRequest>,
   repo: Repository,
 ) -> Result<impl Responder> {
   // Get the account with secret key.
   let account = repo
-    .get_account_with_secret(*account_id)
+    .get_account_with_secret(&public_key)
     .await?
     .ok_or_else(|| Error::not_found("Account"))?;
 

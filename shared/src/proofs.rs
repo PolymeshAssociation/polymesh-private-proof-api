@@ -200,6 +200,10 @@ pub struct AccountAsset {
   #[serde(skip)]
   pub asset_id: i64,
 
+  /// Asset ticker.
+  #[schema(example = "ACME")]
+  pub ticker: String,
+
   /// Current balance.
   #[schema(example = 1000)]
   pub balance: i64,
@@ -475,7 +479,7 @@ impl AccountAssetWithProof {
 pub struct PublicKey(
   #[schema(example = "0xceae8587b3e968b9669df8eb715f73bcf3f7a9cd3c61c515a4d80f2ca59c8114")]
   #[serde(with = "SerHexSeq::<StrictPfx>")]
-  Vec<u8>,
+  pub Vec<u8>,
 );
 
 #[cfg(feature = "backend")]
