@@ -104,6 +104,7 @@ async fn start_server() -> anyhow::Result<()> {
         tx::account_assets::tx_sender_affirm_leg,
         tx::account_assets::tx_receiver_affirm_leg,
         tx::account_assets::tx_apply_incoming,
+        tx::account_assets::get_incoming_balance,
         tx::account_assets::tx_mint,
       ),
       components(

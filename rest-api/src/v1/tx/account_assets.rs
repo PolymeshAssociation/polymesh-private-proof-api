@@ -1,4 +1,4 @@
-use actix_web::{post, web, HttpResponse, Responder, Result};
+use actix_web::{post, get, web, HttpResponse, Responder, Result};
 
 use codec::Encode;
 
@@ -9,6 +9,7 @@ use confidential_proof_api::repo::Repository;
 use confidential_proof_shared::{
   confidential_account_to_key, error::Error, mediator_account_to_key, scale_convert,
   AffirmTransactionLegRequest, MintRequest, TransactionArgs, TransactionResult,
+  DecryptedIncomingBalance,
 };
 
 use crate::signing::AppSigningManager;
@@ -19,6 +20,7 @@ pub fn service(cfg: &mut web::ServiceConfig) {
     .service(tx_sender_affirm_leg)
     .service(tx_receiver_affirm_leg)
     .service(tx_apply_incoming)
+    .service(get_incoming_balance)
     .service(tx_mint);
 }
 
@@ -113,6 +115,57 @@ pub async fn tx_receiver_affirm_leg(
   let res = TransactionResult::wait_for_results(res, req.finalize).await?;
 
   Ok(HttpResponse::Ok().json(res))
+}
+
+/// Query chain for an account's incoming balance.
+#[utoipa::path(
+  responses(
+    (status = 200, body = DecryptedIncomingBalance)
+  )
+)]
+#[get("/tx/accounts/{account_id}/assets/{asset_id}/incoming_balance")]
+pub async fn get_incoming_balance(
+  path: web::Path<(i64, i64)>,
+  repo: Repository,
+  api: web::Data<Api>,
+) -> Result<impl Responder> {
+  let (account_id, asset_id) = path.into_inner();
+  // Get the account.
+  let account = repo
+    .get_account(account_id)
+    .await?
+    .ok_or_else(|| Error::not_found("Account"))?
+    .as_confidential_account()?;
+  // Get the account asset with account secret key.
+  let account_asset = repo
+    .get_account_asset_with_secret(account_id, asset_id)
+    .await?
+    .ok_or_else(|| Error::not_found("Account Asset"))?;
+  let ticker = repo
+    .get_asset(asset_id)
+    .await?
+    .ok_or_else(|| Error::not_found("Asset"))?
+    .ticker()?;
+
+  // Get incoming balance.
+  let enc_incoming = api
+    .query()
+    .confidential_asset()
+    .incoming_balance(account, ticker)
+    .await
+    .map_err(|err| Error::from(err))?
+    .map(|enc| scale_convert(&enc));
+
+  // Decrypt incoming balance.
+  let incoming_balance = if let Some(enc_incoming) = enc_incoming {
+    Some(account_asset.decrypt(&enc_incoming)?)
+  } else {
+    None
+  };
+
+  Ok(HttpResponse::Ok().json(DecryptedIncomingBalance {
+    incoming_balance
+  }))
 }
 
 /// Apply any incoming balance to the confidential account and update the local database.

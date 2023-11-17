@@ -171,7 +171,7 @@ pub async fn decrypt_request(
 /// Update an account's encrypted balance.
 #[utoipa::path(
   responses(
-    (status = 200, body = bool)
+    (status = 200, body = AccountAsset)
   )
 )]
 #[post("/accounts/{account_id}/assets/{asset_id}/update_balance")]

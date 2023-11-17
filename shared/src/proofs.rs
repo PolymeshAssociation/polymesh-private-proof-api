@@ -121,6 +121,12 @@ pub struct AccountWithSecret {
 
 #[cfg(feature = "backend")]
 impl AccountWithSecret {
+  pub fn as_confidential_account(&self) -> Result<ConfidentialAccount> {
+    Ok(ConfidentialAccount::decode(
+      &mut self.public_key.as_slice(),
+    )?)
+  }
+
   pub fn encryption_keys(&self) -> Result<ElgamalKeys> {
     Ok(ElgamalKeys {
       public: ElgamalPublicKey::decode(&mut self.public_key.as_slice())?,
@@ -408,6 +414,14 @@ impl AccountAssetDecryptRequest {
   pub fn encrypted_value(&self) -> Result<CipherText> {
     Ok(CipherText::decode(&mut self.encrypted_value.as_slice())?)
   }
+}
+
+/// Decrypted incoming balance.
+#[derive(Clone, Serialize, Deserialize, ToSchema)]
+pub struct DecryptedIncomingBalance {
+  /// Decrypted incoming balance.
+  #[schema(example = 1000)]
+  pub incoming_balance: Option<u64>,
 }
 
 /// Decrypted value response.
