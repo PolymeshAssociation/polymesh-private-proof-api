@@ -34,9 +34,9 @@ impl ConfidentialRepository for SqliteConfidentialRepository {
     )
   }
 
-  async fn get_user(&self, user_id: i64) -> Result<Option<User>> {
+  async fn get_user(&self, name: &str) -> Result<Option<User>> {
     Ok(
-      sqlx::query_as!(User, r#"SELECT * FROM users WHERE user_id = ?"#, user_id)
+      sqlx::query_as!(User, r#"SELECT * FROM users WHERE username = ?"#, name)
         .fetch_optional(&self.pool)
         .await?,
     )

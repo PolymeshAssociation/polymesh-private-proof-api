@@ -17,7 +17,7 @@ pub type Repository = Data<dyn ConfidentialRepository>;
 pub trait ConfidentialRepository: Send + Sync + 'static {
   // Users
   async fn get_users(&self) -> Result<Vec<User>>;
-  async fn get_user(&self, user_id: i64) -> Result<Option<User>>;
+  async fn get_user(&self, name: &str) -> Result<Option<User>>;
   async fn create_user(&self, user: &CreateUser) -> Result<User>;
 
   // Assets
