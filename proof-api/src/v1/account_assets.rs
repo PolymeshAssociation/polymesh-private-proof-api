@@ -39,14 +39,14 @@ pub async fn get_all_account_assets(
     (status = 200, body = AccountAsset)
   )
 )]
-#[get("/accounts/{account_id}/assets/{asset_id}")]
+#[get("/accounts/{account_id}/assets/{ticker}")]
 pub async fn get_account_asset(
-  path: web::Path<(i64, i64)>,
+  path: web::Path<(i64, String)>,
   repo: Repository,
 ) -> Result<impl Responder> {
-  let (account_id, asset_id) = path.into_inner();
+  let (account_id, ticker) = path.into_inner();
   let account_asset = repo
-    .get_account_asset(account_id, asset_id)
+    .get_account_asset(account_id, &ticker)
     .await?
     .ok_or_else(|| Error::not_found("Account Asset"))?;
   Ok(HttpResponse::Ok().json(account_asset))
@@ -69,9 +69,13 @@ pub async fn create_account_asset(
     .get_account_with_secret(*account_id)
     .await?
     .ok_or_else(|| Error::not_found("Account"))?;
+  let asset = repo
+    .get_asset(&create_account_asset.ticker)
+    .await?
+    .ok_or_else(|| Error::not_found("Asset"))?;
 
   // Generate Account initialization proof.
-  let init = account.init_balance(create_account_asset.asset_id);
+  let init = account.init_balance(asset.asset_id);
 
   // Save initialize account balance.
   let account_asset = repo.create_account_asset(&init).await?;
@@ -86,16 +90,16 @@ pub async fn create_account_asset(
     (status = 200, body = AccountAssetWithProof)
   )
 )]
-#[post("/accounts/{account_id}/assets/{asset_id}/send")]
+#[post("/accounts/{account_id}/assets/{ticker}/send")]
 pub async fn request_sender_proof(
-  path: web::Path<(i64, i64)>,
+  path: web::Path<(i64, String)>,
   req: web::Json<SenderProofRequest>,
   repo: Repository,
 ) -> Result<impl Responder> {
-  let (account_id, asset_id) = path.into_inner();
+  let (account_id, ticker) = path.into_inner();
   // Get the account asset with account secret key.
   let account_asset = repo
-    .get_account_asset_with_secret(account_id, asset_id)
+    .get_account_asset_with_secret(account_id, &ticker)
     .await?
     .ok_or_else(|| Error::not_found("Account Asset"))?;
 
@@ -124,16 +128,16 @@ pub async fn request_sender_proof(
     (status = 200, body = SenderProofVerifyResult)
   )
 )]
-#[post("/accounts/{account_id}/assets/{asset_id}/receiver_verify")]
+#[post("/accounts/{account_id}/assets/{ticker}/receiver_verify")]
 pub async fn receiver_verify_request(
-  path: web::Path<(i64, i64)>,
+  path: web::Path<(i64, String)>,
   req: web::Json<ReceiverVerifyRequest>,
   repo: Repository,
 ) -> Result<impl Responder> {
-  let (account_id, asset_id) = path.into_inner();
+  let (account_id, ticker) = path.into_inner();
   // Get the account asset with account secret key.
   let account_asset = repo
-    .get_account_asset_with_secret(account_id, asset_id)
+    .get_account_asset_with_secret(account_id, &ticker)
     .await?
     .ok_or_else(|| Error::not_found("Account Asset"))?;
 
@@ -148,16 +152,16 @@ pub async fn receiver_verify_request(
     (status = 200, body = DecryptedResponse)
   )
 )]
-#[post("/accounts/{account_id}/assets/{asset_id}/decrypt")]
+#[post("/accounts/{account_id}/assets/{ticker}/decrypt")]
 pub async fn decrypt_request(
-  path: web::Path<(i64, i64)>,
+  path: web::Path<(i64, String)>,
   req: web::Json<AccountAssetDecryptRequest>,
   repo: Repository,
 ) -> Result<impl Responder> {
-  let (account_id, asset_id) = path.into_inner();
+  let (account_id, ticker) = path.into_inner();
   // Get the account asset with account secret key.
   let account_asset = repo
-    .get_account_asset_with_secret(account_id, asset_id)
+    .get_account_asset_with_secret(account_id, &ticker)
     .await?
     .ok_or_else(|| Error::not_found("Account Asset"))?;
 
@@ -174,16 +178,16 @@ pub async fn decrypt_request(
     (status = 200, body = AccountAsset)
   )
 )]
-#[post("/accounts/{account_id}/assets/{asset_id}/update_balance")]
+#[post("/accounts/{account_id}/assets/{ticker}/update_balance")]
 pub async fn update_balance_request(
-  path: web::Path<(i64, i64)>,
+  path: web::Path<(i64, String)>,
   req: web::Json<UpdateAccountAssetBalanceRequest>,
   repo: Repository,
 ) -> Result<impl Responder> {
-  let (account_id, asset_id) = path.into_inner();
+  let (account_id, ticker) = path.into_inner();
   // Get the account asset with account secret key.
   let account_asset = repo
-    .get_account_asset_with_secret(account_id, asset_id)
+    .get_account_asset_with_secret(account_id, &ticker)
     .await?
     .ok_or_else(|| Error::not_found("Account Asset"))?;
 

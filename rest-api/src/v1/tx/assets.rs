@@ -35,16 +35,16 @@ pub fn service(cfg: &mut web::ServiceConfig) {
     (status = 200, body = TransactionResult)
   )
 )]
-#[post("/tx/assets/{asset_id}/allow_venues")]
+#[post("/tx/assets/{ticker}/allow_venues")]
 pub async fn tx_allow_venues(
-  asset_id: web::Path<i64>,
+  ticker: web::Path<String>,
   req: web::Json<AllowVenues>,
   repo: Repository,
   signing: AppSigningManager,
   api: web::Data<Api>,
 ) -> Result<impl Responder> {
   let ticker = repo
-    .get_asset(*asset_id)
+    .get_asset(&ticker)
     .await?
     .ok_or_else(|| Error::not_found("Asset"))?
     .ticker()?;

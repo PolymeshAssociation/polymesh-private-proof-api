@@ -22,7 +22,7 @@ pub trait ConfidentialRepository: Send + Sync + 'static {
 
   // Assets
   async fn get_assets(&self) -> Result<Vec<Asset>>;
-  async fn get_asset(&self, asset_id: i64) -> Result<Option<Asset>>;
+  async fn get_asset(&self, ticker: &str) -> Result<Option<Asset>>;
   async fn create_asset(&self, asset: &CreateAsset) -> Result<Asset>;
 
   // Accounts
@@ -33,12 +33,12 @@ pub trait ConfidentialRepository: Send + Sync + 'static {
 
   // Account balances
   async fn get_account_assets(&self, account_id: i64) -> Result<Vec<AccountAsset>>;
-  async fn get_account_asset(&self, account_id: i64, asset_id: i64)
+  async fn get_account_asset(&self, account_id: i64, ticker: &str)
     -> Result<Option<AccountAsset>>;
   async fn get_account_asset_with_secret(
     &self,
     account_id: i64,
-    asset_id: i64,
+    ticker: &str,
   ) -> Result<Option<AccountAssetWithSecret>>;
   async fn create_account_asset(&self, account_asset: &UpdateAccountAsset) -> Result<AccountAsset>;
   async fn update_account_asset(

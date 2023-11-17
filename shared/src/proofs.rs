@@ -55,7 +55,7 @@ pub struct CreateUser {
 #[derive(Clone, Debug, Default, Deserialize, Serialize, ToSchema)]
 pub struct Asset {
   /// Asset id.
-  #[schema(example = 1)]
+  #[serde(skip)]
   pub asset_id: i64,
   /// Asset ticker.
   #[schema(example = "ACME1")]
@@ -83,7 +83,7 @@ pub struct CreateAsset {
 #[derive(Clone, Debug, Default, Deserialize, Serialize, ToSchema)]
 pub struct Account {
   /// Account id.
-  #[schema(example = 1)]
+  #[serde(skip)]
   pub account_id: i64,
 
   /// Account public key (Elgamal public key).
@@ -191,13 +191,13 @@ impl CreateAccount {
 #[derive(Clone, Debug, Default, Deserialize, Serialize, ToSchema)]
 pub struct AccountAsset {
   /// Account asset id.
-  #[schema(example = 1)]
+  #[serde(skip)]
   pub account_asset_id: i64,
   /// Account id.
-  #[schema(example = 1)]
+  #[serde(skip)]
   pub account_id: i64,
   /// Asset id.
-  #[schema(example = 1)]
+  #[serde(skip)]
   pub asset_id: i64,
 
   /// Current balance.
@@ -377,9 +377,9 @@ impl AccountAssetWithSecret {
 /// Create a new account asset.
 #[derive(Clone, Debug, Default, Deserialize, Serialize, ToSchema)]
 pub struct CreateAccountAsset {
-  /// Asset id.
-  #[schema(example = 1)]
-  pub asset_id: i64,
+  /// Asset ticker.
+  #[schema(example = "ACME")]
+  pub ticker: String,
 }
 
 /// Update account asset.

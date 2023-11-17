@@ -27,7 +27,7 @@ create_account() {
 }
 
 init_account_asset() {
-	curl_post "/accounts/$1/assets" "{ \"asset_id\": $2 }"
+	curl_post "/accounts/$1/assets" "{ \"ticker\": \"$2\" }"
 }
 
 create_user "Test1"
@@ -49,15 +49,15 @@ create_account
 create_account
 create_account
 
-init_account_asset 1 1
-init_account_asset 1 2
-init_account_asset 1 3
-init_account_asset 1 4
-init_account_asset 1 5
+init_account_asset 1 "T1"
+init_account_asset 1 "T2"
+init_account_asset 1 "T3"
+init_account_asset 1 "T4"
+init_account_asset 1 "T5"
 
-init_account_asset 2 1
-init_account_asset 2 2
-init_account_asset 2 3
-init_account_asset 2 4
-init_account_asset 2 5
+init_account_asset 2 "T1"
+init_account_asset 2 "T2"
+init_account_asset 2 "T3"
+init_account_asset 2 "T4"
+init_account_asset 2 "T5"
 
