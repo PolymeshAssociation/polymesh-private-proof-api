@@ -19,9 +19,7 @@ mod proofs;
 pub use proofs::*;
 
 #[cfg(feature = "backend")]
-use polymesh_api::{
-  client::basic_types::AccountId,
-};
+use polymesh_api::client::basic_types::AccountId;
 
 #[cfg_attr(feature = "backend", derive(sqlx::FromRow))]
 #[derive(Clone, Debug, Default, Deserialize, Serialize, ToSchema)]

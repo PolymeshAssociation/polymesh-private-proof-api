@@ -1,9 +1,8 @@
 use actix_web::{get, post, web, HttpResponse, Responder, Result};
 
 use confidential_proof_shared::{
-  error::Error, AccountAssetDecryptRequest, AccountAssetWithProof, CreateAccountAsset,
+  error::Error, AccountAssetDecryptRequest, AccountAssetWithProof, CreateAccountAsset, PublicKey,
   ReceiverVerifyRequest, SenderProofRequest, UpdateAccountAssetBalanceRequest,
-  PublicKey,
 };
 
 use crate::repo::Repository;

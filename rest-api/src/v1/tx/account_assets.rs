@@ -1,4 +1,4 @@
-use actix_web::{post, get, web, HttpResponse, Responder, Result};
+use actix_web::{get, post, web, HttpResponse, Responder, Result};
 
 use codec::Encode;
 
@@ -7,11 +7,9 @@ use polymesh_api::Api;
 
 use confidential_proof_api::repo::Repository;
 use confidential_proof_shared::{
-  confidential_account_to_key, error::Error, mediator_account_to_key, scale_convert,
-  AffirmTransactionLegRequest, MintRequest, TransactionArgs, TransactionResult,
-  DecryptedIncomingBalance,
-  str_to_ticker,
-  PublicKey,
+  confidential_account_to_key, error::Error, mediator_account_to_key, scale_convert, str_to_ticker,
+  AffirmTransactionLegRequest, DecryptedIncomingBalance, MintRequest, PublicKey, TransactionArgs,
+  TransactionResult,
 };
 
 use crate::signing::AppSigningManager;
@@ -157,9 +155,7 @@ pub async fn get_incoming_balance(
     None
   };
 
-  Ok(HttpResponse::Ok().json(DecryptedIncomingBalance {
-    incoming_balance
-  }))
+  Ok(HttpResponse::Ok().json(DecryptedIncomingBalance { incoming_balance }))
 }
 
 /// Apply any incoming balance to the confidential account and update the local database.

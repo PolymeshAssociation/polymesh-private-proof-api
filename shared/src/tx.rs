@@ -15,8 +15,8 @@ use polymesh_api::{
   },
   types::{
     pallet_confidential_asset::{
-      AffirmParty, ConfidentialAccount, ConfidentialAuditors, ConfidentialTransactionRole, MediatorAccount,
-      TransactionId, TransactionLeg, TransactionLegId,
+      AffirmParty, ConfidentialAccount, ConfidentialAuditors, ConfidentialTransactionRole,
+      MediatorAccount, TransactionId, TransactionLeg, TransactionLegId,
     },
     polymesh_common_utilities::traits::checkpoint::ScheduleId,
     polymesh_primitives::{
@@ -34,7 +34,7 @@ use polymesh_api::{
 use confidential_assets::{Balance, ElgamalPublicKey};
 
 use crate::error::Result;
-use crate::proofs::{SenderProof, PublicKey};
+use crate::proofs::{PublicKey, SenderProof};
 
 pub fn scale_convert<T1: Encode, T2: Decode>(t1: &T1) -> T2 {
   let buf = t1.encode();

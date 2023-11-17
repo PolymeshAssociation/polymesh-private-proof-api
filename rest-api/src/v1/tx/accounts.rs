@@ -5,8 +5,7 @@ use polymesh_api::Api;
 
 use confidential_proof_api::repo::Repository;
 use confidential_proof_shared::{
-  error::Error, AffirmTransactionLegRequest, TransactionArgs, TransactionResult,
-  PublicKey,
+  error::Error, AffirmTransactionLegRequest, PublicKey, TransactionArgs, TransactionResult,
 };
 
 use super::account_assets;

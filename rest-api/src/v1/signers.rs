@@ -1,17 +1,12 @@
-use actix_web::{get, post, web, HttpResponse, Responder, Result, rt::pin};
+use actix_web::{get, post, rt::pin, web, HttpResponse, Responder, Result};
 use futures_util::StreamExt;
 
 use confidential_proof_shared::{error::Error, CreateSigner};
 
-use polymesh_api::{
-  client::basic_types::IdentityId,
-  types::{
-    polymesh_primitives::{
-      secondary_key::KeyRecord,
-    },
-  },
-};
 use polymesh_api::Api;
+use polymesh_api::{
+  client::basic_types::IdentityId, types::polymesh_primitives::secondary_key::KeyRecord,
+};
 
 use crate::signing::AppSigningManager;
 
@@ -59,7 +54,9 @@ pub async fn get_signer_did(
   signing: AppSigningManager,
   api: &Api,
 ) -> Result<Option<IdentityId>> {
-  let signer = signing.get_signer_info(signer).await?
+  let signer = signing
+    .get_signer_info(signer)
+    .await?
     .ok_or_else(|| Error::not_found("Signer"))?;
   let account_id = signer.account_id()?;
   let did = api
@@ -87,7 +84,8 @@ pub async fn get_signer_identity(
   signing: AppSigningManager,
   api: web::Data<Api>,
 ) -> Result<impl Responder> {
-  let did = get_signer_did(&signer, signing, &api).await?
+  let did = get_signer_did(&signer, signing, &api)
+    .await?
     .map(|did| format!("{did:?}"));
   Ok(HttpResponse::Ok().json(did))
 }

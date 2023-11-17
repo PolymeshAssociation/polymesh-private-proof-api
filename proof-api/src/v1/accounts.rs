@@ -33,7 +33,10 @@ pub async fn get_all_accounts(repo: Repository) -> Result<impl Responder> {
   )
 )]
 #[get("/accounts/{public_key}")]
-pub async fn get_account(public_key: web::Path<PublicKey>, repo: Repository) -> Result<impl Responder> {
+pub async fn get_account(
+  public_key: web::Path<PublicKey>,
+  repo: Repository,
+) -> Result<impl Responder> {
   let account = repo
     .get_account(&public_key)
     .await?

@@ -269,9 +269,7 @@ impl AccountAssetWithSecret {
     let enc_balance = enc_balance
       .or_else(|| self.enc_balance().ok())
       .ok_or_else(|| Error::other("No encrypted balance."))?;
-    let auditors = auditors
-      .into_iter()
-      .collect();
+    let auditors = auditors.into_iter().collect();
 
     let mut rng = rand::thread_rng();
     let sender_balance = self.balance as Balance;
@@ -611,10 +609,7 @@ impl SenderProofVerifyRequest {
     // Decode sender & receiver.
     let sender = self.sender()?;
     let receiver = self.sender()?;
-    let auditors = self
-      .auditors()?
-      .into_iter()
-      .collect();
+    let auditors = self.auditors()?.into_iter().collect();
 
     let mut rng = rand::thread_rng();
     let sender_proof = self.sender_proof()?;
