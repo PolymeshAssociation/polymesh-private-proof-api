@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
-use std::sync::Arc;
 use std::str::FromStr;
+use std::sync::Arc;
 
 use base64::{engine::general_purpose::STANDARD, Engine as _};
 use serde::{de, Deserialize, Serialize};
@@ -151,10 +151,7 @@ pub struct NameVersion {
 
 impl NameVersion {
   pub fn new(name: String, version: u64) -> Self {
-    Self {
-      name,
-      version,
-    }
+    Self { name, version }
   }
 }
 
@@ -301,7 +298,12 @@ impl VaultSigningManager {
     Ok(VaultResponse::<ReadKey>::from_response(resp).await?)
   }
 
-  fn cache_vault_key(&self, name: &str, key: VersionedKey, version: u64) -> Result<(AccountId, SignerInfo)> {
+  fn cache_vault_key(
+    &self,
+    name: &str,
+    key: VersionedKey,
+    version: u64,
+  ) -> Result<(AccountId, SignerInfo)> {
     let name_version = NameVersion::new(name.to_string(), version);
     let account = key.account();
     let signer = key.as_signer(&name_version)?;
@@ -310,7 +312,11 @@ impl VaultSigningManager {
     Ok((account, signer))
   }
 
-  async fn load_vault_keys(&self, mut signers: Option<&mut Vec<SignerInfo>>, find: Option<AccountId>) -> Result<Option<SignerInfo>> {
+  async fn load_vault_keys(
+    &self,
+    mut signers: Option<&mut Vec<SignerInfo>>,
+    find: Option<AccountId>,
+  ) -> Result<Option<SignerInfo>> {
     let keys = self.fetch_keys().await?;
     for key in keys {
       match self.fetch_key(&key).await? {
@@ -347,11 +353,10 @@ impl VaultSigningManager {
       None => {
         // Parse `{name}-{version}`.
         name.parse().expect("Doesn't fail")
-      },
+      }
     };
     // Search by signer name/version.
-    let signer = self.keys.get(&name_version)
-      .as_deref().cloned();
+    let signer = self.keys.get(&name_version).as_deref().cloned();
     if signer.is_some() {
       return Ok(signer);
     }
