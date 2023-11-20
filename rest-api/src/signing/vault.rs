@@ -1,5 +1,6 @@
 use std::collections::BTreeMap;
 use std::sync::Arc;
+use std::str::FromStr;
 
 use base64::{engine::general_purpose::STANDARD, Engine as _};
 use serde::{de, Deserialize, Serialize};
@@ -74,9 +75,9 @@ pub struct VersionedKey {
 }
 
 impl VersionedKey {
-  pub fn as_signer(&self, name: &str, version: u64) -> Result<SignerInfo> {
+  pub fn as_signer(&self, name_version: &NameVersion) -> Result<SignerInfo> {
     Ok(SignerInfo {
-      name: format!("{name}-{version}"),
+      name: name_version.to_string(),
       public_key: self.account().to_string(),
       created_at: self.creation_time.naive_utc(),
     })
@@ -142,6 +143,42 @@ impl SignResponse {
   }
 }
 
+#[derive(Clone, Default, Debug, Hash, PartialEq, Eq)]
+pub struct NameVersion {
+  pub name: String,
+  pub version: u64,
+}
+
+impl NameVersion {
+  pub fn new(name: String, version: u64) -> Self {
+    Self {
+      name,
+      version,
+    }
+  }
+}
+
+impl FromStr for NameVersion {
+  type Err = ();
+
+  fn from_str(s: &str) -> Result<Self, Self::Err> {
+    let (name, version) = s
+      .rsplit_once('-')
+      .and_then(|(name, v)| v.parse().ok().map(|v| (name, v)))
+      .unwrap_or_else(|| (s, 1));
+    Ok(Self {
+      name: name.to_string(),
+      version,
+    })
+  }
+}
+
+impl ToString for NameVersion {
+  fn to_string(&self) -> String {
+    format!("{}-{}", self.name, self.version)
+  }
+}
+
 pub struct VaultSigner {
   pub client: Client,
   pub url: Url,
@@ -191,8 +228,8 @@ pub struct VaultSigningManager {
   list: Method,
   keys_base: Url,
   sign_base: Url,
-  keys: DashMap<String, SignerInfo>,
-  //cache: DashMap<AccountId, VaultSigner>,
+  keys: DashMap<NameVersion, SignerInfo>,
+  cache: DashMap<AccountId, NameVersion>,
 }
 
 impl VaultSigningManager {
@@ -208,7 +245,7 @@ impl VaultSigningManager {
       keys_base: base.join("./keys/")?,
       sign_base: base.join("./sign/")?,
       keys: DashMap::new(),
-      //cache: DashMap::new(),
+      cache: DashMap::new(),
     }))
   }
 
@@ -222,6 +259,16 @@ impl VaultSigningManager {
 
   pub fn get_sign_url(&self, key: &str) -> Result<Url> {
     Ok(self.sign_base.join(key)?)
+  }
+
+  fn info_to_vault_signer(&self, info: SignerInfo) -> Result<VaultSigner> {
+    let name_version: NameVersion = info.name.parse().expect("Doesn't fail");
+    Ok(VaultSigner {
+      client: self.client.clone(),
+      url: self.get_sign_url(&name_version.name)?,
+      key_version: name_version.version,
+      account: info.account_id()?,
+    })
   }
 
   async fn vault_request<T>(&self, method: Method, url: Url) -> Result<Option<T>>
@@ -253,41 +300,70 @@ impl VaultSigningManager {
     let resp = self.client.post(url).json(&req).send().await?;
     Ok(VaultResponse::<ReadKey>::from_response(resp).await?)
   }
-}
 
-#[async_trait]
-impl SigningManagerTrait for VaultSigningManager {
-  async fn get_signers(&self) -> Result<Vec<SignerInfo>> {
-    let mut signers = vec![];
+  fn cache_vault_key(&self, name: &str, key: VersionedKey, version: u64) -> Result<(AccountId, SignerInfo)> {
+    let name_version = NameVersion::new(name.to_string(), version);
+    let account = key.account();
+    let signer = key.as_signer(&name_version)?;
+    self.keys.insert(name_version.clone(), signer.clone());
+    self.cache.insert(account, name_version);
+    Ok((account, signer))
+  }
+
+  async fn load_vault_keys(&self, mut signers: Option<&mut Vec<SignerInfo>>, find: Option<AccountId>) -> Result<Option<SignerInfo>> {
     let keys = self.fetch_keys().await?;
     for key in keys {
       match self.fetch_key(&key).await? {
         Some(details) => {
           for (version, key) in details.keys {
-            let signer = key.as_signer(&details.name, version)?;
-            self.keys.insert(signer.name.clone(), signer.clone());
-            signers.push(signer);
+            let (account, signer) = self.cache_vault_key(&details.name, key, version)?;
+            if Some(account) == find {
+              return Ok(Some(signer));
+            }
+            if let Some(signers) = &mut signers {
+              signers.push(signer);
+            }
           }
         }
         None => (),
       }
     }
-    Ok(signers)
+    Ok(None)
   }
 
-  async fn get_signer_info(&self, name: &str) -> Result<Option<SignerInfo>> {
-    // Try to split `{name}-{version}`.
-    let (name, version) = name
-      .rsplit_once('-')
-      .and_then(|(name, v)| v.parse().ok().map(|v| (name, v)))
-      .unwrap_or_else(|| (name, 1));
-    match self.fetch_key(name).await? {
+  async fn find_signer_info(&self, name: &str) -> Result<Option<SignerInfo>> {
+    let name_version = match AccountId::from_str(name).ok() {
+      // Search by account_id.
+      Some(account_id) => {
+        if let Some(name_version) = self.cache.get(&account_id) {
+          // Looks like the account_id was loaded before.
+          name_version.clone()
+        } else {
+          // Can't find the account_id.
+          // Load vault keys and search for account_id.
+          return self.load_vault_keys(None, Some(account_id)).await;
+        }
+      }
+      None => {
+        // Parse `{name}-{version}`.
+        name.parse().expect("Doesn't fail")
+      },
+    };
+    // Search by signer name/version.
+    let signer = self.keys.get(&name_version)
+      .as_deref().cloned();
+    if signer.is_some() {
+      return Ok(signer);
+    }
+
+    // Load key from vault.
+    match self.fetch_key(&name_version.name).await? {
       Some(details) => {
-        for (key_version, key) in details.keys {
-          if key_version != version {
+        for (version, key) in details.keys {
+          let (_, signer) = self.cache_vault_key(&details.name, key, version)?;
+          if version != name_version.version {
             continue;
           }
-          let signer = key.as_signer(&details.name, key_version)?;
           return Ok(Some(signer));
         }
       }
@@ -295,31 +371,26 @@ impl SigningManagerTrait for VaultSigningManager {
     }
     Ok(None)
   }
+}
+
+#[async_trait]
+impl SigningManagerTrait for VaultSigningManager {
+  async fn get_signers(&self) -> Result<Vec<SignerInfo>> {
+    let mut signers = vec![];
+    self.load_vault_keys(Some(&mut signers), None).await?;
+    Ok(signers)
+  }
+
+  async fn get_signer_info(&self, name: &str) -> Result<Option<SignerInfo>> {
+    self.find_signer_info(name).await
+  }
 
   async fn get_signer(&self, name: &str) -> Result<Option<TxSigner>> {
-    // Try to split `{name}-{version}`.
-    let (name, version) = name
-      .rsplit_once('-')
-      .and_then(|(name, v)| v.parse().ok().map(|v| (name, v)))
-      .unwrap_or_else(|| (name, 1));
-    match self.fetch_key(name).await? {
-      Some(details) => {
-        for (key_version, key) in details.keys {
-          if key_version != version {
-            continue;
-          }
-          let signer = VaultSigner {
-            client: self.client.clone(),
-            url: self.get_sign_url(&details.name)?,
-            key_version,
-            account: key.account(),
-          };
-          return Ok(Some(Box::new(signer)));
-        }
-      }
-      None => (),
-    }
-    Ok(None)
+    let info = self.get_signer_info(name).await?;
+    Ok(match info {
+      Some(info) => Some(Box::new(self.info_to_vault_signer(info)?)),
+      _ => None,
+    })
   }
 
   async fn create_signer(&self, signer: &CreateSigner) -> Result<SignerInfo> {
@@ -334,7 +405,8 @@ impl SigningManagerTrait for VaultSigningManager {
           .keys
           .get(&1)
           .ok_or_else(|| Error::other("No key returned"))?;
-        Ok(key.as_signer(&details.name, 1)?)
+        let name_version = NameVersion::new(details.name, 1);
+        Ok(key.as_signer(&name_version)?)
       }
       _ => Err(Error::other("Failed to create key")),
     }
