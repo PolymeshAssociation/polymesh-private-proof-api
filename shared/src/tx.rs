@@ -242,6 +242,13 @@ pub enum AuditorRole {
 
 #[cfg(feature = "backend")]
 impl AuditorRole {
+  pub fn from(role: ConfidentialTransactionRole) -> Self {
+    match role {
+      ConfidentialTransactionRole::Auditor  => Self::Auditor,
+      ConfidentialTransactionRole::Mediator => Self::Mediator,
+    }
+  }
+
   pub fn into_role(&self) -> ConfidentialTransactionRole {
     match self {
       Self::Auditor => ConfidentialTransactionRole::Auditor,
@@ -282,6 +289,25 @@ pub fn str_to_memo(val: &str) -> Result<Memo> {
   } else {
     Ok(bytes_to_memo(val.as_bytes()))
   }
+}
+
+/// Confidential asset details (name, ticker, auditors).
+#[derive(Clone, Debug, Default, Deserialize, Serialize, ToSchema)]
+pub struct ConfidentialAssetDetails {
+  /// Asset name.
+  #[schema(example = "Asset name")]
+  pub name: String,
+  /// Asset total supply.
+  #[schema(example = "10000")]
+  pub total_supply: u64,
+  /// Asset owner.
+  #[schema(example = json!(IdentityId::default()))]
+  pub owner: IdentityId,
+  // TODO: AssetType.
+  /// List of auditors/mediators.  Requires at least one auditor.
+  #[schema(example = json!({"0xceae8587b3e968b9669df8eb715f73bcf3f7a9cd3c61c515a4d80f2ca59c8114": "Mediator"}))]
+  #[serde(default)]
+  pub auditors: BTreeMap<PublicKey, AuditorRole>,
 }
 
 /// Create confidential asset on-chain.

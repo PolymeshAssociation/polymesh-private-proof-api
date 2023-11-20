@@ -1,4 +1,7 @@
-use actix_web::{post, web, HttpResponse, Responder, Result};
+use actix_web::{get, post, web, HttpResponse, Responder, Result};
+
+use std::collections::BTreeMap;
+use codec::Encode;
 
 use polymesh_api::types::{
   pallet_confidential_asset::{ConfidentialTransactionRole, TransactionId},
@@ -13,6 +16,8 @@ use confidential_proof_api::repo::Repository;
 use confidential_proof_shared::{
   error::Error, AllowVenues, CreateConfidentialAsset, CreateConfidentialSettlement,
   ExecuteConfidentialSettlement, TransactionArgs, TransactionResult,
+  ConfidentialAssetDetails,
+  AuditorRole, PublicKey,
 };
 
 use crate::signing::AppSigningManager;
@@ -22,8 +27,60 @@ pub fn service(cfg: &mut web::ServiceConfig) {
     .service(tx_create_asset)
     .service(tx_create_venue)
     .service(tx_allow_venues)
+    .service(get_asset_details)
     .service(tx_create_settlement)
     .service(tx_execute_settlement);
+}
+
+/// Get asset details.
+#[utoipa::path(
+  responses(
+    (status = 200, body = ConfidentialAssetDetails)
+  )
+)]
+#[get("/tx/assets/{ticker}")]
+pub async fn get_asset_details(
+  ticker: web::Path<String>,
+  repo: Repository,
+  api: web::Data<Api>,
+) -> Result<impl Responder> {
+  let ticker = repo
+    .get_asset(&ticker)
+    .await?
+    .ok_or_else(|| Error::not_found("Asset"))?
+    .ticker()?;
+
+  // Get confidential asset details (name, ticker).
+  let details = api
+    .query()
+    .confidential_asset()
+    .details(ticker)
+    .await
+    .map_err(|err| Error::from(err))?
+    .ok_or_else(|| Error::not_found("Confidential asset doesn't exist"))?;
+
+  // Get and convert asset auditors.
+  let asset_auditors = api
+    .query()
+    .confidential_asset()
+    .asset_auditors(ticker)
+    .await
+    .map_err(|err| Error::from(err))?
+    .ok_or_else(|| Error::not_found("Confidential asset doesn't exist"))?;
+  let mut auditors = BTreeMap::new();
+  for (auditor, role) in asset_auditors.auditors {
+    let account = PublicKey(auditor.encode());
+    let role = AuditorRole::from(role);
+    auditors.insert(account, role);
+  }
+
+  let details = ConfidentialAssetDetails {
+    name: String::from_utf8_lossy(&details.name.0).to_string(),
+    total_supply: details.total_supply as u64,
+    owner: details.owner_did,
+    auditors,
+  };
+  Ok(HttpResponse::Ok().json(details))
 }
 
 /// Allow Venues.

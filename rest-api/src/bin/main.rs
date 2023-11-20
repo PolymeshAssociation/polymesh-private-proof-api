@@ -95,6 +95,7 @@ async fn start_server() -> anyhow::Result<()> {
         account_assets::decrypt_request,
         tx::assets::tx_create_asset,
         tx::assets::tx_create_venue,
+        tx::assets::get_asset_details,
         tx::assets::tx_allow_venues,
         tx::assets::tx_create_settlement,
         tx::assets::tx_execute_settlement,
