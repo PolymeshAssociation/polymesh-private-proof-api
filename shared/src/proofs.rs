@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 use serde_hex::{SerHexSeq, StrictPfx};
+use std::collections::BTreeSet;
 
 use utoipa::ToSchema;
 
@@ -260,7 +261,7 @@ impl AccountAssetWithSecret {
     &self,
     enc_balance: Option<CipherText>,
     receiver: ElgamalPublicKey,
-    auditors: Vec<ElgamalPublicKey>,
+    auditors: BTreeSet<ElgamalPublicKey>,
     amount: Balance,
   ) -> Result<(UpdateAccountAsset, ConfidentialTransferProof)> {
     // Decode ConfidentialAccount from database.
@@ -269,7 +270,6 @@ impl AccountAssetWithSecret {
     let enc_balance = enc_balance
       .or_else(|| self.enc_balance().ok())
       .ok_or_else(|| Error::other("No encrypted balance."))?;
-    let auditors = auditors.into_iter().collect();
 
     let mut rng = rand::thread_rng();
     let sender_balance = self.balance as Balance;
@@ -520,7 +520,11 @@ pub struct SenderProofRequest {
   /// Receiver's public key.
   #[schema(value_type = String, format = Binary, example = "0xceae8587b3e968b9669df8eb715f73bcf3f7a9cd3c61c515a4d80f2ca59c8114")]
   receiver: PublicKey,
-  /// List of auditors/mediators.  The order must match on-chain leg.
+  /// List of mediators.
+  #[schema(example = json!(["0xceae8587b3e968b9669df8eb715f73bcf3f7a9cd3c61c515a4d80f2ca59c8114"]))]
+  #[serde(default)]
+  mediators: Vec<PublicKey>,
+  /// List of auditors.
   #[schema(example = json!(["0xceae8587b3e968b9669df8eb715f73bcf3f7a9cd3c61c515a4d80f2ca59c8114"]))]
   #[serde(default)]
   auditors: Vec<PublicKey>,
@@ -543,14 +547,15 @@ impl SenderProofRequest {
     Ok(self.receiver.decode()?)
   }
 
-  pub fn auditors(&self) -> Result<Vec<ElgamalPublicKey>> {
-    Ok(
-      self
-        .auditors
-        .iter()
-        .map(|k| k.decode())
-        .collect::<Result<Vec<_>>>()?,
-    )
+  pub fn auditors(&self) -> Result<BTreeSet<ElgamalPublicKey>> {
+    let mut auditors = BTreeSet::new();
+    for k in &self.mediators {
+      auditors.insert(k.decode()?);
+    }
+    for k in &self.auditors {
+      auditors.insert(k.decode()?);
+    }
+    Ok(auditors)
   }
 }
 
@@ -567,7 +572,11 @@ pub struct SenderProofVerifyRequest {
   /// Receiver's public key.
   #[schema(value_type = String, format = Binary, example = "0xceae8587b3e968b9669df8eb715f73bcf3f7a9cd3c61c515a4d80f2ca59c8114")]
   receiver: PublicKey,
-  /// List of auditors/mediators.  The order must match on-chain leg.
+  /// List of mediators.
+  #[schema(example = json!(["0xceae8587b3e968b9669df8eb715f73bcf3f7a9cd3c61c515a4d80f2ca59c8114"]))]
+  #[serde(default)]
+  mediators: Vec<PublicKey>,
+  /// List of auditors.
   #[schema(example = json!(["0xceae8587b3e968b9669df8eb715f73bcf3f7a9cd3c61c515a4d80f2ca59c8114"]))]
   #[serde(default)]
   auditors: Vec<PublicKey>,
@@ -589,14 +598,15 @@ impl SenderProofVerifyRequest {
     Ok(self.receiver.decode()?)
   }
 
-  pub fn auditors(&self) -> Result<Vec<ElgamalPublicKey>> {
-    Ok(
-      self
-        .auditors
-        .iter()
-        .map(|k| k.decode())
-        .collect::<Result<Vec<_>>>()?,
-    )
+  pub fn auditors(&self) -> Result<BTreeSet<ElgamalPublicKey>> {
+    let mut auditors = BTreeSet::new();
+    for k in &self.mediators {
+      auditors.insert(k.decode()?);
+    }
+    for k in &self.auditors {
+      auditors.insert(k.decode()?);
+    }
+    Ok(auditors)
   }
 
   pub fn sender_proof(&self) -> Result<ConfidentialTransferProof> {

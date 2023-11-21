@@ -1,4 +1,4 @@
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 use serde::{Deserialize, Serialize};
 
@@ -244,7 +244,7 @@ pub enum AuditorRole {
 impl AuditorRole {
   pub fn from(role: ConfidentialTransactionRole) -> Self {
     match role {
-      ConfidentialTransactionRole::Auditor  => Self::Auditor,
+      ConfidentialTransactionRole::Auditor => Self::Auditor,
       ConfidentialTransactionRole::Mediator => Self::Mediator,
     }
   }
@@ -304,10 +304,14 @@ pub struct ConfidentialAssetDetails {
   #[schema(example = json!(IdentityId::default()))]
   pub owner: IdentityId,
   // TODO: AssetType.
-  /// List of auditors/mediators.  Requires at least one auditor.
-  #[schema(example = json!({"0xceae8587b3e968b9669df8eb715f73bcf3f7a9cd3c61c515a4d80f2ca59c8114": "Mediator"}))]
+  /// List of mediators.
+  #[schema(example = json!(["0xceae8587b3e968b9669df8eb715f73bcf3f7a9cd3c61c515a4d80f2ca59c8114"]))]
   #[serde(default)]
-  pub auditors: BTreeMap<PublicKey, AuditorRole>,
+  pub mediators: Vec<PublicKey>,
+  /// List of auditors.
+  #[schema(example = json!(["0xceae8587b3e968b9669df8eb715f73bcf3f7a9cd3c61c515a4d80f2ca59c8114"]))]
+  #[serde(default)]
+  pub auditors: Vec<PublicKey>,
 }
 
 /// Create confidential asset on-chain.
@@ -326,10 +330,14 @@ pub struct CreateConfidentialAsset {
   /// Asset ticker.
   #[schema(example = "TICKER")]
   pub ticker: String,
-  /// List of auditors/mediators.  Requires at least one auditor.
-  #[schema(example = json!({"0xceae8587b3e968b9669df8eb715f73bcf3f7a9cd3c61c515a4d80f2ca59c8114": "Mediator"}))]
+  /// List of mediators.
+  #[schema(example = json!(["0xceae8587b3e968b9669df8eb715f73bcf3f7a9cd3c61c515a4d80f2ca59c8114"]))]
   #[serde(default)]
-  pub auditors: BTreeMap<PublicKey, AuditorRole>,
+  pub mediators: Vec<PublicKey>,
+  /// List of auditors.
+  #[schema(example = json!(["0xceae8587b3e968b9669df8eb715f73bcf3f7a9cd3c61c515a4d80f2ca59c8114"]))]
+  #[serde(default)]
+  pub auditors: Vec<PublicKey>,
 }
 
 #[cfg(feature = "backend")]
@@ -340,8 +348,17 @@ impl CreateConfidentialAsset {
 
   pub fn auditors(&self) -> Result<ConfidentialAuditors> {
     let mut auditors = BTreeMap::new();
-    for (key, role) in &self.auditors {
-      auditors.insert(key.as_mediator_account()?, role.into_role());
+    for key in &self.mediators {
+      auditors.insert(
+        key.as_mediator_account()?,
+        ConfidentialTransactionRole::Mediator,
+      );
+    }
+    for key in &self.auditors {
+      auditors.insert(
+        key.as_mediator_account()?,
+        ConfidentialTransactionRole::Auditor,
+      );
     }
     Ok(ConfidentialAuditors { auditors })
   }
@@ -371,10 +388,14 @@ pub struct ConfidentialSettlementLeg {
   /// Receiver's public key.
   #[schema(value_type = String, format = Binary, example = "0xceae8587b3e968b9669df8eb715f73bcf3f7a9cd3c61c515a4d80f2ca59c8114")]
   receiver: PublicKey,
-  /// List of auditors/mediators.  Requires at least one auditor.
+  /// List of mediators.
   #[schema(example = json!({"0xceae8587b3e968b9669df8eb715f73bcf3f7a9cd3c61c515a4d80f2ca59c8114": "Mediator"}))]
   #[serde(default)]
-  pub auditors: BTreeMap<PublicKey, AuditorRole>,
+  pub mediators: BTreeSet<PublicKey>,
+  /// List of auditors.
+  #[schema(example = json!({"0xceae8587b3e968b9669df8eb715f73bcf3f7a9cd3c61c515a4d80f2ca59c8114": "Mediator"}))]
+  #[serde(default)]
+  pub auditors: BTreeSet<PublicKey>,
 }
 
 #[cfg(feature = "backend")]
@@ -393,8 +414,17 @@ impl ConfidentialSettlementLeg {
 
   pub fn auditors(&self) -> Result<ConfidentialAuditors> {
     let mut auditors = BTreeMap::new();
-    for (key, role) in &self.auditors {
-      auditors.insert(key.as_mediator_account()?, role.into_role());
+    for key in &self.mediators {
+      auditors.insert(
+        key.as_mediator_account()?,
+        ConfidentialTransactionRole::Mediator,
+      );
+    }
+    for key in &self.auditors {
+      auditors.insert(
+        key.as_mediator_account()?,
+        ConfidentialTransactionRole::Auditor,
+      );
     }
     Ok(ConfidentialAuditors { auditors })
   }

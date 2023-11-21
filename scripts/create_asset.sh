@@ -14,8 +14,8 @@ curl -s -X 'POST' \
 	\"finalize\": false,
   \"name\": \"Asset $TICKER\",
   \"ticker\": \"$TICKER\",
-  \"auditors\": {
-		\"$MEDIATOR\": \"Mediator\"
-	}
+  \"mediators\": [
+		\"$MEDIATOR\"
+	]
 }" | json_pp
 

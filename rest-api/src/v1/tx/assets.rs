@@ -1,6 +1,5 @@
 use actix_web::{get, post, web, HttpResponse, Responder, Result};
 
-use std::collections::BTreeMap;
 use codec::Encode;
 
 use polymesh_api::types::{
@@ -14,10 +13,9 @@ use polymesh_api::Api;
 
 use confidential_proof_api::repo::Repository;
 use confidential_proof_shared::{
-  error::Error, AllowVenues, CreateConfidentialAsset, CreateConfidentialSettlement,
-  ExecuteConfidentialSettlement, TransactionArgs, TransactionResult,
-  ConfidentialAssetDetails,
-  AuditorRole, PublicKey,
+  error::Error, AllowVenues, ConfidentialAssetDetails, CreateConfidentialAsset,
+  CreateConfidentialSettlement, ExecuteConfidentialSettlement, PublicKey, TransactionArgs,
+  TransactionResult,
 };
 
 use crate::signing::AppSigningManager;
@@ -67,17 +65,25 @@ pub async fn get_asset_details(
     .await
     .map_err(|err| Error::from(err))?
     .ok_or_else(|| Error::not_found("Confidential asset doesn't exist"))?;
-  let mut auditors = BTreeMap::new();
+  let mut mediators = Vec::new();
+  let mut auditors = Vec::new();
   for (auditor, role) in asset_auditors.auditors {
     let account = PublicKey(auditor.encode());
-    let role = AuditorRole::from(role);
-    auditors.insert(account, role);
+    match role {
+      ConfidentialTransactionRole::Mediator => {
+        mediators.push(account);
+      }
+      ConfidentialTransactionRole::Auditor => {
+        auditors.push(account);
+      }
+    }
   }
 
   let details = ConfidentialAssetDetails {
     name: String::from_utf8_lossy(&details.name.0).to_string(),
     total_supply: details.total_supply as u64,
     owner: details.owner_did,
+    mediators,
     auditors,
   };
   Ok(HttpResponse::Ok().json(details))
