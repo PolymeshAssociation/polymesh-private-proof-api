@@ -39,22 +39,28 @@ pub async fn tx_init_account(
   api: web::Data<Api>,
 ) -> Result<impl Responder> {
   let (public_key, ticker) = path.into_inner();
-  let ticker = str_to_ticker(&ticker)?;
   let mut signer = signing
     .get_signer(&req.signer)
     .await?
     .ok_or_else(|| Error::not_found("Signer"))?;
   // Get the account.
   let account = repo
-    .get_account(&public_key)
+    .get_account_with_secret(&public_key)
     .await?
-    .ok_or_else(|| Error::not_found("Account"))?
+    .ok_or_else(|| Error::not_found("Account"))?;
+  let confidential_account = account
     .as_confidential_account()?;
+  // Get asset.
+  let asset = repo
+    .get_asset(&ticker)
+    .await?
+    .ok_or_else(|| Error::not_found("Asset"))?;
+  let ticker = str_to_ticker(&ticker)?;
 
   let res = api
     .call()
     .confidential_asset()
-    .create_account(ticker, account)
+    .create_account(ticker, confidential_account)
     .map_err(|err| Error::from(err))?
     .submit_and_watch(&mut signer)
     .await
@@ -62,6 +68,14 @@ pub async fn tx_init_account(
 
   // Wait for transaction results.
   let res = TransactionResult::wait_for_results(res, req.finalize).await?;
+
+  if res.success {
+    // Generate Account initialization proof.
+    let init = account.init_balance(asset.asset_id);
+
+    // Save initialize account balance.
+    repo.create_account_asset(&init).await?;
+  }
 
   Ok(HttpResponse::Ok().json(res))
 }
