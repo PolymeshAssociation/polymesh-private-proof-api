@@ -5,7 +5,7 @@ use polymesh_api::Api;
 
 use confidential_proof_api::repo::Repository;
 use confidential_proof_shared::{
-  error::Error, AffirmTransactionLegRequest, PublicKey, TransactionArgs, TransactionResult,
+  error::Error, AffirmTransactionLegRequest, TransactionArgs, TransactionResult,
 };
 
 use super::account_assets;
@@ -26,7 +26,7 @@ pub fn service(cfg: &mut web::ServiceConfig) {
 )]
 #[post("/tx/accounts/{public_key}/add_mediator")]
 pub async fn tx_add_mediator(
-  public_key: web::Path<PublicKey>,
+  public_key: web::Path<String>,
   req: web::Json<TransactionArgs>,
   repo: Repository,
   signing: AppSigningManager,
@@ -66,7 +66,7 @@ pub async fn tx_add_mediator(
 )]
 #[post("/tx/accounts/{public_key}/mediator_affirm_leg")]
 pub async fn tx_mediator_affirm_leg(
-  path: web::Path<PublicKey>,
+  path: web::Path<String>,
   req: web::Json<AffirmTransactionLegRequest>,
   repo: Repository,
   signing: AppSigningManager,

@@ -8,7 +8,7 @@ use polymesh_api::Api;
 use confidential_proof_api::repo::Repository;
 use confidential_proof_shared::{
   confidential_account_to_key, error::Error, mediator_account_to_key, scale_convert, str_to_ticker,
-  AffirmTransactionLegRequest, DecryptedIncomingBalance, MintRequest, PublicKey, TransactionArgs,
+  AffirmTransactionLegRequest, DecryptedIncomingBalance, MintRequest, TransactionArgs,
   TransactionResult,
 };
 
@@ -32,7 +32,7 @@ pub fn service(cfg: &mut web::ServiceConfig) {
 )]
 #[post("/tx/accounts/{public_key}/assets/{ticker}/init_account")]
 pub async fn tx_init_account(
-  path: web::Path<(PublicKey, String)>,
+  path: web::Path<(String, String)>,
   req: web::Json<TransactionArgs>,
   repo: Repository,
   signing: AppSigningManager,
@@ -74,7 +74,7 @@ pub async fn tx_init_account(
 )]
 #[post("/tx/accounts/{public_key}/assets/{ticker}/receiver_affirm_leg")]
 pub async fn tx_receiver_affirm_leg(
-  path: web::Path<(PublicKey, String)>,
+  path: web::Path<(String, String)>,
   req: web::Json<AffirmTransactionLegRequest>,
   repo: Repository,
   signing: AppSigningManager,
@@ -121,7 +121,7 @@ pub async fn tx_receiver_affirm_leg(
 )]
 #[get("/tx/accounts/{public_key}/assets/{ticker}/incoming_balance")]
 pub async fn get_incoming_balance(
-  path: web::Path<(PublicKey, String)>,
+  path: web::Path<(String, String)>,
   repo: Repository,
   api: web::Data<Api>,
 ) -> Result<impl Responder> {
@@ -166,7 +166,7 @@ pub async fn get_incoming_balance(
 )]
 #[post("/tx/accounts/{public_key}/assets/{ticker}/apply_incoming")]
 pub async fn tx_apply_incoming(
-  path: web::Path<(PublicKey, String)>,
+  path: web::Path<(String, String)>,
   req: web::Json<TransactionArgs>,
   repo: Repository,
   signing: AppSigningManager,
@@ -233,7 +233,7 @@ pub async fn tx_apply_incoming(
 )]
 #[post("/tx/accounts/{public_key}/assets/{ticker}/sender_affirm_leg")]
 pub async fn tx_sender_affirm_leg(
-  path: web::Path<(PublicKey, String)>,
+  path: web::Path<(String, String)>,
   req: web::Json<AffirmTransactionLegRequest>,
   repo: Repository,
   signing: AppSigningManager,
@@ -320,7 +320,7 @@ pub async fn tx_sender_affirm_leg(
 )]
 #[post("/tx/accounts/{public_key}/assets/{ticker}/mint")]
 pub async fn tx_mint(
-  path: web::Path<(PublicKey, String)>,
+  path: web::Path<(String, String)>,
   req: web::Json<MintRequest>,
   repo: Repository,
   signing: AppSigningManager,

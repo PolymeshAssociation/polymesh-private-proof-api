@@ -142,7 +142,9 @@ async fn start_server() -> anyhow::Result<()> {
           DecryptedResponse,
           UpdateAccountAssetBalanceRequest,
 
+          TransactionCreated,
           TransactionAffirmed,
+          TransactionAffirmedParty,
           ProcessedEvent,
           ProcessedEvents,
           TransactionArgs,

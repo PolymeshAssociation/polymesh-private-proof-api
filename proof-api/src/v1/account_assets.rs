@@ -1,7 +1,7 @@
 use actix_web::{get, post, web, HttpResponse, Responder, Result};
 
 use confidential_proof_shared::{
-  error::Error, AccountAssetDecryptRequest, AccountAssetWithProof, CreateAccountAsset, PublicKey,
+  error::Error, AccountAssetDecryptRequest, AccountAssetWithProof, CreateAccountAsset,
   ReceiverVerifyRequest, SenderProofRequest, UpdateAccountAssetBalanceRequest,
 };
 
@@ -26,7 +26,7 @@ pub fn service(cfg: &mut web::ServiceConfig) {
 )]
 #[get("/accounts/{public_key}/assets")]
 pub async fn get_all_account_assets(
-  public_key: web::Path<PublicKey>,
+  public_key: web::Path<String>,
   repo: Repository,
 ) -> Result<impl Responder> {
   let account_assets = repo.get_account_assets(&public_key).await?;
@@ -41,7 +41,7 @@ pub async fn get_all_account_assets(
 )]
 #[get("/accounts/{public_key}/assets/{ticker}")]
 pub async fn get_account_asset(
-  path: web::Path<(PublicKey, String)>,
+  path: web::Path<(String, String)>,
   repo: Repository,
 ) -> Result<impl Responder> {
   let (public_key, ticker) = path.into_inner();
@@ -60,7 +60,7 @@ pub async fn get_account_asset(
 )]
 #[post("/accounts/{public_key}/assets")]
 pub async fn create_account_asset(
-  public_key: web::Path<PublicKey>,
+  public_key: web::Path<String>,
   create_account_asset: web::Json<CreateAccountAsset>,
   repo: Repository,
 ) -> Result<impl Responder> {
@@ -92,7 +92,7 @@ pub async fn create_account_asset(
 )]
 #[post("/accounts/{public_key}/assets/{ticker}/send")]
 pub async fn request_sender_proof(
-  path: web::Path<(PublicKey, String)>,
+  path: web::Path<(String, String)>,
   req: web::Json<SenderProofRequest>,
   repo: Repository,
 ) -> Result<impl Responder> {
@@ -130,7 +130,7 @@ pub async fn request_sender_proof(
 )]
 #[post("/accounts/{public_key}/assets/{ticker}/receiver_verify")]
 pub async fn receiver_verify_request(
-  path: web::Path<(PublicKey, String)>,
+  path: web::Path<(String, String)>,
   req: web::Json<ReceiverVerifyRequest>,
   repo: Repository,
 ) -> Result<impl Responder> {
@@ -154,7 +154,7 @@ pub async fn receiver_verify_request(
 )]
 #[post("/accounts/{public_key}/assets/{ticker}/decrypt")]
 pub async fn decrypt_request(
-  path: web::Path<(PublicKey, String)>,
+  path: web::Path<(String, String)>,
   req: web::Json<AccountAssetDecryptRequest>,
   repo: Repository,
 ) -> Result<impl Responder> {
@@ -180,7 +180,7 @@ pub async fn decrypt_request(
 )]
 #[post("/accounts/{public_key}/assets/{ticker}/update_balance")]
 pub async fn update_balance_request(
-  path: web::Path<(PublicKey, String)>,
+  path: web::Path<(String, String)>,
   req: web::Json<UpdateAccountAssetBalanceRequest>,
   repo: Repository,
 ) -> Result<impl Responder> {

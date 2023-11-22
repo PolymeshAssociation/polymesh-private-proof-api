@@ -1,6 +1,6 @@
 use actix_web::{get, post, web, HttpResponse, Responder, Result};
 
-use confidential_proof_shared::{error::Error, AuditorVerifyRequest, CreateAccount, PublicKey};
+use confidential_proof_shared::{error::Error, AuditorVerifyRequest, CreateAccount};
 
 use super::account_assets;
 use crate::repo::Repository;
@@ -34,7 +34,7 @@ pub async fn get_all_accounts(repo: Repository) -> Result<impl Responder> {
 )]
 #[get("/accounts/{public_key}")]
 pub async fn get_account(
-  public_key: web::Path<PublicKey>,
+  public_key: web::Path<String>,
   repo: Repository,
 ) -> Result<impl Responder> {
   let account = repo
@@ -65,7 +65,7 @@ pub async fn create_account(repo: Repository) -> Result<impl Responder> {
 )]
 #[post("/accounts/{public_key}/auditor_verify")]
 pub async fn auditor_verify_request(
-  public_key: web::Path<PublicKey>,
+  public_key: web::Path<String>,
   req: web::Json<AuditorVerifyRequest>,
   repo: Repository,
 ) -> Result<impl Responder> {

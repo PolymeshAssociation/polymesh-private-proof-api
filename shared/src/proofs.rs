@@ -482,6 +482,14 @@ pub struct PublicKey(
 
 #[cfg(feature = "backend")]
 impl PublicKey {
+  pub fn from_str(s: &str) -> Result<Self> {
+    if s.starts_with("0x") {
+      Ok(Self(hex::decode(&s[2..])?))
+    } else {
+      Ok(Self(hex::decode(s)?))
+    }
+  }
+
   pub fn decode(&self) -> Result<ElgamalPublicKey> {
     Ok(ElgamalPublicKey::decode(&mut self.0.as_slice())?)
   }
