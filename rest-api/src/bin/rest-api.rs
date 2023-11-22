@@ -11,9 +11,9 @@ use utoipa_swagger_ui::SwaggerUi;
 use polymesh_api::Api;
 
 use confidential_proof_api as proof_api;
-use confidential_proof_api::{repo, v1::*};
+use confidential_proof_api::{repo::SqliteConfidentialRepository, v1::*};
 use confidential_proof_shared::*;
-use confidential_rest_api::{signing, v1::*};
+use confidential_rest_api::{signing, repo::SqliteTransactionRepository, v1::*};
 
 pub fn v1_service(cfg: &mut web::ServiceConfig) {
   cfg.service(
@@ -53,9 +53,10 @@ async fn start_server() -> anyhow::Result<()> {
 
   // Open database.
   let pool = get_db_pool().await?;
-  // Repository.
-  let repo = repo::SqliteConfidentialRepository::new_app_data(&pool);
-  log::info!("Repository initialized");
+  // Repositories.
+  let repo = SqliteConfidentialRepository::new_app_data(&pool);
+  let tx_repo = SqliteTransactionRepository::new_app_data(&pool);
+  log::info!("Repositories initialized");
 
   // Signing manager.
   let signing = get_signing_manager(&pool)?;
@@ -63,6 +64,21 @@ async fn start_server() -> anyhow::Result<()> {
   let polymesh_url =
     std::env::var("POLYMESH_NODE_URL").unwrap_or("ws://localhost:9944/".to_string());
   let polymesh_api = web::Data::new(Api::new(&polymesh_url).await?);
+
+  /*
+  {
+    use actix_web::rt;
+    use confidential_rest_api::watcher;
+    let repo = repo.clone();
+    let tx_repo = tx_repo.clone();
+    let api = (**polymesh_api).clone();
+    log::info!("Starting chain watcher");
+    rt::spawn(async move {
+      if let Err(err) = watcher::start_chain_watcher(api, repo, tx_repo).await {
+        log::error!("Chain watcher failed: {err:?}");
+      }
+    });
+  }// */
 
   // starting the server
   log::info!("🚀🚀🚀 Starting Actix server at {}", address);
@@ -158,6 +174,7 @@ async fn start_server() -> anyhow::Result<()> {
       .service(
         web::scope("/api")
           .app_data(repo.clone())
+          .app_data(tx_repo.clone())
           .app_data(signing.clone())
           .app_data(polymesh_api.clone())
           .configure(proof_api::health::service)

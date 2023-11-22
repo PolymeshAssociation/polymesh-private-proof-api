@@ -1,4 +1,4 @@
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeMap;
 
 use serde::{Deserialize, Serialize};
 
@@ -10,8 +10,9 @@ use codec::{Decode, Encode};
 use polymesh_api::{
   client::{
     basic_types::{AccountId, IdentityId},
-    block::EventRecords,
+    block::{Header, EventRecord, Phase, ExtrinsicV4},
     ExtrinsicResult,
+    EnumInfo,
   },
   types::{
     pallet_confidential_asset::{
@@ -27,6 +28,8 @@ use polymesh_api::{
     },
     runtime::{events::*, RuntimeEvent},
   },
+  Api,
+  ChainApi,
   TransactionResults,
 };
 
@@ -49,8 +52,130 @@ pub fn mediator_account_to_key(account: &MediatorAccount) -> ElgamalPublicKey {
   scale_convert(account)
 }
 
-/// A Confidential asset transaction was affirmed.
+pub fn join_auditors(mediators: &[PublicKey], auditors: &[PublicKey]) -> Result<ConfidentialAuditors> {
+  let mut roles = BTreeMap::new();
+  for key in mediators {
+    roles.insert(
+      key.as_mediator_account()?,
+      ConfidentialTransactionRole::Mediator,
+    );
+  }
+  for key in auditors {
+    roles.insert(
+      key.as_mediator_account()?,
+      ConfidentialTransactionRole::Auditor,
+    );
+  }
+  Ok(ConfidentialAuditors { auditors: roles })
+}
+
+pub fn split_auditors(auditors: &ConfidentialAuditors) -> (Vec<PublicKey>, Vec<PublicKey>) {
+  let mediators = auditors.auditors.iter().filter_map(|(key, role)| match role {
+    ConfidentialTransactionRole::Mediator => Some(PublicKey(key.encode())),
+    _ => None,
+  }).collect();
+  let auditors = auditors.auditors.iter().filter_map(|(key, role)| match role {
+    ConfidentialTransactionRole::Auditor => Some(PublicKey(key.encode())),
+    _ => None,
+  }).collect();
+  (mediators, auditors)
+}
+
+/// Settlement record.
+#[cfg_attr(feature = "backend", derive(sqlx::FromRow))]
+#[derive(Clone, Debug, Default, Deserialize, Serialize)]
+pub struct SettlementRecord {
+  /// Settlement id.
+  pub settlement_id: u32,
+  /// Venue id.
+  pub venue_id: u32,
+  /// Legs.
+  pub legs: String,
+  /// Memo.
+  pub memo: Option<String>,
+
+  pub created_at: chrono::NaiveDateTime,
+}
+
+#[cfg(feature = "backend")]
+impl SettlementRecord {
+  pub fn from_tx(tx: &TransactionCreated) -> Result<Self> {
+    Ok(Self {
+      settlement_id: tx.transaction_id.0 as _,
+      venue_id: tx.venue_id.0 as _,
+      legs: serde_json::to_string(&tx.legs)?,
+      memo: if tx.memo.len() > 0 {
+        Some(tx.memo.clone())
+      } else {
+        None
+      },
+      ..Default::default()
+    })
+  }
+}
+
+/// Settlement event record.
+#[cfg_attr(feature = "backend", derive(sqlx::FromRow))]
+#[derive(Clone, Debug, Default, Deserialize, Serialize)]
+pub struct SettlementEventRecord {
+  /// Settlement id.
+  pub settlement_id: u32,
+  /// Settlement event.
+  pub event: String,
+
+  pub created_at: chrono::NaiveDateTime,
+}
+
+#[cfg(feature = "backend")]
+impl SettlementEventRecord {
+  pub fn from_events(processed_events: &ProcessedEvents) -> Result<Vec<Self>> {
+    let mut events = Vec::new();
+    for ev in &processed_events.0 {
+      match ev {
+        ProcessedEvent::ConfidentialTransactionCreated(TransactionCreated { transaction_id, .. }) |
+        ProcessedEvent::ConfidentialTransactionAffirmed(TransactionAffirmed { transaction_id, .. }) |
+        ProcessedEvent::ConfidentialTransactionRejected(transaction_id) |
+        ProcessedEvent::ConfidentialTransactionExecuted(transaction_id) => {
+          events.push(Self {
+            settlement_id: transaction_id.0 as _,
+            event: serde_json::to_string(ev)?,
+            ..Default::default()
+          })
+        }
+        _ => (),
+      }
+    }
+    Ok(events)
+  }
+}
+
+/// A Confidential asset transaction was created.
 #[derive(Clone, Debug, Default, Serialize, Deserialize, ToSchema)]
+pub struct TransactionCreated {
+  /// Confidential venue id.
+  #[schema(value_type = u64)]
+  pub venue_id: VenueId,
+  /// Confidential transaction id.
+  #[schema(value_type = u64)]
+  pub transaction_id: TransactionId,
+  /// Confidential transaction legs.
+  pub legs: Vec<ConfidentialSettlementLeg>,
+  /// Settlement memo.
+  #[schema(example = "")]
+  #[serde(default)]
+  pub memo: String,
+}
+
+/// The transaction party affirmation.
+#[derive(Clone, Debug, Deserialize, Serialize, ToSchema)]
+pub enum TransactionAffirmedParty {
+  Sender,
+  Receiver,
+  Mediator(PublicKey),
+}
+
+/// A Confidential asset transaction was affirmed.
+#[derive(Clone, Debug, Serialize, Deserialize, ToSchema)]
 pub struct TransactionAffirmed {
   /// Confidential transaction id.
   #[schema(value_type = u64)]
@@ -64,6 +189,8 @@ pub struct TransactionAffirmed {
   /// Confidential transaction leg sender proof (if the sender affirmed).
   #[schema(value_type = String, format = Binary, example = "<Hex encoded sender proof>")]
   pub sender_proof: Option<SenderProof>,
+  /// Who affirmed the transaction leg.
+  pub party: TransactionAffirmedParty,
 }
 
 /// Processed event from the transaction.
@@ -90,12 +217,23 @@ pub enum ProcessedEvent {
   /// An asset checkpoint schedule was created.
   #[schema(value_type = u64)]
   ScheduleCreated(ScheduleId),
+  /// A Confidential asset was created.
+  ConfidentialAssetCreated(String),
+  /// A Confidential asset minted.
+  ///
+  /// (ticker, amount minted, total_supply)
+  ConfidentialAssetMinted(String, u64, u64),
   /// A Confidential asset Venue was created.
   #[schema(value_type = u64)]
   ConfidentialVenueCreated(VenueId),
   /// A Confidential asset transaction was created.
+  ConfidentialTransactionCreated(TransactionCreated),
+  /// A Confidential asset transaction executed.
   #[schema(value_type = u64)]
-  ConfidentialTransactionCreated(TransactionId),
+  ConfidentialTransactionExecuted(TransactionId),
+  /// A Confidential asset transaction rejected.
+  #[schema(value_type = u64)]
+  ConfidentialTransactionRejected(TransactionId),
   /// A Confidential asset transaction was affirmed.
   ConfidentialTransactionAffirmed(TransactionAffirmed),
 }
@@ -106,9 +244,9 @@ pub struct ProcessedEvents(pub Vec<ProcessedEvent>);
 
 impl ProcessedEvents {
   /// Get ids from *Created events.
-  pub fn from_events(events: &EventRecords<RuntimeEvent>) -> Result<Self> {
+  pub fn from_events(events: &[EventRecord<RuntimeEvent>]) -> Result<Self> {
     let mut processed = Vec::new();
-    for rec in &events.0 {
+    for rec in events {
       match &rec.event {
         RuntimeEvent::Settlement(SettlementEvent::VenueCreated(_, id, ..)) => {
           processed.push(ProcessedEvent::VenueCreated(*id));
@@ -134,45 +272,97 @@ impl ProcessedEvents {
         RuntimeEvent::ConfidentialAsset(ConfidentialAssetEvent::VenueCreated(_, id)) => {
           processed.push(ProcessedEvent::ConfidentialVenueCreated(*id));
         }
+        RuntimeEvent::ConfidentialAsset(ConfidentialAssetEvent::ConfidentialAssetCreated(_, ticker, ..)) => {
+          let ticker = ticker_to_string(ticker);
+          processed.push(ProcessedEvent::ConfidentialAssetCreated(ticker));
+        }
+        RuntimeEvent::ConfidentialAsset(ConfidentialAssetEvent::Issued(_, ticker, amount, total_supply)) => {
+          let ticker = ticker_to_string(ticker);
+          processed.push(ProcessedEvent::ConfidentialAssetMinted(ticker, *amount as _, *total_supply as _));
+        }
         RuntimeEvent::ConfidentialAsset(ConfidentialAssetEvent::TransactionCreated(
           _,
+          venue_id,
+          id,
+          legs,
+          memo,
+        )) => {
+          let legs = legs.into_iter().map(|l| {
+            let (mediators, auditors) = split_auditors(&l.auditors);
+            ConfidentialSettlementLeg {
+              ticker: ticker_to_string(&l.ticker),
+              sender: PublicKey(l.sender.encode()),
+              receiver: PublicKey(l.receiver.encode()),
+              mediators,
+              auditors,
+            }
+          }).collect();
+          processed.push(ProcessedEvent::ConfidentialTransactionCreated(
+              TransactionCreated {
+                venue_id: *venue_id,
+                transaction_id: *id,
+                legs,
+                memo: memo_to_string(memo),
+              }
+          ));
+        }
+        RuntimeEvent::ConfidentialAsset(ConfidentialAssetEvent::TransactionExecuted(
           _,
           id,
           ..,
         )) => {
-          processed.push(ProcessedEvent::ConfidentialTransactionCreated(*id));
+          processed.push(ProcessedEvent::ConfidentialTransactionExecuted(*id));
+        }
+        RuntimeEvent::ConfidentialAsset(ConfidentialAssetEvent::TransactionRejected(
+          _,
+          id,
+          ..,
+        )) => {
+          processed.push(ProcessedEvent::ConfidentialTransactionRejected(*id));
         }
         RuntimeEvent::ConfidentialAsset(ConfidentialAssetEvent::TransactionAffirmed(
           _,
           tx_id,
           leg_id,
-          AffirmParty::Sender(sender_proof),
+          party,
           pending,
         )) => {
-          processed.push(ProcessedEvent::ConfidentialTransactionAffirmed(
-            TransactionAffirmed {
-              transaction_id: *tx_id,
-              pending_affirms: *pending,
-              leg_id: *leg_id,
-              sender_proof: Some(SenderProof(sender_proof.encode())),
-            },
-          ));
-        }
-        RuntimeEvent::ConfidentialAsset(ConfidentialAssetEvent::TransactionAffirmed(
-          _,
-          tx_id,
-          leg_id,
-          _,
-          pending,
-        )) => {
-          processed.push(ProcessedEvent::ConfidentialTransactionAffirmed(
-            TransactionAffirmed {
-              transaction_id: *tx_id,
-              pending_affirms: *pending,
-              leg_id: *leg_id,
-              sender_proof: None,
-            },
-          ));
+          match party {
+            AffirmParty::Sender(sender_proof) => {
+              processed.push(ProcessedEvent::ConfidentialTransactionAffirmed(
+                TransactionAffirmed {
+                  transaction_id: *tx_id,
+                  pending_affirms: *pending,
+                  leg_id: *leg_id,
+                  sender_proof: Some(SenderProof(sender_proof.encode())),
+                  party: TransactionAffirmedParty::Sender,
+                },
+              ));
+            }
+            AffirmParty::Receiver => {
+              processed.push(ProcessedEvent::ConfidentialTransactionAffirmed(
+                TransactionAffirmed {
+                  transaction_id: *tx_id,
+                  pending_affirms: *pending,
+                  leg_id: *leg_id,
+                  sender_proof: None,
+                  party: TransactionAffirmedParty::Receiver,
+                },
+              ));
+            }
+            AffirmParty::Mediator(mediator) => {
+              let mediator = PublicKey(mediator.encode());
+              processed.push(ProcessedEvent::ConfidentialTransactionAffirmed(
+                TransactionAffirmed {
+                  transaction_id: *tx_id,
+                  pending_affirms: *pending,
+                  leg_id: *leg_id,
+                  sender_proof: None,
+                  party: TransactionAffirmedParty::Mediator(mediator),
+                },
+              ));
+            }
+          }
         }
         _ => (),
       }
@@ -181,15 +371,60 @@ impl ProcessedEvents {
   }
 }
 
+/// Block transaction record.
+#[cfg_attr(feature = "backend", derive(sqlx::FromRow))]
+#[derive(Clone, Debug, Default, Deserialize, Serialize)]
+pub struct BlockTransactionRecord {
+  /// Block hash.
+  pub block_hash: String,
+  /// Block number.
+  pub block_number: u32,
+  /// Transaction hash.
+  pub tx_hash: String,
+  /// Was the transaction sucessful.
+  pub success: bool,
+  /// If `success` is false, then provide an error message.
+  pub error: Option<String>,
+  /// Events.
+  pub events: Option<String>,
+
+  pub created_at: chrono::NaiveDateTime,
+}
+
+#[cfg(feature = "backend")]
+impl BlockTransactionRecord {
+  pub fn from_tx(tx: &TransactionResult) -> Result<Self> {
+    Ok(Self {
+      block_hash: tx.block_hash.clone(),
+      block_number: tx.block_number,
+      tx_hash: tx.tx_hash.clone(),
+      events: if tx.processed_events.0.len() > 0 {
+        Some(serde_json::to_string(&tx.processed_events)?)
+      } else {
+        None
+      },
+      success: tx.success,
+      error: tx.err_msg.clone(),
+      ..Default::default()
+    })
+  }
+}
+
 /// Transaction results
 #[derive(Clone, Debug, Default, Serialize, Deserialize, ToSchema)]
 pub struct TransactionResult {
-  /// Was the transaction sucessful.
-  #[schema(example = true)]
-  pub success: bool,
   /// Block hash.
   #[schema(example = "0xea549dcdadacb5678e37a336e44c581ade562b696159bf8fd846fee7e7fe1dc3")]
   pub block_hash: String,
+  /// Block number.
+  #[schema(example = 1)]
+  pub block_number: u32,
+  /// Transaction hash.
+  #[schema(example = "0xea549dcdadacb5678e37a336e44c581ade562b696159bf8fd846fee7e7fe1dc3")]
+  pub tx_hash: String,
+  /// Was the transaction sucessful.
+  #[schema(example = true)]
+  pub success: bool,
   /// If `success` is false, then provide an error message.
   #[schema(example = json!(null))]
   pub err_msg: Option<String>,
@@ -200,6 +435,38 @@ pub struct TransactionResult {
 
 #[cfg(feature = "backend")]
 impl TransactionResult {
+  pub async fn get_block_transactions(api: &Api, header: Header) -> Result<Vec<Self>> {
+    let block_hash = header.hash();
+    let block_events = api.block_events(Some(block_hash)).await?;
+    let block = api.client().get_block(Some(block_hash)).await?;
+
+    let mut transactions = Vec::new();
+    if let Some(block) = block {
+      let block_hash = format!("{block_hash:#x}");
+      for (idx, tx_enc) in block.extrinsics().into_iter().enumerate() {
+        let tx_hash = ExtrinsicV4::tx_hash(&tx_enc.0);
+        let events = block_events.iter().filter(|ev| ev.phase == Phase::ApplyExtrinsic(idx as u32))
+          .cloned()
+          .collect::<Vec<_>>();
+        let tx_res = Api::events_to_extrinsic_result(&events);
+        let (success, err_msg) = match tx_res {
+          Some(ExtrinsicResult::Success(_)) => (true, None),
+          Some(ExtrinsicResult::Failed(_, err)) => (false, Some(format!("{:?}", err.as_short_doc()))),
+          None => (false, Some(format!("Unknown transaction results"))),
+        };
+        transactions.push(Self {
+          block_hash: block_hash.clone(),
+          block_number: header.number,
+          tx_hash: format!("{:#x}", tx_hash),
+          success,
+          err_msg,
+          processed_events: ProcessedEvents::from_events(&events)?,
+        })
+      }
+    }
+    Ok(transactions)
+  }
+
   pub async fn wait_for_results(mut tx_res: TransactionResults, finalize: bool) -> Result<Self> {
     let mut res = Self::default();
 
@@ -211,10 +478,15 @@ impl TransactionResult {
     }
     .unwrap_or_default();
     res.block_hash = format!("{block_hash:#x}");
+    res.tx_hash = format!("{:#x}", tx_res.hash());
+
+    if let Some(header) = tx_res.get_block_header().await? {
+      res.block_number = header.number;
+    }
 
     // Process events.
     if let Some(events) = tx_res.events().await? {
-      res.processed_events = ProcessedEvents::from_events(events)?;
+      res.processed_events = ProcessedEvents::from_events(&events.0)?;
     }
 
     match tx_res.extrinsic_result().await? {
@@ -274,6 +546,15 @@ pub fn str_to_ticker(val: &str) -> Result<Ticker> {
   }
 }
 
+pub fn ticker_to_string(ticker: &Ticker) -> String {
+  // Truncate at first null.
+  if let Some(t) = ticker.0.split(|&c| c == 0).next() {
+    String::from_utf8_lossy(t).to_string()
+  } else {
+    "".to_string()
+  }
+}
+
 pub fn bytes_to_memo(val: &[u8]) -> Memo {
   let mut memo = [0u8; 32];
   for (idx, b) in val.iter().take(32).enumerate() {
@@ -291,6 +572,15 @@ pub fn str_to_memo(val: &str) -> Result<Memo> {
   }
 }
 
+pub fn memo_to_string(memo: &Option<Memo>) -> String {
+  match memo {
+    Some(memo) => {
+      format!("0x{}", hex::encode(&memo.0[..]))
+    }
+    None => "".to_string(),
+  }
+}
+
 /// Confidential asset details (name, ticker, auditors).
 #[derive(Clone, Debug, Default, Deserialize, Serialize, ToSchema)]
 pub struct ConfidentialAssetDetails {
@@ -303,9 +593,8 @@ pub struct ConfidentialAssetDetails {
   /// Asset owner.
   #[schema(example = json!(IdentityId::default()))]
   pub owner: IdentityId,
-  // TODO: AssetType.
   /// List of mediators.
-  #[schema(example = json!(["0xceae8587b3e968b9669df8eb715f73bcf3f7a9cd3c61c515a4d80f2ca59c8114"]))]
+  #[schema(example = json!([]))]
   #[serde(default)]
   pub mediators: Vec<PublicKey>,
   /// List of auditors.
@@ -331,7 +620,7 @@ pub struct CreateConfidentialAsset {
   #[schema(example = "TICKER")]
   pub ticker: String,
   /// List of mediators.
-  #[schema(example = json!(["0xceae8587b3e968b9669df8eb715f73bcf3f7a9cd3c61c515a4d80f2ca59c8114"]))]
+  #[schema(example = json!([]))]
   #[serde(default)]
   pub mediators: Vec<PublicKey>,
   /// List of auditors.
@@ -347,20 +636,7 @@ impl CreateConfidentialAsset {
   }
 
   pub fn auditors(&self) -> Result<ConfidentialAuditors> {
-    let mut auditors = BTreeMap::new();
-    for key in &self.mediators {
-      auditors.insert(
-        key.as_mediator_account()?,
-        ConfidentialTransactionRole::Mediator,
-      );
-    }
-    for key in &self.auditors {
-      auditors.insert(
-        key.as_mediator_account()?,
-        ConfidentialTransactionRole::Auditor,
-      );
-    }
-    Ok(ConfidentialAuditors { auditors })
+    join_auditors(&self.mediators, &self.auditors)
   }
 }
 
@@ -389,13 +665,13 @@ pub struct ConfidentialSettlementLeg {
   #[schema(value_type = String, format = Binary, example = "0xceae8587b3e968b9669df8eb715f73bcf3f7a9cd3c61c515a4d80f2ca59c8114")]
   receiver: PublicKey,
   /// List of mediators.
-  #[schema(example = json!({"0xceae8587b3e968b9669df8eb715f73bcf3f7a9cd3c61c515a4d80f2ca59c8114": "Mediator"}))]
+  #[schema(example = json!([]))]
   #[serde(default)]
-  pub mediators: BTreeSet<PublicKey>,
+  pub mediators: Vec<PublicKey>,
   /// List of auditors.
-  #[schema(example = json!({"0xceae8587b3e968b9669df8eb715f73bcf3f7a9cd3c61c515a4d80f2ca59c8114": "Mediator"}))]
+  #[schema(example = json!(["0xceae8587b3e968b9669df8eb715f73bcf3f7a9cd3c61c515a4d80f2ca59c8114"]))]
   #[serde(default)]
-  pub auditors: BTreeSet<PublicKey>,
+  pub auditors: Vec<PublicKey>,
 }
 
 #[cfg(feature = "backend")]
@@ -413,20 +689,7 @@ impl ConfidentialSettlementLeg {
   }
 
   pub fn auditors(&self) -> Result<ConfidentialAuditors> {
-    let mut auditors = BTreeMap::new();
-    for key in &self.mediators {
-      auditors.insert(
-        key.as_mediator_account()?,
-        ConfidentialTransactionRole::Mediator,
-      );
-    }
-    for key in &self.auditors {
-      auditors.insert(
-        key.as_mediator_account()?,
-        ConfidentialTransactionRole::Auditor,
-      );
-    }
-    Ok(ConfidentialAuditors { auditors })
+    join_auditors(&self.mediators, &self.auditors)
   }
 }
 
