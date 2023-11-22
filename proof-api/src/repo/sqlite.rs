@@ -101,7 +101,8 @@ impl ConfidentialRepository for SqliteConfidentialRepository {
     )
   }
 
-  async fn get_account(&self, pub_key: &PublicKey) -> Result<Option<Account>> {
+  async fn get_account(&self, pub_key: &str) -> Result<Option<Account>> {
+    let pub_key = PublicKey::from_str(pub_key)?;
     Ok(sqlx::query_as!(
       Account,
       r#"SELECT account_id, public_key, created_at, updated_at FROM accounts WHERE public_key = ?"#,
@@ -113,8 +114,9 @@ impl ConfidentialRepository for SqliteConfidentialRepository {
 
   async fn get_account_with_secret(
     &self,
-    pub_key: &PublicKey,
+    pub_key: &str,
   ) -> Result<Option<AccountWithSecret>> {
+    let pub_key = PublicKey::from_str(pub_key)?;
     Ok(
       sqlx::query_as!(
         AccountWithSecret,
@@ -143,7 +145,8 @@ impl ConfidentialRepository for SqliteConfidentialRepository {
     )
   }
 
-  async fn get_account_assets(&self, pub_key: &PublicKey) -> Result<Vec<AccountAsset>> {
+  async fn get_account_assets(&self, pub_key: &str) -> Result<Vec<AccountAsset>> {
+    let pub_key = PublicKey::from_str(pub_key)?;
     Ok(
       sqlx::query_as!(
         AccountAsset,
@@ -163,9 +166,10 @@ impl ConfidentialRepository for SqliteConfidentialRepository {
 
   async fn get_account_asset(
     &self,
-    pub_key: &PublicKey,
+    pub_key: &str,
     ticker: &str,
   ) -> Result<Option<AccountAsset>> {
+    let pub_key = PublicKey::from_str(pub_key)?;
     Ok(
       sqlx::query_as!(
         AccountAsset,
@@ -186,9 +190,10 @@ impl ConfidentialRepository for SqliteConfidentialRepository {
 
   async fn get_account_asset_with_secret(
     &self,
-    pub_key: &PublicKey,
+    pub_key: &str,
     ticker: &str,
   ) -> Result<Option<AccountAssetWithSecret>> {
+    let pub_key = PublicKey::from_str(pub_key)?;
     Ok(
       sqlx::query_as(
         r#"
@@ -208,6 +213,7 @@ impl ConfidentialRepository for SqliteConfidentialRepository {
   }
 
   async fn create_account_asset(&self, account_asset: &UpdateAccountAsset) -> Result<AccountAsset> {
+    let mut conn = self.pool.acquire().await?;
     let balance = account_asset.balance as i64;
     let enc_balance = account_asset.enc_balance();
     let account = sqlx::query!(
@@ -221,7 +227,7 @@ impl ConfidentialRepository for SqliteConfidentialRepository {
       balance,
       enc_balance,
     )
-    .fetch_one(&self.pool)
+    .fetch_one(conn.as_mut())
     .await?;
     Ok(
       sqlx::query_as!(
@@ -234,7 +240,7 @@ impl ConfidentialRepository for SqliteConfidentialRepository {
       "#,
         account.id,
       )
-      .fetch_one(&self.pool)
+      .fetch_one(conn.as_mut())
       .await?,
     )
   }
@@ -243,6 +249,7 @@ impl ConfidentialRepository for SqliteConfidentialRepository {
     &self,
     account_asset: &UpdateAccountAsset,
   ) -> Result<Option<AccountAsset>> {
+    let mut conn = self.pool.acquire().await?;
     let balance = account_asset.balance as i64;
     let enc_balance = account_asset.enc_balance();
     let account = sqlx::query!(
@@ -256,7 +263,7 @@ impl ConfidentialRepository for SqliteConfidentialRepository {
       account_asset.account_id,
       account_asset.asset_id,
     )
-    .fetch_optional(&self.pool)
+    .fetch_optional(conn.as_mut())
     .await?;
 
     if let Some(account) = account {
@@ -271,7 +278,7 @@ impl ConfidentialRepository for SqliteConfidentialRepository {
         "#,
           account.id,
         )
-        .fetch_one(&self.pool)
+        .fetch_one(conn.as_mut())
         .await?,
       ))
     } else {
