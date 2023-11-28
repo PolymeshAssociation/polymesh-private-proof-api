@@ -334,7 +334,7 @@ impl ProcessedEvents {
                   transaction_id: *tx_id,
                   pending_affirms: *pending,
                   leg_id: *leg_id,
-                  sender_proof: Some(SenderProof(sender_proof.encode())),
+                  sender_proof: Some(SenderProof(sender_proof.0.clone())),
                   party: TransactionAffirmedParty::Sender,
                 },
               ));

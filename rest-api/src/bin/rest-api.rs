@@ -140,6 +140,7 @@ async fn start_server() -> anyhow::Result<()> {
           SenderProofVerifyResult,
           AccountAssetDecryptRequest,
           DecryptedResponse,
+          DecryptedIncomingBalance,
           UpdateAccountAssetBalanceRequest,
 
           TransactionCreated,
