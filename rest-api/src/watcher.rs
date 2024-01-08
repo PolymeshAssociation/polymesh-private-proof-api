@@ -24,10 +24,10 @@ pub async fn start_chain_watcher(api: Api, repo: Repository, tx_repo: Transactio
               let rec = SettlementRecord::from_tx(created)?;
               tx_repo.add_settlement(rec).await?;
             }
-            ProcessedEvent::ConfidentialAssetCreated(ticker) => {
+            ProcessedEvent::ConfidentialAssetCreated(asset_id) => {
               // Check if the asset exists.
-              if repo.get_asset(&ticker).await?.is_none() {
-                repo.create_asset(&CreateAsset { ticker: ticker.clone() }).await?;
+              if repo.get_asset(*asset_id).await?.is_none() {
+                repo.create_asset(&AddAsset { asset_id: Some(*asset_id), ticker: None }).await?;
               }
             }
             _ => (),

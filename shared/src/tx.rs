@@ -1,4 +1,5 @@
-use std::collections::BTreeMap;
+use std::collections::BTreeSet;
+use uuid::Uuid;
 
 use serde::{Deserialize, Serialize};
 
@@ -16,8 +17,8 @@ use polymesh_api::{
   },
   types::{
     pallet_confidential_asset::{
-      AffirmParty, ConfidentialAccount, ConfidentialAuditors, ConfidentialTransactionRole,
-      MediatorAccount, TransactionId, TransactionLeg, TransactionLegId,
+      AffirmParty, ConfidentialAccount, ConfidentialAuditors,
+      AuditorAccount, TransactionId, TransactionLeg, TransactionLegId,
     },
     polymesh_common_utilities::traits::checkpoint::ScheduleId,
     polymesh_primitives::{
@@ -37,7 +38,7 @@ use polymesh_api::{
 use confidential_assets::{Balance, ElgamalPublicKey};
 
 use crate::error::Result;
-use crate::proofs::{PublicKey, SenderProof};
+use crate::proofs::{PublicKey, SenderProof, TransferProofs};
 
 pub fn scale_convert<T1: Encode, T2: Decode>(t1: &T1) -> T2 {
   let buf = t1.encode();
@@ -48,36 +49,20 @@ pub fn confidential_account_to_key(account: &ConfidentialAccount) -> ElgamalPubl
   scale_convert(account)
 }
 
-pub fn mediator_account_to_key(account: &MediatorAccount) -> ElgamalPublicKey {
+pub fn auditor_account_to_key(account: &AuditorAccount) -> ElgamalPublicKey {
   scale_convert(account)
 }
 
-pub fn join_auditors(mediators: &[PublicKey], auditors: &[PublicKey]) -> Result<ConfidentialAuditors> {
-  let mut roles = BTreeMap::new();
-  for key in mediators {
-    roles.insert(
-      key.as_mediator_account()?,
-      ConfidentialTransactionRole::Mediator,
-    );
-  }
-  for key in auditors {
-    roles.insert(
-      key.as_mediator_account()?,
-      ConfidentialTransactionRole::Auditor,
-    );
-  }
-  Ok(ConfidentialAuditors { auditors: roles })
+pub fn join_auditors(mediators: &[IdentityId], auditors: &[PublicKey]) -> Result<ConfidentialAuditors> {
+  Ok(ConfidentialAuditors {
+    auditors: auditors.iter().map(|k| k.as_auditor_account()).collect::<Result<BTreeSet<_>>>()?,
+    mediators: mediators.iter().map(|m| m.clone()).collect(),
+  })
 }
 
-pub fn split_auditors(auditors: &ConfidentialAuditors) -> (Vec<PublicKey>, Vec<PublicKey>) {
-  let mediators = auditors.auditors.iter().filter_map(|(key, role)| match role {
-    ConfidentialTransactionRole::Mediator => Some(PublicKey(key.encode())),
-    _ => None,
-  }).collect();
-  let auditors = auditors.auditors.iter().filter_map(|(key, role)| match role {
-    ConfidentialTransactionRole::Auditor => Some(PublicKey(key.encode())),
-    _ => None,
-  }).collect();
+pub fn split_auditors(auditors: &ConfidentialAuditors) -> (Vec<IdentityId>, Vec<PublicKey>) {
+  let mediators = auditors.mediators.iter().map(|m| m.clone()).collect();
+  let auditors = auditors.auditors.iter().map(|k| PublicKey(k.encode())).collect();
   (mediators, auditors)
 }
 
@@ -171,7 +156,7 @@ pub struct TransactionCreated {
 pub enum TransactionAffirmedParty {
   Sender,
   Receiver,
-  Mediator(PublicKey),
+  Mediator,
 }
 
 /// A Confidential asset transaction was affirmed.
@@ -186,9 +171,8 @@ pub struct TransactionAffirmed {
   /// Confidential transaction leg id.
   #[schema(value_type = u64)]
   pub leg_id: TransactionLegId,
-  /// Confidential transaction leg sender proof (if the sender affirmed).
-  #[schema(value_type = String, format = Binary, example = "<Hex encoded sender proof>")]
-  pub sender_proof: Option<SenderProof>,
+  /// Confidential transaction leg transfer proofs (if the sender affirmed).
+  pub transfer_proofs: Option<TransferProofs>,
   /// Who affirmed the transaction leg.
   pub party: TransactionAffirmedParty,
 }
@@ -218,11 +202,11 @@ pub enum ProcessedEvent {
   #[schema(value_type = u64)]
   ScheduleCreated(ScheduleId),
   /// A Confidential asset was created.
-  ConfidentialAssetCreated(String),
+  ConfidentialAssetCreated(Uuid),
   /// A Confidential asset minted.
   ///
-  /// (ticker, amount minted, total_supply)
-  ConfidentialAssetMinted(String, u64, u64),
+  /// (asset_id, amount minted, total_supply)
+  ConfidentialAssetMinted(Uuid, u64, u64),
   /// A Confidential asset Venue was created.
   #[schema(value_type = u64)]
   ConfidentialVenueCreated(VenueId),
@@ -272,13 +256,11 @@ impl ProcessedEvents {
         RuntimeEvent::ConfidentialAsset(ConfidentialAssetEvent::VenueCreated(_, id)) => {
           processed.push(ProcessedEvent::ConfidentialVenueCreated(*id));
         }
-        RuntimeEvent::ConfidentialAsset(ConfidentialAssetEvent::ConfidentialAssetCreated(_, ticker, ..)) => {
-          let ticker = ticker_to_string(ticker);
-          processed.push(ProcessedEvent::ConfidentialAssetCreated(ticker));
+        RuntimeEvent::ConfidentialAsset(ConfidentialAssetEvent::ConfidentialAssetCreated(_, asset_id, ..)) => {
+          processed.push(ProcessedEvent::ConfidentialAssetCreated(Uuid::from_bytes(*asset_id)));
         }
-        RuntimeEvent::ConfidentialAsset(ConfidentialAssetEvent::Issued(_, ticker, amount, total_supply)) => {
-          let ticker = ticker_to_string(ticker);
-          processed.push(ProcessedEvent::ConfidentialAssetMinted(ticker, *amount as _, *total_supply as _));
+        RuntimeEvent::ConfidentialAsset(ConfidentialAssetEvent::Issued(_, asset_id, amount, total_supply)) => {
+          processed.push(ProcessedEvent::ConfidentialAssetMinted(Uuid::from_bytes(*asset_id), *amount as _, *total_supply as _));
         }
         RuntimeEvent::ConfidentialAsset(ConfidentialAssetEvent::TransactionCreated(
           _,
@@ -288,13 +270,12 @@ impl ProcessedEvents {
           memo,
         )) => {
           let legs = legs.into_iter().map(|l| {
-            let (mediators, auditors) = split_auditors(&l.auditors);
             ConfidentialSettlementLeg {
-              ticker: ticker_to_string(&l.ticker),
+              assets: l.auditors.keys().map(|id| Uuid::from_bytes(*id)).collect(),
               sender: PublicKey(l.sender.encode()),
               receiver: PublicKey(l.receiver.encode()),
-              mediators,
-              auditors,
+              mediators: l.mediators.clone().into(),
+              auditors: l.auditors.values().map(|k| PublicKey(k.encode())).collect(),
             }
           }).collect();
           processed.push(ProcessedEvent::ConfidentialTransactionCreated(
@@ -328,13 +309,18 @@ impl ProcessedEvents {
           pending,
         )) => {
           match party {
-            AffirmParty::Sender(sender_proof) => {
+            AffirmParty::Sender(transfers) => {
+              let transfers = TransferProofs {
+                proofs: transfers.proofs.iter().map(|(asset_id, proof)| {
+                  (Uuid::from_bytes(*asset_id), SenderProof(proof.0.clone()))
+                }).collect(),
+              };
               processed.push(ProcessedEvent::ConfidentialTransactionAffirmed(
                 TransactionAffirmed {
                   transaction_id: *tx_id,
                   pending_affirms: *pending,
                   leg_id: *leg_id,
-                  sender_proof: Some(SenderProof(sender_proof.0.clone())),
+                  transfer_proofs: Some(transfers),
                   party: TransactionAffirmedParty::Sender,
                 },
               ));
@@ -345,20 +331,19 @@ impl ProcessedEvents {
                   transaction_id: *tx_id,
                   pending_affirms: *pending,
                   leg_id: *leg_id,
-                  sender_proof: None,
+                  transfer_proofs: None,
                   party: TransactionAffirmedParty::Receiver,
                 },
               ));
             }
-            AffirmParty::Mediator(mediator) => {
-              let mediator = PublicKey(mediator.encode());
+            AffirmParty::Mediator => {
               processed.push(ProcessedEvent::ConfidentialTransactionAffirmed(
                 TransactionAffirmed {
                   transaction_id: *tx_id,
                   pending_affirms: *pending,
                   leg_id: *leg_id,
-                  sender_proof: None,
-                  party: TransactionAffirmedParty::Mediator(mediator),
+                  transfer_proofs: None,
+                  party: TransactionAffirmedParty::Mediator,
                 },
               ));
             }
@@ -504,31 +489,6 @@ impl TransactionResult {
   }
 }
 
-/// The auditor's role.
-#[derive(Clone, Copy, Debug, Default, Deserialize, Serialize, ToSchema)]
-pub enum AuditorRole {
-  #[default]
-  Auditor,
-  Mediator,
-}
-
-#[cfg(feature = "backend")]
-impl AuditorRole {
-  pub fn from(role: ConfidentialTransactionRole) -> Self {
-    match role {
-      ConfidentialTransactionRole::Auditor => Self::Auditor,
-      ConfidentialTransactionRole::Mediator => Self::Mediator,
-    }
-  }
-
-  pub fn into_role(&self) -> ConfidentialTransactionRole {
-    match self {
-      Self::Auditor => ConfidentialTransactionRole::Auditor,
-      Self::Mediator => ConfidentialTransactionRole::Mediator,
-    }
-  }
-}
-
 pub fn bytes_to_ticker(val: &[u8]) -> Ticker {
   let mut ticker = [0u8; 12];
   for (idx, b) in val.iter().take(12).enumerate() {
@@ -584,20 +544,17 @@ pub fn memo_to_string(memo: &Option<Memo>) -> String {
 /// Confidential asset details (name, ticker, auditors).
 #[derive(Clone, Debug, Default, Deserialize, Serialize, ToSchema)]
 pub struct ConfidentialAssetDetails {
-  /// Asset name.
-  #[schema(example = "Asset name")]
-  pub name: String,
   /// Asset total supply.
   #[schema(example = "10000")]
   pub total_supply: u64,
   /// Asset owner.
   #[schema(example = json!(IdentityId::default()))]
   pub owner: IdentityId,
-  /// List of mediators.
+  /// List of mediator identities.
   #[schema(example = json!([]))]
   #[serde(default)]
-  pub mediators: Vec<PublicKey>,
-  /// List of auditors.
+  pub mediators: Vec<IdentityId>,
+  /// List of auditor Elgamal public keys.
   #[schema(example = json!(["0xceae8587b3e968b9669df8eb715f73bcf3f7a9cd3c61c515a4d80f2ca59c8114"]))]
   #[serde(default)]
   pub auditors: Vec<PublicKey>,
@@ -613,17 +570,14 @@ pub struct CreateConfidentialAsset {
   #[schema(example = false)]
   #[serde(default)]
   pub finalize: bool,
-  /// Asset name.
-  #[schema(example = "Asset name")]
-  pub name: String,
-  /// Asset ticker.
+  /// Asset ticker (optional).
   #[schema(example = "TICKER")]
-  pub ticker: String,
-  /// List of mediators.
+  pub ticker: Option<String>,
+  /// List of mediators identities.
   #[schema(example = json!([]))]
   #[serde(default)]
-  pub mediators: Vec<PublicKey>,
-  /// List of auditors.
+  pub mediators: Vec<IdentityId>,
+  /// List of auditor Elgamal public key.
   #[schema(example = json!(["0xceae8587b3e968b9669df8eb715f73bcf3f7a9cd3c61c515a4d80f2ca59c8114"]))]
   #[serde(default)]
   pub auditors: Vec<PublicKey>,
@@ -631,8 +585,11 @@ pub struct CreateConfidentialAsset {
 
 #[cfg(feature = "backend")]
 impl CreateConfidentialAsset {
-  pub fn ticker(&self) -> Result<Ticker> {
-    str_to_ticker(&self.ticker)
+  pub fn ticker(&self) -> Result<Option<Ticker>> {
+    match &self.ticker {
+      Some(ticker) => Ok(Some(str_to_ticker(ticker)?)),
+      None => Ok(None),
+    }
   }
 
   pub fn auditors(&self) -> Result<ConfidentialAuditors> {
@@ -655,31 +612,26 @@ pub struct TransactionArgs {
 /// Confidential asset settlement leg.
 #[derive(Clone, Debug, Default, Deserialize, Serialize, ToSchema)]
 pub struct ConfidentialSettlementLeg {
-  /// Ticker.
-  #[schema(example = "TICKER")]
-  pub ticker: String,
+  /// Asset id.
+  pub assets: BTreeSet<Uuid>,
   /// Sender's public key.
   #[schema(value_type = String, format = Binary, example = "0xceae8587b3e968b9669df8eb715f73bcf3f7a9cd3c61c515a4d80f2ca59c8114")]
   sender: PublicKey,
   /// Receiver's public key.
   #[schema(value_type = String, format = Binary, example = "0xceae8587b3e968b9669df8eb715f73bcf3f7a9cd3c61c515a4d80f2ca59c8114")]
   receiver: PublicKey,
-  /// List of mediators.
+  /// List of mediator identities.
   #[schema(example = json!([]))]
   #[serde(default)]
-  pub mediators: Vec<PublicKey>,
-  /// List of auditors.
+  pub mediators: BTreeSet<IdentityId>,
+  /// List of auditor Elgamal public keys.
   #[schema(example = json!(["0xceae8587b3e968b9669df8eb715f73bcf3f7a9cd3c61c515a4d80f2ca59c8114"]))]
   #[serde(default)]
-  pub auditors: Vec<PublicKey>,
+  pub auditors: BTreeSet<PublicKey>,
 }
 
 #[cfg(feature = "backend")]
 impl ConfidentialSettlementLeg {
-  pub fn ticker(&self) -> Result<Ticker> {
-    str_to_ticker(&self.ticker)
-  }
-
   pub fn sender(&self) -> Result<ConfidentialAccount> {
     Ok(self.sender.as_confidential_account()?)
   }
@@ -688,8 +640,8 @@ impl ConfidentialSettlementLeg {
     Ok(self.receiver.as_confidential_account()?)
   }
 
-  pub fn auditors(&self) -> Result<ConfidentialAuditors> {
-    join_auditors(&self.mediators, &self.auditors)
+  pub fn auditors(&self) -> Result<BTreeSet<AuditorAccount>> {
+    self.auditors.iter().map(|k| k.as_auditor_account()).collect()
   }
 }
 
@@ -716,10 +668,11 @@ impl CreateConfidentialSettlement {
     let mut legs = Vec::new();
     for leg in &self.legs {
       legs.push(TransactionLeg {
-        ticker: leg.ticker()?,
+        assets: leg.assets.iter().map(|id| *id.as_bytes()).collect(),
         sender: leg.sender()?,
         receiver: leg.receiver()?,
         auditors: leg.auditors()?,
+        mediators: leg.mediators.iter().map(|m| m.clone()).collect(),
       });
     }
     Ok(legs)

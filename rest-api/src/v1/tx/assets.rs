@@ -1,11 +1,11 @@
 use actix_web::{get, post, web, HttpResponse, Responder, Result};
+use uuid::Uuid;
 
 use codec::Encode;
 
 use polymesh_api::types::{
-  pallet_confidential_asset::{ConfidentialTransactionRole, TransactionId},
+  pallet_confidential_asset::TransactionId,
   polymesh_primitives::{
-    asset::{AssetName, AssetType},
     settlement::VenueId,
   },
 };
@@ -36,23 +36,17 @@ pub fn service(cfg: &mut web::ServiceConfig) {
     (status = 200, body = ConfidentialAssetDetails)
   )
 )]
-#[get("/tx/assets/{ticker}")]
+#[get("/tx/assets/{asset_id}")]
 pub async fn get_asset_details(
-  ticker: web::Path<String>,
-  repo: Repository,
+  asset_id: web::Path<Uuid>,
+  _repo: Repository,
   api: web::Data<Api>,
 ) -> Result<impl Responder> {
-  let ticker = repo
-    .get_asset(&ticker)
-    .await?
-    .ok_or_else(|| Error::not_found("Asset"))?
-    .ticker()?;
-
   // Get confidential asset details (name, ticker).
   let details = api
     .query()
     .confidential_asset()
-    .details(ticker)
+    .details(*asset_id.as_bytes())
     .await
     .map_err(|err| Error::from(err))?
     .ok_or_else(|| Error::not_found("Confidential asset doesn't exist"))?;
@@ -61,26 +55,14 @@ pub async fn get_asset_details(
   let asset_auditors = api
     .query()
     .confidential_asset()
-    .asset_auditors(ticker)
+    .asset_auditors(*asset_id.as_bytes())
     .await
     .map_err(|err| Error::from(err))?
     .ok_or_else(|| Error::not_found("Confidential asset doesn't exist"))?;
-  let mut mediators = Vec::new();
-  let mut auditors = Vec::new();
-  for (auditor, role) in asset_auditors.auditors {
-    let account = PublicKey(auditor.encode());
-    match role {
-      ConfidentialTransactionRole::Mediator => {
-        mediators.push(account);
-      }
-      ConfidentialTransactionRole::Auditor => {
-        auditors.push(account);
-      }
-    }
-  }
+  let mediators = asset_auditors.mediators.iter().map(|d| d.clone()).collect();
+  let auditors = asset_auditors.auditors.iter().map(|k| PublicKey(k.encode())).collect();
 
   let details = ConfidentialAssetDetails {
-    name: String::from_utf8_lossy(&details.name.0).to_string(),
     total_supply: details.total_supply as u64,
     owner: details.owner_did,
     mediators,
@@ -95,19 +77,14 @@ pub async fn get_asset_details(
     (status = 200, body = TransactionResult)
   )
 )]
-#[post("/tx/assets/{ticker}/allow_venues")]
+#[post("/tx/assets/{asset_id}/allow_venues")]
 pub async fn tx_allow_venues(
-  ticker: web::Path<String>,
+  asset_id: web::Path<Uuid>,
   req: web::Json<AllowVenues>,
-  repo: Repository,
+  _repo: Repository,
   signing: AppSigningManager,
   api: web::Data<Api>,
 ) -> Result<impl Responder> {
-  let ticker = repo
-    .get_asset(&ticker)
-    .await?
-    .ok_or_else(|| Error::not_found("Asset"))?
-    .ticker()?;
   let mut signer = signing
     .get_signer(&req.signer)
     .await?
@@ -117,7 +94,7 @@ pub async fn tx_allow_venues(
   let res = api
     .call()
     .confidential_asset()
-    .allow_venues(ticker, venues)
+    .allow_venues(*asset_id.as_bytes(), venues)
     .map_err(|err| Error::from(err))?
     .submit_and_watch(&mut signer)
     .await
@@ -148,24 +125,7 @@ pub async fn tx_create_asset(
 
   let auditors = req.auditors()?;
 
-  // Get only the mediators.
-  let mediators = auditors
-    .auditors
-    .iter()
-    .filter_map(|(account, role)| match role {
-      ConfidentialTransactionRole::Mediator => Some(account),
-      _ => None,
-    });
-  // Check if the mediators exist on-chain.
-  for mediator in mediators {
-    api
-      .query()
-      .confidential_asset()
-      .mediator_account_did(*mediator)
-      .await
-      .map_err(|err| Error::from(err))?
-      .ok_or_else(|| Error::other("Mediator account hasn't been registered on-chain"))?;
-  }
+  // TODO: Check if the mediators exist on-chain.
 
   let ticker = req.ticker()?;
 
@@ -173,9 +133,8 @@ pub async fn tx_create_asset(
     .call()
     .confidential_asset()
     .create_confidential_asset(
-      AssetName(req.name.as_bytes().into()),
       ticker,
-      AssetType::EquityCommon,
+      vec![],
       auditors,
     )
     .map_err(|err| Error::from(err))?

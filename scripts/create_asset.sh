@@ -3,7 +3,8 @@
 POLYMESH_PROOF_REST_URL="${POLYMESH_PROOF_REST_URL:-http://localhost:8001/api/v1}"
 SIGNER="$1"
 TICKER="$2"
-MEDIATOR="$3"
+AUDITOR="$3"
+MEDIATOR="$4"
 
 curl -s -X 'POST' \
   "${POLYMESH_PROOF_REST_URL}/tx/assets/create_asset" \
@@ -12,8 +13,10 @@ curl -s -X 'POST' \
   -d "{
   \"signer\": \"$SIGNER\",
 	\"finalize\": false,
-  \"name\": \"Asset $TICKER\",
   \"ticker\": \"$TICKER\",
+  \"auditors\": [
+		\"$AUDITOR\"
+	],
   \"mediators\": [
 		\"$MEDIATOR\"
 	]

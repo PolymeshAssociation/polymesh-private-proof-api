@@ -1,6 +1,7 @@
 use actix_web::{get, post, web, HttpResponse, Responder, Result};
+use uuid::Uuid;
 
-use confidential_proof_shared::{CreateAsset, SenderProofVerifyRequest};
+use confidential_proof_shared::{AddAsset, SenderProofVerifyRequest};
 
 use crate::repo::Repository;
 
@@ -30,9 +31,9 @@ pub async fn get_all_assets(repo: Repository) -> Result<impl Responder> {
     (status = 200, body = Asset)
   )
 )]
-#[get("/assets/{ticker}")]
-pub async fn get_asset(ticker: web::Path<String>, repo: Repository) -> Result<impl Responder> {
-  Ok(match repo.get_asset(&ticker).await? {
+#[get("/assets/{asset_id}")]
+pub async fn get_asset(asset_id: web::Path<Uuid>, repo: Repository) -> Result<impl Responder> {
+  Ok(match repo.get_asset(*asset_id).await? {
     Some(asset) => HttpResponse::Ok().json(asset),
     None => HttpResponse::NotFound().body("Not found"),
   })
@@ -46,7 +47,7 @@ pub async fn get_asset(ticker: web::Path<String>, repo: Repository) -> Result<im
 )]
 #[post("/assets")]
 pub async fn create_asset(
-  asset: web::Json<CreateAsset>,
+  asset: web::Json<AddAsset>,
   repo: Repository,
 ) -> Result<impl Responder> {
   let asset = repo.create_asset(&asset).await?;

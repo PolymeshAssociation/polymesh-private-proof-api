@@ -58,7 +58,7 @@ async fn start_server() -> anyhow::Result<()> {
       components(
         schemas(
           User, CreateUser,
-          Asset, CreateAsset,
+          Asset, AddAsset,
           Account,
           AccountAsset, CreateAccountAsset,
           AccountAssetWithProof,

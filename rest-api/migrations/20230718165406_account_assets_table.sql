@@ -2,7 +2,7 @@ CREATE TABLE IF NOT EXISTS account_assets
 (
     account_asset_id  INTEGER PRIMARY KEY NOT NULL,
     account_id     INTEGER NOT NULL,
-    asset_id       INTEGER NOT NULL,
+    asset_id       TEXT NOT NULL,
 
     balance        INTEGER DEFAULT 0 NOT NULL,
     enc_balance    BLOB NOT NULL,

@@ -1,11 +1,13 @@
 use std::sync::Arc;
 
+use uuid::Uuid;
+
 use actix_web::web::Data;
 
 use async_trait::async_trait;
 use confidential_proof_shared::{
   error::Result, Account, AccountAsset, AccountAssetWithSecret, AccountWithSecret, Asset,
-  CreateAccount, CreateAsset, CreateUser, PublicKey, UpdateAccountAsset, User,
+  CreateAccount, AddAsset, CreateUser, PublicKey, UpdateAccountAsset, User,
 };
 
 use super::{ConfidentialRepository, Repository};
@@ -60,30 +62,36 @@ impl ConfidentialRepository for SqliteConfidentialRepository {
 
   async fn get_assets(&self) -> Result<Vec<Asset>> {
     Ok(
-      sqlx::query_as!(Asset, r#"SELECT * FROM assets"#,)
+      sqlx::query_as!(Asset, r#"
+          SELECT asset_id as "asset_id: Uuid", ticker, created_at, updated_at
+          FROM assets
+"#,)
         .fetch_all(&self.pool)
         .await?,
     )
   }
 
-  async fn get_asset(&self, ticker: &str) -> Result<Option<Asset>> {
+  async fn get_asset(&self, asset_id: Uuid) -> Result<Option<Asset>> {
     Ok(
-      sqlx::query_as!(Asset, r#"SELECT * FROM assets WHERE ticker = ?"#, ticker)
+      sqlx::query_as!(Asset, r#"
+        SELECT asset_id as "asset_id: Uuid", ticker, created_at, updated_at
+        FROM assets WHERE asset_id = ?"#, asset_id)
         .fetch_optional(&self.pool)
         .await?,
     )
   }
 
-  async fn create_asset(&self, asset: &CreateAsset) -> Result<Asset> {
+  async fn create_asset(&self, asset: &AddAsset) -> Result<Asset> {
+    let asset_id = asset.asset_id.unwrap_or_else(|| Uuid::new_v4());
     Ok(
       sqlx::query_as!(
         Asset,
         r#"
-      INSERT INTO assets (ticker)
-      VALUES (?)
-      RETURNING asset_id, ticker, created_at, updated_at
+      INSERT INTO assets (asset_id, ticker)
+      VALUES (?, ?)
+      RETURNING asset_id as "asset_id: Uuid", ticker, created_at, updated_at
       "#,
-        asset.ticker,
+        asset_id, asset.ticker,
       )
       .fetch_one(&self.pool)
       .await?,
@@ -151,7 +159,10 @@ impl ConfidentialRepository for SqliteConfidentialRepository {
       sqlx::query_as!(
         AccountAsset,
         r#"
-          SELECT aa.*, assets.ticker
+          SELECT aa.asset_id as "asset_id: Uuid",
+            aa.account_asset_id, aa.account_id,
+            aa.balance, aa.enc_balance, aa.created_at, aa.updated_at,
+            assets.ticker
           FROM account_assets as aa
           JOIN accounts as acc using(account_id)
           JOIN assets using(asset_id)
@@ -167,21 +178,24 @@ impl ConfidentialRepository for SqliteConfidentialRepository {
   async fn get_account_asset(
     &self,
     pub_key: &str,
-    ticker: &str,
+    asset_id: Uuid,
   ) -> Result<Option<AccountAsset>> {
     let pub_key = PublicKey::from_str(pub_key)?;
     Ok(
       sqlx::query_as!(
         AccountAsset,
         r#"
-          SELECT aa.*, assets.ticker
+          SELECT aa.asset_id as "asset_id: Uuid",
+            aa.account_asset_id, aa.account_id,
+            aa.balance, aa.enc_balance, aa.created_at, aa.updated_at,
+            assets.ticker
           FROM account_assets as aa
           JOIN accounts as acc using(account_id)
           JOIN assets using(asset_id)
-          WHERE acc.public_key = ? AND assets.ticker = ?
+          WHERE acc.public_key = ? AND aa.asset_id = ?
         "#,
         pub_key.0,
-        ticker,
+        asset_id,
       )
       .fetch_optional(&self.pool)
       .await?,
@@ -191,7 +205,7 @@ impl ConfidentialRepository for SqliteConfidentialRepository {
   async fn get_account_asset_with_secret(
     &self,
     pub_key: &str,
-    ticker: &str,
+    asset_id: Uuid,
   ) -> Result<Option<AccountAssetWithSecret>> {
     let pub_key = PublicKey::from_str(pub_key)?;
     Ok(
@@ -202,11 +216,11 @@ impl ConfidentialRepository for SqliteConfidentialRepository {
           FROM account_assets as aa
           JOIN accounts as acc using(account_id)
           JOIN assets using(asset_id)
-          WHERE acc.public_key = ? AND assets.ticker = ?
+          WHERE acc.public_key = ? AND aa.asset_id = ?
         "#,
       )
       .bind(&pub_key.0)
-      .bind(ticker)
+      .bind(asset_id)
       .fetch_optional(&self.pool)
       .await?,
     )
@@ -233,7 +247,10 @@ impl ConfidentialRepository for SqliteConfidentialRepository {
       sqlx::query_as!(
         AccountAsset,
         r#"
-      SELECT aa.*, assets.ticker
+      SELECT aa.asset_id as "asset_id: Uuid",
+        aa.account_asset_id, aa.account_id,
+        aa.balance, aa.enc_balance, aa.created_at, aa.updated_at,
+        assets.ticker
         FROM account_assets as aa
           JOIN assets using(asset_id)
         WHERE account_asset_id = ?
@@ -248,41 +265,44 @@ impl ConfidentialRepository for SqliteConfidentialRepository {
   async fn update_account_asset(
     &self,
     account_asset: &UpdateAccountAsset,
-  ) -> Result<Option<AccountAsset>> {
+  ) -> Result<AccountAsset> {
+    let account_asset_id = if let Some(id) = account_asset.account_asset_id {
+      id
+    } else {
+      return self.create_account_asset(account_asset).await;
+    };
     let mut conn = self.pool.acquire().await?;
     let balance = account_asset.balance as i64;
     let enc_balance = account_asset.enc_balance();
-    let account = sqlx::query!(
+    sqlx::query!(
       r#"
       UPDATE account_assets SET balance = ?, enc_balance = ?, updated_at = CURRENT_TIMESTAMP
-        WHERE account_id = ? AND asset_id = ?
+        WHERE account_asset_id = ?
       RETURNING account_asset_id as id
       "#,
       balance,
       enc_balance,
-      account_asset.account_id,
-      account_asset.asset_id,
+      account_asset_id,
     )
     .fetch_optional(conn.as_mut())
     .await?;
 
-    if let Some(account) = account {
-      Ok(Some(
-        sqlx::query_as!(
-          AccountAsset,
-          r#"
-        SELECT aa.*, assets.ticker
-          FROM account_assets as aa
-            JOIN assets using(asset_id)
-          WHERE account_asset_id = ?
-        "#,
-          account.id,
-        )
-        .fetch_one(conn.as_mut())
-        .await?,
-      ))
-    } else {
-      Ok(None)
-    }
+    Ok(
+      sqlx::query_as!(
+        AccountAsset,
+        r#"
+      SELECT aa.asset_id as "asset_id: Uuid",
+        aa.account_asset_id, aa.account_id,
+        aa.balance, aa.enc_balance, aa.created_at, aa.updated_at,
+        assets.ticker
+        FROM account_assets as aa
+          JOIN assets using(asset_id)
+        WHERE account_asset_id = ?
+      "#,
+        account_asset_id,
+      )
+      .fetch_one(conn.as_mut())
+      .await?,
+    )
   }
 }

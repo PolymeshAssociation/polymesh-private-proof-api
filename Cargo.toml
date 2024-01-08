@@ -7,7 +7,7 @@ members = [
 resolver = "2"
 
 [patch.crates-io]
-confidential_assets = { git = "ssh://git@github.com/PolymeshAssociation/confidential_assets.git", branch = "MESH-2112-improve_proofs" }
+confidential_assets = { git = "ssh://git@github.com/PolymeshAssociation/confidential_assets.git", branch = "MESH-2127-part-2" }
 #confidential_assets = { path = "../confidential_assets/" }
 bulletproofs = { version = "4.0.0", git = "https://github.com/PolymeshAssociation/bulletproofs", branch = "polymesh" }
 #polymesh-api = { path = "../polymesh-api/" }
@@ -57,7 +57,7 @@ url = { version = "2.4" }
 http = { version = "0.2" }
 
 # types
-uuid = { version = "1.2", features = ["serde", "v4"] }
+uuid = { version = "1.4", features = ["serde", "v4"] }
 chrono = { version = "0.4", features = ["serde"] }
 rust_decimal = { version = "1.29", features = ["serde-with-arbitrary-precision"] }
 rust_decimal_macros = "1.29"

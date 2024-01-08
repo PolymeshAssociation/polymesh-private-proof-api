@@ -1,6 +1,9 @@
+use std::collections::BTreeSet;
+
+use uuid::Uuid;
+
 use serde::{Deserialize, Serialize};
 use serde_hex::{SerHexSeq, StrictPfx};
-use std::collections::BTreeSet;
 
 use utoipa::ToSchema;
 
@@ -11,7 +14,7 @@ use codec::{Decode, Encode};
 
 #[cfg(feature = "backend")]
 use polymesh_api::types::{
-  pallet_confidential_asset::{ConfidentialAccount, MediatorAccount},
+  pallet_confidential_asset::{ConfidentialAccount, AuditorAccount},
   polymesh_primitives::ticker::Ticker,
 };
 
@@ -56,28 +59,33 @@ pub struct CreateUser {
 #[derive(Clone, Debug, Default, Deserialize, Serialize, ToSchema)]
 pub struct Asset {
   /// Asset id.
-  #[serde(skip)]
-  pub asset_id: i64,
+  pub asset_id: Uuid,
+
   /// Asset ticker.
   #[schema(example = "ACME1")]
-  pub ticker: String,
+  pub ticker: Option<String>,
 
   pub created_at: chrono::NaiveDateTime,
   pub updated_at: chrono::NaiveDateTime,
 }
 
 impl Asset {
-  pub fn ticker(&self) -> Result<Ticker> {
-    str_to_ticker(&self.ticker)
+  pub fn ticker(&self) -> Result<Option<Ticker>> {
+    match &self.ticker {
+      Some(ticker) => Ok(Some(str_to_ticker(ticker)?)),
+      None => Ok(None),
+    }
   }
 }
 
-/// Create an asset.
+/// Add an asset to the database.
 #[derive(Clone, Debug, Default, Deserialize, Serialize, ToSchema)]
-pub struct CreateAsset {
+pub struct AddAsset {
+  /// Asset id.
+  pub asset_id: Option<Uuid>,
   /// Asset ticker.
   #[schema(example = "ACME1")]
-  pub ticker: String,
+  pub ticker: Option<String>,
 }
 
 /// Confidential account.
@@ -104,8 +112,8 @@ impl Account {
     )?)
   }
 
-  pub fn as_mediator_account(&self) -> Result<MediatorAccount> {
-    Ok(MediatorAccount::decode(&mut self.public_key.as_slice())?)
+  pub fn as_auditor_account(&self) -> Result<AuditorAccount> {
+    Ok(AuditorAccount::decode(&mut self.public_key.as_slice())?)
   }
 }
 
@@ -135,8 +143,38 @@ impl AccountWithSecret {
     })
   }
 
-  pub fn init_balance(&self, asset_id: i64) -> UpdateAccountAsset {
+  pub fn decrypt(&self, enc_value: &CipherText) -> Result<Balance> {
+    // Decode ConfidentialAccount from database.
+    let keys = self.encryption_keys()?;
+    // Decrypt value.
+    let value = keys
+      .secret
+      .decrypt_with_hint(enc_value, 0, MAX_TOTAL_SUPPLY)
+      .ok_or_else(|| Error::other("Failed to decrypt value."))?;
+    Ok(value)
+  }
+
+  pub fn apply_incoming(&self, asset_id: Uuid, enc_incoming: CipherText) -> Result<UpdateAccountAsset> {
+    // Decode ConfidentialAccount from database.
+    let keys = self.encryption_keys()?;
+    // Decrypt incoming balance.
+    let incoming_balance = keys
+      .secret
+      .decrypt_with_hint(&enc_incoming, 0, MAX_TOTAL_SUPPLY)
+      .ok_or_else(|| Error::other("Failed to decrypt incoming balance."))?;
+    // Update account balance.
+    Ok(UpdateAccountAsset {
+      account_asset_id: None,
+      account_id: self.account_id,
+      asset_id,
+      balance: incoming_balance,
+      enc_balance: enc_incoming,
+    })
+  }
+
+  pub fn init_balance(&self, asset_id: Uuid) -> UpdateAccountAsset {
     UpdateAccountAsset {
+      account_asset_id: None,
       account_id: self.account_id,
       asset_id,
       balance: 0,
@@ -198,12 +236,11 @@ pub struct AccountAsset {
   #[serde(skip)]
   pub account_id: i64,
   /// Asset id.
-  #[serde(skip)]
-  pub asset_id: i64,
+  pub asset_id: Uuid,
 
   /// Asset ticker.
   #[schema(example = "ACME")]
-  pub ticker: String,
+  pub ticker: Option<String>,
 
   /// Current balance.
   #[schema(example = 1000)]
@@ -228,8 +265,9 @@ impl AccountAsset {
     let enc_balance = self.enc_balance()?;
     // Update account balance.
     Ok(UpdateAccountAsset {
+      account_asset_id: Some(self.account_asset_id),
       account_id: self.account_id,
-      asset_id: self.asset_id,
+      asset_id: self.asset_id.clone(),
       balance: (self.balance as u64) + amount,
       enc_balance: enc_balance + CipherText::value(amount.into()),
     })
@@ -242,7 +280,7 @@ impl AccountAsset {
 #[cfg(feature = "backend")]
 pub struct AccountAssetWithSecret {
   pub account_asset_id: i64,
-  pub asset_id: i64,
+  pub asset_id: Uuid,
 
   #[sqlx(flatten)]
   pub account: AccountWithSecret,
@@ -284,8 +322,9 @@ impl AccountAssetWithSecret {
     )?;
     // Update account balance.
     let update = UpdateAccountAsset {
+      account_asset_id: Some(self.account_asset_id),
       account_id: self.account.account_id,
-      asset_id: self.asset_id,
+      asset_id: self.asset_id.clone(),
       balance: (self.balance as u64) - amount,
       enc_balance: enc_balance - proof.sender_amount(),
     };
@@ -310,14 +349,7 @@ impl AccountAssetWithSecret {
   }
 
   pub fn decrypt(&self, enc_value: &CipherText) -> Result<Balance> {
-    // Decode ConfidentialAccount from database.
-    let keys = self.account.encryption_keys()?;
-    // Decrypt value.
-    let value = keys
-      .secret
-      .decrypt_with_hint(enc_value, 0, MAX_TOTAL_SUPPLY)
-      .ok_or_else(|| Error::other("Failed to decrypt value."))?;
-    Ok(value)
+    self.account.decrypt(enc_value)
   }
 
   pub fn decrypt_request(&self, req: &AccountAssetDecryptRequest) -> Result<DecryptedResponse> {
@@ -349,8 +381,9 @@ impl AccountAssetWithSecret {
       .ok_or_else(|| Error::other("Failed to decrypt balance."))?;
     // Update account balance.
     Ok(UpdateAccountAsset {
+      account_asset_id: Some(self.account_asset_id),
       account_id: self.account.account_id,
-      asset_id: self.asset_id,
+      asset_id: self.asset_id.clone(),
       balance,
       enc_balance,
     })
@@ -368,8 +401,9 @@ impl AccountAssetWithSecret {
     let enc_balance = self.enc_balance()?;
     // Update account balance.
     Ok(UpdateAccountAsset {
+      account_asset_id: Some(self.account_asset_id),
       account_id: self.account.account_id,
-      asset_id: self.asset_id,
+      asset_id: self.asset_id.clone(),
       balance: (self.balance as u64) + incoming_balance,
       enc_balance: enc_balance + enc_incoming,
     })
@@ -379,17 +413,17 @@ impl AccountAssetWithSecret {
 /// Create a new account asset.
 #[derive(Clone, Debug, Default, Deserialize, Serialize, ToSchema)]
 pub struct CreateAccountAsset {
-  /// Asset ticker.
-  #[schema(example = "ACME")]
-  pub ticker: String,
+  /// Asset id.
+  pub asset_id: Uuid,
 }
 
 /// Update account asset.
 #[derive(Clone, Debug, Default)]
 #[cfg(feature = "backend")]
 pub struct UpdateAccountAsset {
+  pub account_asset_id: Option<i64>,
   pub account_id: i64,
-  pub asset_id: i64,
+  pub asset_id: Uuid,
 
   pub balance: Balance,
   pub enc_balance: CipherText,
@@ -397,6 +431,16 @@ pub struct UpdateAccountAsset {
 
 #[cfg(feature = "backend")]
 impl UpdateAccountAsset {
+  pub fn init_balance(account_id: i64, asset_id: Uuid, balance: Balance) -> Self {
+    Self {
+      account_asset_id: None,
+      account_id,
+      asset_id,
+      balance,
+      enc_balance: CipherText::value(balance.into()),
+    }
+  }
+
   pub fn enc_balance(&self) -> Vec<u8> {
     self.enc_balance.encode()
   }
@@ -498,9 +542,15 @@ impl PublicKey {
     Ok(ConfidentialAccount::decode(&mut self.0.as_slice())?)
   }
 
-  pub fn as_mediator_account(&self) -> Result<MediatorAccount> {
-    Ok(MediatorAccount::decode(&mut self.0.as_slice())?)
+  pub fn as_auditor_account(&self) -> Result<AuditorAccount> {
+    Ok(AuditorAccount::decode(&mut self.0.as_slice())?)
   }
+}
+
+/// Confidential transfer proofs.
+#[derive(Clone, Debug, Serialize, Deserialize, ToSchema)]
+pub struct TransferProofs {
+  pub proofs: Vec<(Uuid, SenderProof)>,
 }
 
 /// Confidential transfer sender proof.
