@@ -119,10 +119,11 @@ impl ConfidentialRepository for SqliteConfidentialRepository {
 
   async fn get_account(&self, pub_key: &str) -> Result<Option<Account>> {
     let pub_key = PublicKey::from_str(pub_key)?;
+    let key = pub_key.0.as_slice();
     Ok(sqlx::query_as!(
       Account,
       r#"SELECT account_id, public_key, created_at, updated_at FROM accounts WHERE public_key = ?"#,
-      pub_key.0
+      key
     )
     .fetch_optional(&self.pool)
     .await?)
@@ -130,11 +131,12 @@ impl ConfidentialRepository for SqliteConfidentialRepository {
 
   async fn get_account_with_secret(&self, pub_key: &str) -> Result<Option<AccountWithSecret>> {
     let pub_key = PublicKey::from_str(pub_key)?;
+    let key = pub_key.0.as_slice();
     Ok(
       sqlx::query_as!(
         AccountWithSecret,
         r#"SELECT account_id, public_key, secret_key FROM accounts WHERE public_key = ?"#,
-        pub_key.0
+        key
       )
       .fetch_optional(&self.pool)
       .await?,
@@ -160,6 +162,7 @@ impl ConfidentialRepository for SqliteConfidentialRepository {
 
   async fn get_account_assets(&self, pub_key: &str) -> Result<Vec<AccountAsset>> {
     let pub_key = PublicKey::from_str(pub_key)?;
+    let key = pub_key.0.as_slice();
     Ok(
       sqlx::query_as!(
         AccountAsset,
@@ -173,7 +176,7 @@ impl ConfidentialRepository for SqliteConfidentialRepository {
           JOIN assets using(asset_id)
           WHERE acc.public_key = ?
         "#,
-        pub_key.0
+        key
       )
       .fetch_all(&self.pool)
       .await?,
@@ -182,6 +185,7 @@ impl ConfidentialRepository for SqliteConfidentialRepository {
 
   async fn get_account_asset(&self, pub_key: &str, asset_id: Uuid) -> Result<Option<AccountAsset>> {
     let pub_key = PublicKey::from_str(pub_key)?;
+    let key = pub_key.0.as_slice();
     Ok(
       sqlx::query_as!(
         AccountAsset,
@@ -195,7 +199,7 @@ impl ConfidentialRepository for SqliteConfidentialRepository {
           JOIN assets using(asset_id)
           WHERE acc.public_key = ? AND aa.asset_id = ?
         "#,
-        pub_key.0,
+        key,
         asset_id,
       )
       .fetch_optional(&self.pool)
@@ -209,6 +213,7 @@ impl ConfidentialRepository for SqliteConfidentialRepository {
     asset_id: Uuid,
   ) -> Result<Option<AccountAssetWithSecret>> {
     let pub_key = PublicKey::from_str(pub_key)?;
+    let key = pub_key.0.as_slice();
     Ok(
       sqlx::query_as(
         r#"
@@ -220,7 +225,7 @@ impl ConfidentialRepository for SqliteConfidentialRepository {
           WHERE acc.public_key = ? AND aa.asset_id = ?
         "#,
       )
-      .bind(&pub_key.0)
+      .bind(key)
       .bind(asset_id)
       .fetch_optional(&self.pool)
       .await?,

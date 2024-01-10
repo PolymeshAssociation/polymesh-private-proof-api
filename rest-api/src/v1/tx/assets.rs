@@ -1,8 +1,6 @@
 use actix_web::{get, post, web, HttpResponse, Responder, Result};
 use uuid::Uuid;
 
-use codec::Encode;
-
 use polymesh_api::types::{
   pallet_confidential_asset::TransactionId, polymesh_primitives::settlement::VenueId,
 };
@@ -10,9 +8,8 @@ use polymesh_api::Api;
 
 use confidential_proof_api::repo::Repository;
 use confidential_proof_shared::{
-  error::Error, AllowVenues, ConfidentialAssetDetails, CreateConfidentialAsset,
-  CreateConfidentialSettlement, ExecuteConfidentialSettlement, PublicKey, TransactionArgs,
-  TransactionResult,
+  error::Error, scale_convert, AllowVenues, ConfidentialAssetDetails, CreateConfidentialAsset,
+  CreateConfidentialSettlement, ExecuteConfidentialSettlement, TransactionArgs, TransactionResult,
 };
 
 use crate::signing::AppSigningManager;
@@ -60,7 +57,7 @@ pub async fn get_asset_details(
   let auditors = asset_auditors
     .auditors
     .iter()
-    .map(|k| PublicKey(k.encode()))
+    .map(|k| scale_convert(k))
     .collect();
 
   let details = ConfidentialAssetDetails {

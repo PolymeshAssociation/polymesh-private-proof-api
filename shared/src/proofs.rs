@@ -3,7 +3,7 @@ use std::collections::BTreeSet;
 use uuid::Uuid;
 
 use serde::{Deserialize, Serialize};
-use serde_hex::{SerHexSeq, StrictPfx};
+use serde_hex::{SerHex, SerHexSeq, StrictPfx};
 
 use utoipa::ToSchema;
 
@@ -520,34 +520,47 @@ impl AccountAssetWithProof {
 
 /// Elgamal public key.
 #[derive(
-  Clone, Debug, Default, Deserialize, Serialize, ToSchema, PartialEq, Eq, PartialOrd, Ord,
+  Clone,
+  Debug,
+  Default,
+  Encode,
+  Decode,
+  Deserialize,
+  Serialize,
+  ToSchema,
+  PartialEq,
+  Eq,
+  PartialOrd,
+  Ord,
 )]
 pub struct PublicKey(
   #[schema(example = "0xceae8587b3e968b9669df8eb715f73bcf3f7a9cd3c61c515a4d80f2ca59c8114")]
-  #[serde(with = "SerHexSeq::<StrictPfx>")]
-  pub Vec<u8>,
+  #[serde(with = "SerHex::<StrictPfx>")]
+  pub [u8; 32],
 );
 
 #[cfg(feature = "backend")]
 impl PublicKey {
   pub fn from_str(s: &str) -> Result<Self> {
+    let mut bytes = [0u8; 32];
     if s.starts_with("0x") {
-      Ok(Self(hex::decode(&s[2..])?))
+      hex::decode_to_slice(&s[2..], &mut bytes as &mut [u8])?;
     } else {
-      Ok(Self(hex::decode(s)?))
+      hex::decode_to_slice(s, &mut bytes as &mut [u8])?;
     }
+    Ok(Self(bytes))
   }
 
   pub fn decode(&self) -> Result<ElgamalPublicKey> {
-    Ok(ElgamalPublicKey::decode(&mut self.0.as_slice())?)
+    Ok(ElgamalPublicKey::decode(&mut &self.0[..])?)
   }
 
   pub fn as_confidential_account(&self) -> Result<ConfidentialAccount> {
-    Ok(ConfidentialAccount::decode(&mut self.0.as_slice())?)
+    Ok(ConfidentialAccount::decode(&mut &self.0[..])?)
   }
 
   pub fn as_auditor_account(&self) -> Result<AuditorAccount> {
-    Ok(AuditorAccount::decode(&mut self.0.as_slice())?)
+    Ok(AuditorAccount::decode(&mut &self.0[..])?)
   }
 }
 

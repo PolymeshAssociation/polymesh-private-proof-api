@@ -2,6 +2,7 @@ use std::collections::BTreeSet;
 use uuid::Uuid;
 
 use serde::{Deserialize, Serialize};
+use serde_hex::{SerHex, StrictPfx};
 
 use utoipa::ToSchema;
 
@@ -65,11 +66,7 @@ pub fn join_auditors(
 
 pub fn split_auditors(auditors: &ConfidentialAuditors) -> (Vec<IdentityId>, Vec<PublicKey>) {
   let mediators = auditors.mediators.iter().map(|m| m.clone()).collect();
-  let auditors = auditors
-    .auditors
-    .iter()
-    .map(|k| PublicKey(k.encode()))
-    .collect();
+  let auditors = auditors.auditors.iter().map(|k| scale_convert(k)).collect();
   (mediators, auditors)
 }
 
@@ -188,6 +185,35 @@ pub struct TransactionAffirmed {
   pub party: TransactionAffirmedParty,
 }
 
+/// Type of balance update.
+#[derive(Clone, Debug, Default, Deserialize, Serialize, ToSchema)]
+pub enum BalanceUpdateAction {
+  #[default]
+  Withdraw,
+  Deposit,
+  DepositIncoming,
+}
+
+/// A Confidential account's balance has updated.
+#[derive(Clone, Debug, Serialize, Deserialize, ToSchema)]
+pub struct BalanceUpdated {
+  /// Confidential account.
+  #[schema(value_type = String, format = Binary, example = "0xceae8587b3e968b9669df8eb715f73bcf3f7a9cd3c61c515a4d80f2ca59c8114")]
+  pub account: PublicKey,
+  /// Asset id.
+  pub asset_id: Uuid,
+  /// The update action.
+  pub action: BalanceUpdateAction,
+  /// Encrypted amount.
+  #[schema(value_type = String, format = Binary, example = "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000")]
+  #[serde(with = "SerHex::<StrictPfx>")]
+  pub amount: [u8; 64],
+  /// New Encrypted balance.
+  #[schema(value_type = String, format = Binary, example = "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000")]
+  #[serde(with = "SerHex::<StrictPfx>")]
+  pub balance: [u8; 64],
+}
+
 /// Processed event from the transaction.
 #[derive(Clone, Debug, Serialize, Deserialize, ToSchema)]
 pub enum ProcessedEvent {
@@ -221,6 +247,8 @@ pub enum ProcessedEvent {
   /// A Confidential asset Venue was created.
   #[schema(value_type = u64)]
   ConfidentialVenueCreated(VenueId),
+  /// A Confidential account's balance was updated.
+  ConfidentialAccountBalanceUpdated(BalanceUpdated),
   /// A Confidential asset transaction was created.
   ConfidentialTransactionCreated(TransactionCreated),
   /// A Confidential asset transaction executed.
@@ -288,6 +316,54 @@ impl ProcessedEvents {
             *total_supply as _,
           ));
         }
+        RuntimeEvent::ConfidentialAsset(ConfidentialAssetEvent::AccountDeposit(
+          account,
+          asset_id,
+          amount,
+          balance,
+        )) => {
+          processed.push(ProcessedEvent::ConfidentialAccountBalanceUpdated(
+            BalanceUpdated {
+              account: scale_convert(account),
+              asset_id: Uuid::from_bytes(*asset_id),
+              action: BalanceUpdateAction::Deposit,
+              amount: scale_convert(amount),
+              balance: scale_convert(balance),
+            },
+          ));
+        }
+        RuntimeEvent::ConfidentialAsset(ConfidentialAssetEvent::AccountDepositIncoming(
+          account,
+          asset_id,
+          amount,
+          balance,
+        )) => {
+          processed.push(ProcessedEvent::ConfidentialAccountBalanceUpdated(
+            BalanceUpdated {
+              account: scale_convert(account),
+              asset_id: Uuid::from_bytes(*asset_id),
+              action: BalanceUpdateAction::DepositIncoming,
+              amount: scale_convert(amount),
+              balance: scale_convert(balance),
+            },
+          ));
+        }
+        RuntimeEvent::ConfidentialAsset(ConfidentialAssetEvent::AccountWithdraw(
+          account,
+          asset_id,
+          amount,
+          balance,
+        )) => {
+          processed.push(ProcessedEvent::ConfidentialAccountBalanceUpdated(
+            BalanceUpdated {
+              account: scale_convert(account),
+              asset_id: Uuid::from_bytes(*asset_id),
+              action: BalanceUpdateAction::Withdraw,
+              amount: scale_convert(amount),
+              balance: scale_convert(balance),
+            },
+          ));
+        }
         RuntimeEvent::ConfidentialAsset(ConfidentialAssetEvent::TransactionCreated(
           _,
           venue_id,
@@ -299,10 +375,10 @@ impl ProcessedEvents {
             .into_iter()
             .map(|l| ConfidentialSettlementLeg {
               assets: l.auditors.keys().map(|id| Uuid::from_bytes(*id)).collect(),
-              sender: PublicKey(l.sender.encode()),
-              receiver: PublicKey(l.receiver.encode()),
+              sender: scale_convert(&l.sender),
+              receiver: scale_convert(&l.receiver),
               mediators: l.mediators.clone().into(),
-              auditors: l.auditors.values().map(|k| PublicKey(k.encode())).collect(),
+              auditors: l.auditors.values().map(|k| scale_convert(k)).collect(),
             })
             .collect();
           processed.push(ProcessedEvent::ConfidentialTransactionCreated(

@@ -159,6 +159,8 @@ async fn start_server() -> anyhow::Result<()> {
           AllowVenues,
           MintRequest,
           AffirmTransactionLegRequest,
+          BalanceUpdated,
+          BalanceUpdateAction,
         ),
       ),
       servers(
