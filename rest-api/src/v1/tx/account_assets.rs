@@ -2,21 +2,18 @@ use actix_web::{get, post, web, HttpResponse, Responder, Result};
 use uuid::Uuid;
 
 use polymesh_api::types::{
-  pallet_confidential_asset::{
-    ConfidentialTransfers,
-    AffirmTransaction, AffirmTransactions,
-    AffirmLeg, AffirmParty,
-  },
   confidential_assets::transaction::ConfidentialTransferProof as SenderProof,
+  pallet_confidential_asset::{
+    AffirmLeg, AffirmParty, AffirmTransaction, AffirmTransactions, ConfidentialTransfers,
+  },
 };
 use polymesh_api::Api;
 
 use confidential_proof_api::repo::Repository;
 use confidential_proof_shared::{
-  confidential_account_to_key, error::Error, auditor_account_to_key, scale_convert,
+  auditor_account_to_key, confidential_account_to_key, error::Error, scale_convert,
   AffirmTransactionLegRequest, DecryptedIncomingBalance, MintRequest, TransactionArgs,
-  TransactionResult,
-  UpdateAccountAsset,
+  TransactionResult, UpdateAccountAsset,
 };
 
 use crate::signing::AppSigningManager;
@@ -179,9 +176,7 @@ pub async fn tx_apply_incoming(
 
   // Update account balance.
   if res.success {
-    repo
-      .update_account_asset(&update)
-      .await?;
+    repo.update_account_asset(&update).await?;
   }
 
   Ok(HttpResponse::Ok().json(res))
@@ -233,10 +228,7 @@ pub async fn tx_sender_affirm_leg(
   };
 
   for (asset_id, auditors) in leg.auditors {
-    let auditors = auditors
-      .iter()
-      .map(auditor_account_to_key)
-      .collect();
+    let auditors = auditors.iter().map(auditor_account_to_key).collect();
 
     // Query the chain for the sender's current balance.
     let enc_balance = api
@@ -250,8 +242,11 @@ pub async fn tx_sender_affirm_leg(
     let enc_balance = Some(scale_convert(&enc_balance));
 
     // Generate sender proof.
-    let (update, proof) = account_asset.create_send_proof(enc_balance, receiver, auditors, amount)?;
-    transfers.proofs.insert(asset_id, SenderProof(proof.as_bytes()));
+    let (update, proof) =
+      account_asset.create_send_proof(enc_balance, receiver, auditors, amount)?;
+    transfers
+      .proofs
+      .insert(asset_id, SenderProof(proof.as_bytes()));
     updates.push(update);
   }
 
@@ -277,9 +272,7 @@ pub async fn tx_sender_affirm_leg(
   // Update account balance.
   if res.success {
     for update in updates {
-      repo
-        .update_account_asset(&update)
-        .await?;
+      repo.update_account_asset(&update).await?;
     }
   }
 
@@ -311,18 +304,12 @@ pub async fn tx_mint(
     .await?
     .ok_or_else(|| Error::not_found("Account"))?;
   // Get the account asset.
-  let account_asset = repo
-    .get_account_asset(&public_key, asset_id)
-    .await?;
+  let account_asset = repo.get_account_asset(&public_key, asset_id).await?;
 
   // Prepare to update account balance.
   let update = match account_asset {
-    Some(account_asset) => {
-      account_asset.mint(req.amount)?
-    }
-    None => {
-      UpdateAccountAsset::init_balance(account.account_id, asset_id, req.amount)
-    }
+    Some(account_asset) => account_asset.mint(req.amount)?,
+    None => UpdateAccountAsset::init_balance(account.account_id, asset_id, req.amount),
   };
 
   let account = account.as_confidential_account()?;
@@ -340,9 +327,7 @@ pub async fn tx_mint(
 
   // Update account balance.
   if res.success {
-    repo
-      .update_account_asset(&update)
-      .await?;
+    repo.update_account_asset(&update).await?;
   }
 
   Ok(HttpResponse::Ok().json(res))

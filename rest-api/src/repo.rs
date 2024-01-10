@@ -2,10 +2,7 @@ use actix_web::web::Data;
 
 use async_trait::async_trait;
 use confidential_proof_shared::{
-  error::Result,
-  BlockTransactionRecord,
-  SettlementRecord,
-  SettlementEventRecord,
+  error::Result, BlockTransactionRecord, SettlementEventRecord, SettlementRecord,
 };
 
 mod sqlite;

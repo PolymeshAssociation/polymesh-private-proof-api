@@ -11,14 +11,13 @@ use codec::{Decode, Encode};
 use polymesh_api::{
   client::{
     basic_types::{AccountId, IdentityId},
-    block::{Header, EventRecord, Phase, ExtrinsicV4},
-    ExtrinsicResult,
-    EnumInfo,
+    block::{EventRecord, ExtrinsicV4, Header, Phase},
+    EnumInfo, ExtrinsicResult,
   },
   types::{
     pallet_confidential_asset::{
-      AffirmParty, ConfidentialAccount, ConfidentialAuditors,
-      AuditorAccount, TransactionId, TransactionLeg, TransactionLegId,
+      AffirmParty, AuditorAccount, ConfidentialAccount, ConfidentialAuditors, TransactionId,
+      TransactionLeg, TransactionLegId,
     },
     polymesh_common_utilities::traits::checkpoint::ScheduleId,
     polymesh_primitives::{
@@ -29,9 +28,7 @@ use polymesh_api::{
     },
     runtime::{events::*, RuntimeEvent},
   },
-  Api,
-  ChainApi,
-  TransactionResults,
+  Api, ChainApi, TransactionResults,
 };
 
 #[cfg(feature = "backend")]
@@ -53,16 +50,26 @@ pub fn auditor_account_to_key(account: &AuditorAccount) -> ElgamalPublicKey {
   scale_convert(account)
 }
 
-pub fn join_auditors(mediators: &[IdentityId], auditors: &[PublicKey]) -> Result<ConfidentialAuditors> {
+pub fn join_auditors(
+  mediators: &[IdentityId],
+  auditors: &[PublicKey],
+) -> Result<ConfidentialAuditors> {
   Ok(ConfidentialAuditors {
-    auditors: auditors.iter().map(|k| k.as_auditor_account()).collect::<Result<BTreeSet<_>>>()?,
+    auditors: auditors
+      .iter()
+      .map(|k| k.as_auditor_account())
+      .collect::<Result<BTreeSet<_>>>()?,
     mediators: mediators.iter().map(|m| m.clone()).collect(),
   })
 }
 
 pub fn split_auditors(auditors: &ConfidentialAuditors) -> (Vec<IdentityId>, Vec<PublicKey>) {
   let mediators = auditors.mediators.iter().map(|m| m.clone()).collect();
-  let auditors = auditors.auditors.iter().map(|k| PublicKey(k.encode())).collect();
+  let auditors = auditors
+    .auditors
+    .iter()
+    .map(|k| PublicKey(k.encode()))
+    .collect();
   (mediators, auditors)
 }
 
@@ -117,16 +124,20 @@ impl SettlementEventRecord {
     let mut events = Vec::new();
     for ev in &processed_events.0 {
       match ev {
-        ProcessedEvent::ConfidentialTransactionCreated(TransactionCreated { transaction_id, .. }) |
-        ProcessedEvent::ConfidentialTransactionAffirmed(TransactionAffirmed { transaction_id, .. }) |
-        ProcessedEvent::ConfidentialTransactionRejected(transaction_id) |
-        ProcessedEvent::ConfidentialTransactionExecuted(transaction_id) => {
-          events.push(Self {
-            settlement_id: transaction_id.0 as _,
-            event: serde_json::to_string(ev)?,
-            ..Default::default()
-          })
-        }
+        ProcessedEvent::ConfidentialTransactionCreated(TransactionCreated {
+          transaction_id,
+          ..
+        })
+        | ProcessedEvent::ConfidentialTransactionAffirmed(TransactionAffirmed {
+          transaction_id,
+          ..
+        })
+        | ProcessedEvent::ConfidentialTransactionRejected(transaction_id)
+        | ProcessedEvent::ConfidentialTransactionExecuted(transaction_id) => events.push(Self {
+          settlement_id: transaction_id.0 as _,
+          event: serde_json::to_string(ev)?,
+          ..Default::default()
+        }),
         _ => (),
       }
     }
@@ -256,11 +267,26 @@ impl ProcessedEvents {
         RuntimeEvent::ConfidentialAsset(ConfidentialAssetEvent::VenueCreated(_, id)) => {
           processed.push(ProcessedEvent::ConfidentialVenueCreated(*id));
         }
-        RuntimeEvent::ConfidentialAsset(ConfidentialAssetEvent::ConfidentialAssetCreated(_, asset_id, ..)) => {
-          processed.push(ProcessedEvent::ConfidentialAssetCreated(Uuid::from_bytes(*asset_id)));
+        RuntimeEvent::ConfidentialAsset(ConfidentialAssetEvent::ConfidentialAssetCreated(
+          _,
+          asset_id,
+          ..,
+        )) => {
+          processed.push(ProcessedEvent::ConfidentialAssetCreated(Uuid::from_bytes(
+            *asset_id,
+          )));
         }
-        RuntimeEvent::ConfidentialAsset(ConfidentialAssetEvent::Issued(_, asset_id, amount, total_supply)) => {
-          processed.push(ProcessedEvent::ConfidentialAssetMinted(Uuid::from_bytes(*asset_id), *amount as _, *total_supply as _));
+        RuntimeEvent::ConfidentialAsset(ConfidentialAssetEvent::Issued(
+          _,
+          asset_id,
+          amount,
+          total_supply,
+        )) => {
+          processed.push(ProcessedEvent::ConfidentialAssetMinted(
+            Uuid::from_bytes(*asset_id),
+            *amount as _,
+            *total_supply as _,
+          ));
         }
         RuntimeEvent::ConfidentialAsset(ConfidentialAssetEvent::TransactionCreated(
           _,
@@ -269,36 +295,29 @@ impl ProcessedEvents {
           legs,
           memo,
         )) => {
-          let legs = legs.into_iter().map(|l| {
-            ConfidentialSettlementLeg {
+          let legs = legs
+            .into_iter()
+            .map(|l| ConfidentialSettlementLeg {
               assets: l.auditors.keys().map(|id| Uuid::from_bytes(*id)).collect(),
               sender: PublicKey(l.sender.encode()),
               receiver: PublicKey(l.receiver.encode()),
               mediators: l.mediators.clone().into(),
               auditors: l.auditors.values().map(|k| PublicKey(k.encode())).collect(),
-            }
-          }).collect();
+            })
+            .collect();
           processed.push(ProcessedEvent::ConfidentialTransactionCreated(
-              TransactionCreated {
-                venue_id: *venue_id,
-                transaction_id: *id,
-                legs,
-                memo: memo_to_string(memo),
-              }
+            TransactionCreated {
+              venue_id: *venue_id,
+              transaction_id: *id,
+              legs,
+              memo: memo_to_string(memo),
+            },
           ));
         }
-        RuntimeEvent::ConfidentialAsset(ConfidentialAssetEvent::TransactionExecuted(
-          _,
-          id,
-          ..,
-        )) => {
+        RuntimeEvent::ConfidentialAsset(ConfidentialAssetEvent::TransactionExecuted(_, id, ..)) => {
           processed.push(ProcessedEvent::ConfidentialTransactionExecuted(*id));
         }
-        RuntimeEvent::ConfidentialAsset(ConfidentialAssetEvent::TransactionRejected(
-          _,
-          id,
-          ..,
-        )) => {
+        RuntimeEvent::ConfidentialAsset(ConfidentialAssetEvent::TransactionRejected(_, id, ..)) => {
           processed.push(ProcessedEvent::ConfidentialTransactionRejected(*id));
         }
         RuntimeEvent::ConfidentialAsset(ConfidentialAssetEvent::TransactionAffirmed(
@@ -307,48 +326,50 @@ impl ProcessedEvents {
           leg_id,
           party,
           pending,
-        )) => {
-          match party {
-            AffirmParty::Sender(transfers) => {
-              let transfers = TransferProofs {
-                proofs: transfers.proofs.iter().map(|(asset_id, proof)| {
+        )) => match party {
+          AffirmParty::Sender(transfers) => {
+            let transfers = TransferProofs {
+              proofs: transfers
+                .proofs
+                .iter()
+                .map(|(asset_id, proof)| {
                   (Uuid::from_bytes(*asset_id), SenderProof(proof.0.clone()))
-                }).collect(),
-              };
-              processed.push(ProcessedEvent::ConfidentialTransactionAffirmed(
-                TransactionAffirmed {
-                  transaction_id: *tx_id,
-                  pending_affirms: *pending,
-                  leg_id: *leg_id,
-                  transfer_proofs: Some(transfers),
-                  party: TransactionAffirmedParty::Sender,
-                },
-              ));
-            }
-            AffirmParty::Receiver => {
-              processed.push(ProcessedEvent::ConfidentialTransactionAffirmed(
-                TransactionAffirmed {
-                  transaction_id: *tx_id,
-                  pending_affirms: *pending,
-                  leg_id: *leg_id,
-                  transfer_proofs: None,
-                  party: TransactionAffirmedParty::Receiver,
-                },
-              ));
-            }
-            AffirmParty::Mediator => {
-              processed.push(ProcessedEvent::ConfidentialTransactionAffirmed(
-                TransactionAffirmed {
-                  transaction_id: *tx_id,
-                  pending_affirms: *pending,
-                  leg_id: *leg_id,
-                  transfer_proofs: None,
-                  party: TransactionAffirmedParty::Mediator,
-                },
-              ));
-            }
+                })
+                .collect(),
+            };
+            processed.push(ProcessedEvent::ConfidentialTransactionAffirmed(
+              TransactionAffirmed {
+                transaction_id: *tx_id,
+                pending_affirms: *pending,
+                leg_id: *leg_id,
+                transfer_proofs: Some(transfers),
+                party: TransactionAffirmedParty::Sender,
+              },
+            ));
           }
-        }
+          AffirmParty::Receiver => {
+            processed.push(ProcessedEvent::ConfidentialTransactionAffirmed(
+              TransactionAffirmed {
+                transaction_id: *tx_id,
+                pending_affirms: *pending,
+                leg_id: *leg_id,
+                transfer_proofs: None,
+                party: TransactionAffirmedParty::Receiver,
+              },
+            ));
+          }
+          AffirmParty::Mediator => {
+            processed.push(ProcessedEvent::ConfidentialTransactionAffirmed(
+              TransactionAffirmed {
+                transaction_id: *tx_id,
+                pending_affirms: *pending,
+                leg_id: *leg_id,
+                transfer_proofs: None,
+                party: TransactionAffirmedParty::Mediator,
+              },
+            ));
+          }
+        },
         _ => (),
       }
     }
@@ -430,13 +451,17 @@ impl TransactionResult {
       let block_hash = format!("{block_hash:#x}");
       for (idx, tx_enc) in block.extrinsics().into_iter().enumerate() {
         let tx_hash = ExtrinsicV4::tx_hash(&tx_enc.0);
-        let events = block_events.iter().filter(|ev| ev.phase == Phase::ApplyExtrinsic(idx as u32))
+        let events = block_events
+          .iter()
+          .filter(|ev| ev.phase == Phase::ApplyExtrinsic(idx as u32))
           .cloned()
           .collect::<Vec<_>>();
         let tx_res = Api::events_to_extrinsic_result(&events);
         let (success, err_msg) = match tx_res {
           Some(ExtrinsicResult::Success(_)) => (true, None),
-          Some(ExtrinsicResult::Failed(_, err)) => (false, Some(format!("{:?}", err.as_short_doc()))),
+          Some(ExtrinsicResult::Failed(_, err)) => {
+            (false, Some(format!("{:?}", err.as_short_doc())))
+          }
           None => (false, Some(format!("Unknown transaction results"))),
         };
         transactions.push(Self {
@@ -641,7 +666,11 @@ impl ConfidentialSettlementLeg {
   }
 
   pub fn auditors(&self) -> Result<BTreeSet<AuditorAccount>> {
-    self.auditors.iter().map(|k| k.as_auditor_account()).collect()
+    self
+      .auditors
+      .iter()
+      .map(|k| k.as_auditor_account())
+      .collect()
   }
 }
 

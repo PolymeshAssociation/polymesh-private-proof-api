@@ -113,9 +113,7 @@ pub async fn request_sender_proof(
   let (update, proof) = account_asset.create_send_proof(enc_balance, receiver, auditors, amount)?;
 
   // Update account balance.
-  let account_asset = repo
-    .update_account_asset(&update)
-    .await?;
+  let account_asset = repo.update_account_asset(&update).await?;
 
   // Return account_asset with sender proof.
   let balance_with_proof = AccountAssetWithProof::new_send_proof(account_asset, proof);
@@ -195,9 +193,7 @@ pub async fn update_balance_request(
   let update = account_asset.update_balance(&req)?;
 
   // Update account balance.
-  let account_asset = repo
-    .update_account_asset(&update)
-    .await?;
+  let account_asset = repo.update_account_asset(&update).await?;
 
   // Return account_asset.
   Ok(HttpResponse::Ok().json(account_asset))

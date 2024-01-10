@@ -5,7 +5,11 @@ use confidential_proof_shared::*;
 
 use crate::repo::TransactionRepository;
 
-pub async fn start_chain_watcher(api: Api, repo: Repository, tx_repo: TransactionRepository) -> anyhow::Result<()> {
+pub async fn start_chain_watcher(
+  api: Api,
+  repo: Repository,
+  tx_repo: TransactionRepository,
+) -> anyhow::Result<()> {
   let client = api.client();
 
   let mut sub_blocks = client.subscribe_blocks().await?;
@@ -27,7 +31,12 @@ pub async fn start_chain_watcher(api: Api, repo: Repository, tx_repo: Transactio
             ProcessedEvent::ConfidentialAssetCreated(asset_id) => {
               // Check if the asset exists.
               if repo.get_asset(*asset_id).await?.is_none() {
-                repo.create_asset(&AddAsset { asset_id: Some(*asset_id), ticker: None }).await?;
+                repo
+                  .create_asset(&AddAsset {
+                    asset_id: Some(*asset_id),
+                    ticker: None,
+                  })
+                  .await?;
               }
             }
             _ => (),

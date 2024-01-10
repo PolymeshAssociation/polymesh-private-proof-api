@@ -1,15 +1,13 @@
 use actix_web::{post, web, HttpResponse, Responder, Result};
 
 use polymesh_api::types::pallet_confidential_asset::{
-  AffirmTransaction, AffirmTransactions,
-  AffirmLeg, AffirmParty,
+  AffirmLeg, AffirmParty, AffirmTransaction, AffirmTransactions,
 };
 use polymesh_api::Api;
 
 use confidential_proof_api::repo::Repository;
 use confidential_proof_shared::{
-  PublicKey,
-  error::Error, AffirmTransactionLegRequest, TransactionResult, TransactionArgs,
+  error::Error, AffirmTransactionLegRequest, PublicKey, TransactionArgs, TransactionResult,
 };
 
 use super::account_assets;
@@ -47,8 +45,7 @@ pub async fn tx_init_account(
     .get_account_with_secret(&public_key)
     .await?
     .ok_or_else(|| Error::not_found("Account"))?;
-  let confidential_account = account
-    .as_confidential_account()?;
+  let confidential_account = account.as_confidential_account()?;
 
   let res = api
     .call()
@@ -76,8 +73,7 @@ pub async fn tx_account_did(
   api: web::Data<Api>,
 ) -> Result<impl Responder> {
   let public_key = path.into_inner();
-  let confidential_account = public_key
-    .as_confidential_account()?;
+  let confidential_account = public_key.as_confidential_account()?;
 
   let account_did = api
     .query()

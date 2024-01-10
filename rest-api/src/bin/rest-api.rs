@@ -8,15 +8,12 @@ use utoipa_rapidoc::RapiDoc;
 use utoipa_redoc::{Redoc, Servable};
 use utoipa_swagger_ui::SwaggerUi;
 
-use polymesh_api::{
-  Api,
-  client::IdentityId,
-};
+use polymesh_api::{client::IdentityId, Api};
 
 use confidential_proof_api as proof_api;
 use confidential_proof_api::{repo::SqliteConfidentialRepository, v1::*};
 use confidential_proof_shared::*;
-use confidential_rest_api::{signing, repo::SqliteTransactionRepository, v1::*};
+use confidential_rest_api::{repo::SqliteTransactionRepository, signing, v1::*};
 
 pub fn v1_service(cfg: &mut web::ServiceConfig) {
   cfg.service(

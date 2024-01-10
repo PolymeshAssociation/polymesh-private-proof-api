@@ -4,10 +4,7 @@ use actix_web::web::Data;
 
 use async_trait::async_trait;
 use confidential_proof_shared::{
-  error::Result,
-  BlockTransactionRecord,
-  SettlementRecord,
-  SettlementEventRecord,
+  error::Result, BlockTransactionRecord, SettlementEventRecord, SettlementRecord,
 };
 
 use super::{TransactionRepository, TransactionRepositoryTrait};
@@ -54,19 +51,19 @@ impl TransactionRepositoryTrait for SqliteTransactionRepository {
 
   async fn add_block_transaction(&self, tx: BlockTransactionRecord) -> Result<()> {
     sqlx::query!(
-        r#"
+      r#"
       INSERT INTO transactions (block_hash, block_number, tx_hash, success, error, events)
       VALUES (?, ?, ?, ?, ?, ?)
       "#,
-        tx.block_hash,
-        tx.block_number,
-        tx.tx_hash,
-        tx.success,
-        tx.error,
-        tx.events,
-      )
-      .execute(&self.pool)
-      .await?;
+      tx.block_hash,
+      tx.block_number,
+      tx.tx_hash,
+      tx.success,
+      tx.error,
+      tx.events,
+    )
+    .execute(&self.pool)
+    .await?;
     Ok(())
   }
 
@@ -96,44 +93,48 @@ impl TransactionRepositoryTrait for SqliteTransactionRepository {
 
   async fn add_settlement(&self, rec: SettlementRecord) -> Result<()> {
     sqlx::query!(
-        r#"
+      r#"
       INSERT INTO settlements (settlement_id, venue_id, legs, memo)
       VALUES (?, ?, ?, ?)
       "#,
-        rec.settlement_id,
-        rec.venue_id,
-        rec.legs,
-        rec.memo,
-      )
-      .execute(&self.pool)
-      .await?;
+      rec.settlement_id,
+      rec.venue_id,
+      rec.legs,
+      rec.memo,
+    )
+    .execute(&self.pool)
+    .await?;
     Ok(())
   }
 
   // Settlement Events.
   async fn get_settlement_events(&self, settlement_id: i64) -> Result<Vec<SettlementEventRecord>> {
     Ok(
-      sqlx::query_as!(SettlementEventRecord, r#"
+      sqlx::query_as!(
+        SettlementEventRecord,
+        r#"
         SELECT settlement_id as "settlement_id: u32", event, created_at
         FROM settlement_events
         WHERE settlement_id = ?
-        "#, settlement_id)
-        .fetch_all(&self.pool)
-        .await?,
+        "#,
+        settlement_id
+      )
+      .fetch_all(&self.pool)
+      .await?,
     )
   }
 
   async fn add_settlement_event(&self, rec: SettlementEventRecord) -> Result<()> {
     sqlx::query!(
-        r#"
+      r#"
       INSERT INTO settlement_events (settlement_id, event)
       VALUES (?, ?)
       "#,
-        rec.settlement_id,
-        rec.event,
-      )
-      .execute(&self.pool)
-      .await?;
+      rec.settlement_id,
+      rec.event,
+    )
+    .execute(&self.pool)
+    .await?;
     Ok(())
   }
 }

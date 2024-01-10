@@ -6,8 +6,8 @@ use actix_web::web::Data;
 
 use async_trait::async_trait;
 use confidential_proof_shared::{
-  error::Result, Account, AccountAsset, AccountAssetWithSecret, AccountWithSecret, Asset,
-  CreateAccount, AddAsset, CreateUser, PublicKey, UpdateAccountAsset, User,
+  error::Result, Account, AccountAsset, AccountAssetWithSecret, AccountWithSecret, AddAsset, Asset,
+  CreateAccount, CreateUser, PublicKey, UpdateAccountAsset, User,
 };
 
 use super::{ConfidentialRepository, Repository};
@@ -62,22 +62,29 @@ impl ConfidentialRepository for SqliteConfidentialRepository {
 
   async fn get_assets(&self) -> Result<Vec<Asset>> {
     Ok(
-      sqlx::query_as!(Asset, r#"
+      sqlx::query_as!(
+        Asset,
+        r#"
           SELECT asset_id as "asset_id: Uuid", ticker, created_at, updated_at
           FROM assets
-"#,)
-        .fetch_all(&self.pool)
-        .await?,
+"#,
+      )
+      .fetch_all(&self.pool)
+      .await?,
     )
   }
 
   async fn get_asset(&self, asset_id: Uuid) -> Result<Option<Asset>> {
     Ok(
-      sqlx::query_as!(Asset, r#"
+      sqlx::query_as!(
+        Asset,
+        r#"
         SELECT asset_id as "asset_id: Uuid", ticker, created_at, updated_at
-        FROM assets WHERE asset_id = ?"#, asset_id)
-        .fetch_optional(&self.pool)
-        .await?,
+        FROM assets WHERE asset_id = ?"#,
+        asset_id
+      )
+      .fetch_optional(&self.pool)
+      .await?,
     )
   }
 
@@ -91,7 +98,8 @@ impl ConfidentialRepository for SqliteConfidentialRepository {
       VALUES (?, ?)
       RETURNING asset_id as "asset_id: Uuid", ticker, created_at, updated_at
       "#,
-        asset_id, asset.ticker,
+        asset_id,
+        asset.ticker,
       )
       .fetch_one(&self.pool)
       .await?,
@@ -120,10 +128,7 @@ impl ConfidentialRepository for SqliteConfidentialRepository {
     .await?)
   }
 
-  async fn get_account_with_secret(
-    &self,
-    pub_key: &str,
-  ) -> Result<Option<AccountWithSecret>> {
+  async fn get_account_with_secret(&self, pub_key: &str) -> Result<Option<AccountWithSecret>> {
     let pub_key = PublicKey::from_str(pub_key)?;
     Ok(
       sqlx::query_as!(
@@ -175,11 +180,7 @@ impl ConfidentialRepository for SqliteConfidentialRepository {
     )
   }
 
-  async fn get_account_asset(
-    &self,
-    pub_key: &str,
-    asset_id: Uuid,
-  ) -> Result<Option<AccountAsset>> {
+  async fn get_account_asset(&self, pub_key: &str, asset_id: Uuid) -> Result<Option<AccountAsset>> {
     let pub_key = PublicKey::from_str(pub_key)?;
     Ok(
       sqlx::query_as!(
@@ -262,10 +263,7 @@ impl ConfidentialRepository for SqliteConfidentialRepository {
     )
   }
 
-  async fn update_account_asset(
-    &self,
-    account_asset: &UpdateAccountAsset,
-  ) -> Result<AccountAsset> {
+  async fn update_account_asset(&self, account_asset: &UpdateAccountAsset) -> Result<AccountAsset> {
     let account_asset_id = if let Some(id) = account_asset.account_asset_id {
       id
     } else {

@@ -46,10 +46,7 @@ pub async fn get_asset(asset_id: web::Path<Uuid>, repo: Repository) -> Result<im
   )
 )]
 #[post("/assets")]
-pub async fn create_asset(
-  asset: web::Json<AddAsset>,
-  repo: Repository,
-) -> Result<impl Responder> {
+pub async fn create_asset(asset: web::Json<AddAsset>, repo: Repository) -> Result<impl Responder> {
   let asset = repo.create_asset(&asset).await?;
   Ok(HttpResponse::Ok().json(asset))
 }

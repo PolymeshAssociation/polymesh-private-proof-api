@@ -14,7 +14,7 @@ use codec::{Decode, Encode};
 
 #[cfg(feature = "backend")]
 use polymesh_api::types::{
-  pallet_confidential_asset::{ConfidentialAccount, AuditorAccount},
+  pallet_confidential_asset::{AuditorAccount, ConfidentialAccount},
   polymesh_primitives::ticker::Ticker,
 };
 
@@ -154,7 +154,11 @@ impl AccountWithSecret {
     Ok(value)
   }
 
-  pub fn apply_incoming(&self, asset_id: Uuid, enc_incoming: CipherText) -> Result<UpdateAccountAsset> {
+  pub fn apply_incoming(
+    &self,
+    asset_id: Uuid,
+    enc_incoming: CipherText,
+  ) -> Result<UpdateAccountAsset> {
     // Decode ConfidentialAccount from database.
     let keys = self.encryption_keys()?;
     // Decrypt incoming balance.

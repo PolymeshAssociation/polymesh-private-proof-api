@@ -4,10 +4,7 @@ use uuid::Uuid;
 use codec::Encode;
 
 use polymesh_api::types::{
-  pallet_confidential_asset::TransactionId,
-  polymesh_primitives::{
-    settlement::VenueId,
-  },
+  pallet_confidential_asset::TransactionId, polymesh_primitives::settlement::VenueId,
 };
 use polymesh_api::Api;
 
@@ -60,7 +57,11 @@ pub async fn get_asset_details(
     .map_err(|err| Error::from(err))?
     .ok_or_else(|| Error::not_found("Confidential asset doesn't exist"))?;
   let mediators = asset_auditors.mediators.iter().map(|d| d.clone()).collect();
-  let auditors = asset_auditors.auditors.iter().map(|k| PublicKey(k.encode())).collect();
+  let auditors = asset_auditors
+    .auditors
+    .iter()
+    .map(|k| PublicKey(k.encode()))
+    .collect();
 
   let details = ConfidentialAssetDetails {
     total_supply: details.total_supply as u64,
@@ -132,11 +133,7 @@ pub async fn tx_create_asset(
   let res = api
     .call()
     .confidential_asset()
-    .create_confidential_asset(
-      ticker,
-      vec![],
-      auditors,
-    )
+    .create_confidential_asset(ticker, vec![], auditors)
     .map_err(|err| Error::from(err))?
     .submit_and_watch(&mut signer)
     .await
