@@ -8,6 +8,7 @@ use polymesh_api::Api;
 
 use confidential_proof_api::repo::Repository;
 use confidential_proof_shared::{
+  PublicKey,
   error::Error, AffirmTransactionLegRequest, TransactionResult, TransactionArgs,
 };
 
@@ -17,6 +18,7 @@ use crate::signing::AppSigningManager;
 pub fn service(cfg: &mut web::ServiceConfig) {
   cfg
     .service(tx_init_account)
+    .service(tx_account_did)
     .service(tx_mediator_affirm_leg)
     .configure(account_assets::service);
 }
@@ -60,6 +62,32 @@ pub async fn tx_init_account(
   // Wait for transaction results.
   let res = TransactionResult::wait_for_results(res, req.finalize).await?;
   Ok(HttpResponse::Ok().json(res))
+}
+
+/// Get the account's on-chain identity.
+#[utoipa::path(
+  responses(
+    (status = 200, body = TransactionResult)
+  )
+)]
+#[post("/tx/accounts/{public_key}/identity")]
+pub async fn tx_account_did(
+  path: web::Path<PublicKey>,
+  api: web::Data<Api>,
+) -> Result<impl Responder> {
+  let public_key = path.into_inner();
+  let confidential_account = public_key
+    .as_confidential_account()?;
+
+  let account_did = api
+    .query()
+    .confidential_asset()
+    .account_did(confidential_account)
+    .await
+    .map_err(|err| Error::from(err))?
+    .ok_or_else(|| Error::not_found("Confidential account doesn't exist"))?;
+
+  Ok(HttpResponse::Ok().json(account_did))
 }
 
 /// Affirm confidential asset settlement as a mediator.

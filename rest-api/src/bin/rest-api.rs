@@ -8,7 +8,10 @@ use utoipa_rapidoc::RapiDoc;
 use utoipa_redoc::{Redoc, Servable};
 use utoipa_swagger_ui::SwaggerUi;
 
-use polymesh_api::Api;
+use polymesh_api::{
+  Api,
+  client::IdentityId,
+};
 
 use confidential_proof_api as proof_api;
 use confidential_proof_api::{repo::SqliteConfidentialRepository, v1::*};
@@ -117,6 +120,7 @@ async fn start_server() -> anyhow::Result<()> {
         tx::assets::tx_execute_settlement,
         tx::accounts::tx_mediator_affirm_leg,
         tx::accounts::tx_init_account,
+        tx::accounts::tx_account_did,
         tx::account_assets::tx_sender_affirm_leg,
         tx::account_assets::tx_receiver_affirm_leg,
         tx::account_assets::tx_apply_incoming,
@@ -131,7 +135,7 @@ async fn start_server() -> anyhow::Result<()> {
           Account,
           AccountAsset, CreateAccountAsset,
           AccountAssetWithProof,
-          PublicKey, SenderProof,
+          PublicKey, SenderProof, TransferProofs,
           AuditorVerifyRequest,
           ReceiverVerifyRequest,
           SenderProofRequest,
@@ -142,6 +146,7 @@ async fn start_server() -> anyhow::Result<()> {
           DecryptedIncomingBalance,
           UpdateAccountAssetBalanceRequest,
 
+          IdentityId,
           TransactionCreated,
           TransactionAffirmed,
           TransactionAffirmedParty,
@@ -150,6 +155,7 @@ async fn start_server() -> anyhow::Result<()> {
           TransactionArgs,
           TransactionResult,
           CreateConfidentialAsset,
+          ConfidentialAssetDetails,
           ConfidentialSettlementLeg,
           CreateConfidentialSettlement,
           ExecuteConfidentialSettlement,

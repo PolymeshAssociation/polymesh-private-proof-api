@@ -28,6 +28,7 @@ confidential_assets = { workspace = true, default-features = false }
 
 # Polymesh API
 polymesh-api = { workspace = true, features = ["default"] }
+polymesh-api-client = { workspace = true, default-features = false, features = ["utoipa"] }
 sp-core = { workspace = true, default-features = false }
 sp-runtime = { workspace = true }
 

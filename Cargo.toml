@@ -7,8 +7,8 @@ members = [
 resolver = "2"
 
 [patch.crates-io]
-confidential_assets = { git = "ssh://git@github.com/PolymeshAssociation/confidential_assets.git", branch = "MESH-2127-part-2" }
-#confidential_assets = { path = "../confidential_assets/" }
+#confidential_assets = { git = "ssh://git@github.com/PolymeshAssociation/confidential_assets.git", branch = "MESH-2112-improve_proofs" }
+confidential_assets = { path = "../confidential_assets/" }
 bulletproofs = { version = "4.0.0", git = "https://github.com/PolymeshAssociation/bulletproofs", branch = "polymesh" }
 #polymesh-api = { path = "../polymesh-api/" }
 #polymesh-api-client = { path = "../polymesh-api/crates/polymesh-api-client/" }
@@ -24,6 +24,7 @@ confidential_assets = { version = "1.0.0", default-features = false }
 
 # Polymesh API
 polymesh-api = { version = "3.2.0", default-features = false }
+polymesh-api-client = { version = "3.3.0", default-features = false, features = ["utoipa"] }
 sp-core = { version = "21.0.0", default-features = false }
 sp-runtime = { version = "24.0", default-features = false }
 

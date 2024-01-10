@@ -62,7 +62,7 @@ async fn start_server() -> anyhow::Result<()> {
           Account,
           AccountAsset, CreateAccountAsset,
           AccountAssetWithProof,
-          PublicKey, SenderProof,
+          PublicKey, SenderProof, TransferProofs,
           AuditorVerifyRequest,
           ReceiverVerifyRequest,
           SenderProofRequest,
