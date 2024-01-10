@@ -1,4 +1,4 @@
-use std::collections::BTreeSet;
+use std::collections::{BTreeSet, BTreeMap};
 use uuid::Uuid;
 
 use serde::{Deserialize, Serialize};
@@ -159,9 +159,10 @@ pub struct TransactionCreated {
   pub memo: String,
 }
 
-/// The transaction party affirmation.
-#[derive(Clone, Debug, Deserialize, Serialize, ToSchema)]
-pub enum TransactionAffirmedParty {
+/// The transaction party.
+#[derive(Clone, Debug, Default, Deserialize, Serialize, ToSchema)]
+pub enum TransactionParty {
+  #[default]
   Sender,
   Receiver,
   Mediator,
@@ -182,7 +183,7 @@ pub struct TransactionAffirmed {
   /// Confidential transaction leg transfer proofs (if the sender affirmed).
   pub transfer_proofs: Option<TransferProofs>,
   /// Who affirmed the transaction leg.
-  pub party: TransactionAffirmedParty,
+  pub party: TransactionParty,
 }
 
 /// Type of balance update.
@@ -419,7 +420,7 @@ impl ProcessedEvents {
                 pending_affirms: *pending,
                 leg_id: *leg_id,
                 transfer_proofs: Some(transfers),
-                party: TransactionAffirmedParty::Sender,
+                party: TransactionParty::Sender,
               },
             ));
           }
@@ -430,7 +431,7 @@ impl ProcessedEvents {
                 pending_affirms: *pending,
                 leg_id: *leg_id,
                 transfer_proofs: None,
-                party: TransactionAffirmedParty::Receiver,
+                party: TransactionParty::Receiver,
               },
             ));
           }
@@ -441,7 +442,7 @@ impl ProcessedEvents {
                 pending_affirms: *pending,
                 leg_id: *leg_id,
                 transfer_proofs: None,
-                party: TransactionAffirmedParty::Mediator,
+                party: TransactionParty::Mediator,
               },
             ));
           }
@@ -790,6 +791,42 @@ impl CreateConfidentialSettlement {
       None
     })
   }
+}
+
+/// Affirm Confidential asset transaction leg as the sender/receiver/mediator.
+#[derive(Clone, Debug, Default, Deserialize, Serialize, ToSchema)]
+pub struct AffirmTransactionLeg {
+  /// Confidential transaction leg id.
+  #[schema(value_type = u32)]
+  pub leg_id: TransactionLegId,
+  /// The amount for each asset in the leg.
+  pub amounts: Option<BTreeMap<Uuid, Balance>>,
+  /// Who is affirming the transaction.
+  pub party: TransactionParty,
+}
+
+/// Affirm Confidential asset transaction as the sender/receiver/mediator.
+#[derive(Clone, Debug, Default, Deserialize, Serialize, ToSchema)]
+pub struct AffirmTransactionRequest {
+  /// Confidential transaction id.
+  #[schema(value_type = u64)]
+  pub transaction_id: TransactionId,
+  /// Confidential transaction legs to affirm.
+  pub legs: Vec<AffirmTransactionLeg>,
+}
+
+/// Affirm Confidential asset transactions as the sender/receiver/mediator.
+#[derive(Clone, Debug, Default, Deserialize, Serialize, ToSchema)]
+pub struct AffirmTransactionsRequest {
+  /// Signer of the transaction.
+  #[schema(example = "Alice")]
+  pub signer: String,
+  /// Wait for block finalization.
+  #[schema(example = false)]
+  #[serde(default)]
+  pub finalize: bool,
+  /// Confidential transactions to affirm.
+  pub transactions: Vec<AffirmTransactionRequest>,
 }
 
 /// Affirm Confidential asset transaction leg as the sender/receiver.
