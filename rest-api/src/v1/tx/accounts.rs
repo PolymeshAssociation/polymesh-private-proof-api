@@ -10,9 +10,9 @@ use polymesh_api::Api;
 
 use confidential_proof_api::repo::Repository;
 use confidential_proof_shared::{
-  auditor_account_to_key, confidential_account_to_key, scale_convert,
-  error::Error, AffirmTransactionLegRequest, PublicKey, TransactionArgs, TransactionResult,
-  TransactionParty, AffirmTransactionsRequest
+  auditor_account_to_key, confidential_account_to_key, error::Error, scale_convert,
+  AffirmTransactionLegRequest, AffirmTransactionsRequest, PublicKey, TransactionArgs,
+  TransactionParty, TransactionResult,
 };
 
 use super::account_assets;
@@ -22,6 +22,7 @@ pub fn service(cfg: &mut web::ServiceConfig) {
   cfg
     .service(tx_init_account)
     .service(tx_account_did)
+    .service(tx_affirm_transactions)
     .service(tx_mediator_affirm_leg)
     .configure(account_assets::service);
 }
@@ -123,9 +124,7 @@ pub async fn tx_affirm_transactions(
     for leg in &tx.legs {
       let leg_id = leg.leg_id;
       let affirm_party = match (&leg.party, &leg.amounts) {
-        (TransactionParty::Sender, None) => {
-          Err(Error::other("Missing asset amounts."))?
-        }
+        (TransactionParty::Sender, None) => Err(Error::other("Missing asset amounts."))?,
         (TransactionParty::Sender, Some(amounts)) => {
           // Query the chain for Transaction Leg to get the receiver and auditors.
           let leg_details = api
@@ -147,10 +146,13 @@ pub async fn tx_affirm_transactions(
             Err(Error::other("Wrong number of asset amounts."))?
           }
 
-          for (asset_id, auditors) in leg_details.auditors {
-            let asset_id = uuid::Uuid::from_bytes(asset_id);
-            let amount = amounts.get(&asset_id)
-              .ok_or_else(|| Error::other(&format!("Missing amount for asset: {asset_id:?}")))?;
+          for amount in amounts {
+            let asset_id = amount.asset_id;
+            let amount = amount.amount;
+            let auditors = leg_details
+              .auditors
+              .get(asset_id.as_bytes())
+              .ok_or_else(|| Error::other(&format!("Invalid asset in leg: {asset_id:?}")))?;
             // Get the account asset with account secret key.
             let account_asset = repo
               .get_account_asset_with_secret(&public_key, asset_id)
@@ -171,7 +173,7 @@ pub async fn tx_affirm_transactions(
 
             // Generate sender proof.
             let (update, proof) =
-              account_asset.create_send_proof(enc_balance, receiver, auditors, *amount)?;
+              account_asset.create_send_proof(enc_balance, receiver, auditors, amount)?;
             transfers
               .proofs
               .insert(*asset_id.as_bytes(), SenderProof(proof.as_bytes()));
@@ -179,12 +181,8 @@ pub async fn tx_affirm_transactions(
           }
           AffirmParty::Sender(transfers)
         }
-        (TransactionParty::Receiver, _amounts) => {
-          AffirmParty::Receiver
-        }
-        (TransactionParty::Mediator, _amounts) => {
-          AffirmParty::Mediator
-        }
+        (TransactionParty::Receiver, _amounts) => AffirmParty::Receiver,
+        (TransactionParty::Mediator, _amounts) => AffirmParty::Mediator,
       };
       affirms.push(AffirmTransaction {
         id: transaction_id,

@@ -1,4 +1,4 @@
-use std::collections::{BTreeSet, BTreeMap};
+use std::collections::BTreeSet;
 use uuid::Uuid;
 
 use serde::{Deserialize, Serialize};
@@ -793,6 +793,16 @@ impl CreateConfidentialSettlement {
   }
 }
 
+/// Asset id and amount.
+#[derive(Clone, Debug, Default, Deserialize, Serialize, ToSchema)]
+pub struct TransactionAssetAmount {
+  /// Asset id.
+  pub asset_id: Uuid,
+  /// The asset amount.
+  #[schema(example = 1000, value_type = u64)]
+  pub amount: Balance,
+}
+
 /// Affirm Confidential asset transaction leg as the sender/receiver/mediator.
 #[derive(Clone, Debug, Default, Deserialize, Serialize, ToSchema)]
 pub struct AffirmTransactionLeg {
@@ -800,7 +810,7 @@ pub struct AffirmTransactionLeg {
   #[schema(value_type = u32)]
   pub leg_id: TransactionLegId,
   /// The amount for each asset in the leg.
-  pub amounts: Option<BTreeMap<Uuid, Balance>>,
+  pub amounts: Option<Vec<TransactionAssetAmount>>,
   /// Who is affirming the transaction.
   pub party: TransactionParty,
 }
