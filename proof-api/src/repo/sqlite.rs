@@ -240,6 +240,8 @@ impl ConfidentialRepository for SqliteConfidentialRepository {
       r#"
       INSERT INTO account_assets (account_id, asset_id, balance, enc_balance)
       VALUES (?, ?, ?, ?)
+      ON CONFLICT(account_id, asset_id)
+        DO UPDATE SET balance = excluded.balance, enc_balance = excluded.enc_balance, updated_at = CURRENT_TIMESTAMP
       RETURNING account_asset_id as id
       "#,
       account_asset.account_id,
