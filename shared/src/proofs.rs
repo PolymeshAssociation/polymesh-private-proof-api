@@ -585,7 +585,7 @@ pub struct SenderProof(
 #[cfg(feature = "backend")]
 impl SenderProof {
   pub fn decode(&self) -> Result<ConfidentialTransferProof> {
-    Ok(ConfidentialTransferProof::decode(&mut self.0.as_slice())?)
+    Ok(ConfidentialTransferProof::from_bytes(&mut self.0.as_slice())?)
   }
 }
 
