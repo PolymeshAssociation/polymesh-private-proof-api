@@ -33,8 +33,7 @@ pub async fn start_chain_watcher(
               if repo.get_asset(*asset_id).await?.is_none() {
                 repo
                   .create_asset(&AddAsset {
-                    asset_id: Some(*asset_id),
-                    ticker: None,
+                    asset_id: *asset_id,
                   })
                   .await?;
               }

@@ -13,10 +13,7 @@ use zeroize::{Zeroize, ZeroizeOnDrop};
 use codec::{Decode, Encode};
 
 #[cfg(feature = "backend")]
-use polymesh_api::types::{
-  pallet_confidential_asset::{AuditorAccount, ConfidentialAccount},
-  polymesh_primitives::ticker::Ticker,
-};
+use polymesh_api::types::pallet_confidential_asset::{AuditorAccount, ConfidentialAccount};
 
 #[cfg(feature = "backend")]
 use confidential_assets::{
@@ -26,7 +23,6 @@ use confidential_assets::{
 };
 
 use crate::error::*;
-use crate::tx::str_to_ticker;
 
 #[cfg(not(feature = "backend"))]
 pub type Balance = u64;
@@ -61,31 +57,15 @@ pub struct Asset {
   /// Asset id.
   pub asset_id: Uuid,
 
-  /// Asset ticker.
-  #[schema(example = "ACME1")]
-  pub ticker: Option<String>,
-
   pub created_at: chrono::NaiveDateTime,
   pub updated_at: chrono::NaiveDateTime,
-}
-
-impl Asset {
-  pub fn ticker(&self) -> Result<Option<Ticker>> {
-    match &self.ticker {
-      Some(ticker) => Ok(Some(str_to_ticker(ticker)?)),
-      None => Ok(None),
-    }
-  }
 }
 
 /// Add an asset to the database.
 #[derive(Clone, Debug, Default, Deserialize, Serialize, ToSchema)]
 pub struct AddAsset {
   /// Asset id.
-  pub asset_id: Option<Uuid>,
-  /// Asset ticker.
-  #[schema(example = "ACME1")]
-  pub ticker: Option<String>,
+  pub asset_id: Uuid,
 }
 
 /// Confidential account.
@@ -245,10 +225,6 @@ pub struct AccountAsset {
   pub account_id: i64,
   /// Asset id.
   pub asset_id: Uuid,
-
-  /// Asset ticker.
-  #[schema(example = "ACME")]
-  pub ticker: Option<String>,
 
   /// Current balance.
   #[schema(example = 1000)]
@@ -585,7 +561,9 @@ pub struct SenderProof(
 #[cfg(feature = "backend")]
 impl SenderProof {
   pub fn decode(&self) -> Result<ConfidentialTransferProof> {
-    Ok(ConfidentialTransferProof::from_bytes(&mut self.0.as_slice())?)
+    Ok(ConfidentialTransferProof::from_bytes(
+      &mut self.0.as_slice(),
+    )?)
   }
 }
 

@@ -36,7 +36,7 @@ pub async fn get_asset_details(
   _repo: Repository,
   api: web::Data<Api>,
 ) -> Result<impl Responder> {
-  // Get confidential asset details (name, ticker).
+  // Get confidential asset details.
   let details = api
     .query()
     .confidential_asset()
@@ -125,12 +125,10 @@ pub async fn tx_create_asset(
 
   // TODO: Check if the mediators exist on-chain.
 
-  let ticker = req.ticker()?;
-
   let res = api
     .call()
     .confidential_asset()
-    .create_confidential_asset(ticker, vec![], auditors)
+    .create_confidential_asset(None, vec![], auditors)
     .map_err(|err| Error::from(err))?
     .submit_and_watch(&mut signer)
     .await

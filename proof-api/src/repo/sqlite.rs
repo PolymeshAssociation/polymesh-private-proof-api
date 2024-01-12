@@ -65,7 +65,7 @@ impl ConfidentialRepository for SqliteConfidentialRepository {
       sqlx::query_as!(
         Asset,
         r#"
-          SELECT asset_id as "asset_id: Uuid", ticker, created_at, updated_at
+          SELECT asset_id as "asset_id: Uuid", created_at, updated_at
           FROM assets
 "#,
       )
@@ -79,7 +79,7 @@ impl ConfidentialRepository for SqliteConfidentialRepository {
       sqlx::query_as!(
         Asset,
         r#"
-        SELECT asset_id as "asset_id: Uuid", ticker, created_at, updated_at
+        SELECT asset_id as "asset_id: Uuid", created_at, updated_at
         FROM assets WHERE asset_id = ?"#,
         asset_id
       )
@@ -89,17 +89,15 @@ impl ConfidentialRepository for SqliteConfidentialRepository {
   }
 
   async fn create_asset(&self, asset: &AddAsset) -> Result<Asset> {
-    let asset_id = asset.asset_id.unwrap_or_else(|| Uuid::new_v4());
     Ok(
       sqlx::query_as!(
         Asset,
         r#"
-      INSERT INTO assets (asset_id, ticker)
-      VALUES (?, ?)
-      RETURNING asset_id as "asset_id: Uuid", ticker, created_at, updated_at
+      INSERT INTO assets (asset_id)
+      VALUES (?)
+      RETURNING asset_id as "asset_id: Uuid", created_at, updated_at
       "#,
-        asset_id,
-        asset.ticker,
+        asset.asset_id,
       )
       .fetch_one(&self.pool)
       .await?,
@@ -169,11 +167,9 @@ impl ConfidentialRepository for SqliteConfidentialRepository {
         r#"
           SELECT aa.asset_id as "asset_id: Uuid",
             aa.account_asset_id, aa.account_id,
-            aa.balance, aa.enc_balance, aa.created_at, aa.updated_at,
-            assets.ticker
+            aa.balance, aa.enc_balance, aa.created_at, aa.updated_at
           FROM account_assets as aa
           JOIN accounts as acc using(account_id)
-          JOIN assets using(asset_id)
           WHERE acc.public_key = ?
         "#,
         key
@@ -192,11 +188,9 @@ impl ConfidentialRepository for SqliteConfidentialRepository {
         r#"
           SELECT aa.asset_id as "asset_id: Uuid",
             aa.account_asset_id, aa.account_id,
-            aa.balance, aa.enc_balance, aa.created_at, aa.updated_at,
-            assets.ticker
+            aa.balance, aa.enc_balance, aa.created_at, aa.updated_at
           FROM account_assets as aa
           JOIN accounts as acc using(account_id)
-          JOIN assets using(asset_id)
           WHERE acc.public_key = ? AND aa.asset_id = ?
         "#,
         key,
@@ -221,7 +215,6 @@ impl ConfidentialRepository for SqliteConfidentialRepository {
             acc.account_id, acc.public_key, acc.secret_key
           FROM account_assets as aa
           JOIN accounts as acc using(account_id)
-          JOIN assets using(asset_id)
           WHERE acc.public_key = ? AND aa.asset_id = ?
         "#,
       )
@@ -255,12 +248,10 @@ impl ConfidentialRepository for SqliteConfidentialRepository {
       sqlx::query_as!(
         AccountAsset,
         r#"
-      SELECT aa.asset_id as "asset_id: Uuid",
-        aa.account_asset_id, aa.account_id,
-        aa.balance, aa.enc_balance, aa.created_at, aa.updated_at,
-        assets.ticker
-        FROM account_assets as aa
-          JOIN assets using(asset_id)
+      SELECT asset_id as "asset_id: Uuid",
+        account_asset_id, account_id,
+        balance, enc_balance, created_at, updated_at
+        FROM account_assets
         WHERE account_asset_id = ?
       "#,
         account.id,
@@ -296,12 +287,10 @@ impl ConfidentialRepository for SqliteConfidentialRepository {
       sqlx::query_as!(
         AccountAsset,
         r#"
-      SELECT aa.asset_id as "asset_id: Uuid",
-        aa.account_asset_id, aa.account_id,
-        aa.balance, aa.enc_balance, aa.created_at, aa.updated_at,
-        assets.ticker
-        FROM account_assets as aa
-          JOIN assets using(asset_id)
+      SELECT asset_id as "asset_id: Uuid",
+        account_asset_id, account_id,
+        balance, enc_balance, created_at, updated_at
+        FROM account_assets
         WHERE account_asset_id = ?
       "#,
         account_asset_id,

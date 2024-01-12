@@ -24,7 +24,6 @@ use polymesh_api::{
     polymesh_primitives::{
       asset::CheckpointId,
       settlement::{InstructionId, VenueId},
-      ticker::Ticker,
       Memo,
     },
     runtime::{events::*, RuntimeEvent},
@@ -687,32 +686,6 @@ impl TransactionResult {
   }
 }
 
-pub fn bytes_to_ticker(val: &[u8]) -> Ticker {
-  let mut ticker = [0u8; 12];
-  for (idx, b) in val.iter().take(12).enumerate() {
-    ticker[idx] = *b;
-  }
-  Ticker(ticker)
-}
-
-pub fn str_to_ticker(val: &str) -> Result<Ticker> {
-  if val.starts_with("0x") {
-    let b = hex::decode(&val.as_bytes()[2..])?;
-    Ok(bytes_to_ticker(b.as_slice()))
-  } else {
-    Ok(bytes_to_ticker(val.as_bytes()))
-  }
-}
-
-pub fn ticker_to_string(ticker: &Ticker) -> String {
-  // Truncate at first null.
-  if let Some(t) = ticker.0.split(|&c| c == 0).next() {
-    String::from_utf8_lossy(t).to_string()
-  } else {
-    "".to_string()
-  }
-}
-
 pub fn bytes_to_memo(val: &[u8]) -> Memo {
   let mut memo = [0u8; 32];
   for (idx, b) in val.iter().take(32).enumerate() {
@@ -739,7 +712,7 @@ pub fn memo_to_string(memo: &Option<Memo>) -> String {
   }
 }
 
-/// Confidential asset details (name, ticker, auditors).
+/// Confidential asset details (name, auditors).
 #[derive(Clone, Debug, Default, Deserialize, Serialize, ToSchema)]
 pub struct ConfidentialAssetDetails {
   /// Asset total supply.
@@ -768,9 +741,6 @@ pub struct CreateConfidentialAsset {
   #[schema(example = false)]
   #[serde(default)]
   pub finalize: bool,
-  /// Asset ticker (optional).
-  #[schema(example = "TICKER")]
-  pub ticker: Option<String>,
   /// List of mediators identities.
   #[schema(example = json!([]))]
   #[serde(default)]
@@ -783,13 +753,6 @@ pub struct CreateConfidentialAsset {
 
 #[cfg(feature = "backend")]
 impl CreateConfidentialAsset {
-  pub fn ticker(&self) -> Result<Option<Ticker>> {
-    match &self.ticker {
-      Some(ticker) => Ok(Some(str_to_ticker(ticker)?)),
-      None => Ok(None),
-    }
-  }
-
   pub fn auditors(&self) -> Result<ConfidentialAuditors> {
     join_auditors(&self.mediators, &self.auditors)
   }
