@@ -1,4 +1,4 @@
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 use uuid::Uuid;
 
 use serde::{Deserialize, Serialize};
@@ -33,10 +33,12 @@ use polymesh_api::{
 };
 
 #[cfg(feature = "backend")]
-use confidential_assets::{Balance, ElgamalPublicKey};
+use confidential_assets::{Balance, CipherText, ElgamalPublicKey};
 
 use crate::error::Result;
-use crate::proofs::{PublicKey, SenderProof, TransferProofs};
+use crate::proofs::{
+  AccountWithSecret, PublicKey, SenderProof, TransferProofs, UpdateAccountAsset,
+};
 
 pub fn scale_convert<T1: Encode, T2: Decode>(t1: &T1) -> T2 {
   let buf = t1.encode();
@@ -187,7 +189,7 @@ pub struct TransactionAffirmed {
 }
 
 /// Type of balance update.
-#[derive(Clone, Debug, Default, Deserialize, Serialize, ToSchema)]
+#[derive(Clone, Copy, Debug, Default, Deserialize, Serialize, ToSchema)]
 pub enum BalanceUpdateAction {
   #[default]
   Withdraw,
@@ -213,6 +215,31 @@ pub struct BalanceUpdated {
   #[schema(value_type = String, format = Binary, example = "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000")]
   #[serde(with = "SerHex::<StrictPfx>")]
   pub balance: [u8; 64],
+}
+
+impl BalanceUpdated {
+  pub fn amount(&self) -> Result<CipherText> {
+    Ok(CipherText::decode(&mut self.amount.as_slice())?)
+  }
+
+  pub fn balance(&self) -> Result<CipherText> {
+    Ok(CipherText::decode(&mut self.balance.as_slice())?)
+  }
+
+  pub fn try_decrypt(&self, account: &AccountWithSecret) -> Option<AccountAssetBalanceUpdated> {
+    // Only try decrypting our updates.
+    if !account.match_public_key(&self.account) {
+      return None;
+    }
+    let amount = self.amount().ok()?;
+    let balance = self.balance().ok()?;
+    Some(AccountAssetBalanceUpdated {
+      asset_id: self.asset_id,
+      action: self.action,
+      amount: account.decrypt(&amount).ok()?,
+      balance: account.decrypt(&balance).ok()?,
+    })
+  }
 }
 
 /// Processed event from the transaction.
@@ -454,6 +481,37 @@ impl ProcessedEvents {
   }
 }
 
+/// Account asset incoming balance.
+#[derive(Clone, Debug, Serialize, Deserialize, ToSchema)]
+pub struct AccountAssetIncomingBalance {
+  /// Asset id.
+  pub asset_id: Uuid,
+  /// Decrypted incoming amount.
+  #[schema(example = 1000, value_type = u64)]
+  pub incoming_amount: Balance,
+}
+
+/// Account asset balance updated.
+#[derive(Clone, Debug, Serialize, Deserialize, ToSchema)]
+pub struct AccountAssetBalanceUpdated {
+  /// Asset id.
+  pub asset_id: Uuid,
+  /// The update action.
+  pub action: BalanceUpdateAction,
+  /// Decrypted amount.
+  #[schema(example = 1000, value_type = u64)]
+  pub amount: Balance,
+  /// Decrypted new balance.
+  #[schema(example = 1000, value_type = u64)]
+  pub balance: Balance,
+}
+
+/// Account asset balances updated.
+#[derive(Clone, Debug, Serialize, Deserialize, ToSchema)]
+pub struct AccountAssetBalancesUpdated {
+  pub updates: Vec<AccountAssetBalanceUpdated>,
+}
+
 /// Block transaction record.
 #[cfg_attr(feature = "backend", derive(sqlx::FromRow))]
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]
@@ -514,6 +572,9 @@ pub struct TransactionResult {
   /// Processed Events.
   #[schema(example = json!([]))]
   pub processed_events: ProcessedEvents,
+  /// Account balances updated.
+  #[schema(example = json!([]))]
+  pub balances_updated: Option<AccountAssetBalancesUpdated>,
 }
 
 #[cfg(feature = "backend")]
@@ -548,6 +609,7 @@ impl TransactionResult {
           success,
           err_msg,
           processed_events: ProcessedEvents::from_events(&events)?,
+          balances_updated: None,
         })
       }
     }
@@ -588,6 +650,40 @@ impl TransactionResult {
       }
     }
     Ok(res)
+  }
+
+  pub fn decrypt_balance_updates(
+    &mut self,
+    account: &AccountWithSecret,
+  ) -> Option<BTreeMap<Uuid, UpdateAccountAsset>> {
+    let mut asset_updates = BTreeMap::new();
+    let mut updates = Vec::new();
+    for event in &self.processed_events.0 {
+      match event {
+        ProcessedEvent::ConfidentialAccountBalanceUpdated(balance_updated) => {
+          if let Some(update) = balance_updated.try_decrypt(account) {
+            asset_updates.insert(
+              update.asset_id,
+              UpdateAccountAsset {
+                account_asset_id: None,
+                account_id: account.account_id,
+                asset_id: update.asset_id,
+                balance: update.balance,
+                enc_balance: balance_updated.balance().ok()?,
+              },
+            );
+            updates.push(update);
+          }
+        }
+        _ => (),
+      }
+    }
+    if updates.len() > 0 {
+      self.balances_updated = Some(AccountAssetBalancesUpdated { updates });
+      Some(asset_updates)
+    } else {
+      None
+    }
   }
 }
 

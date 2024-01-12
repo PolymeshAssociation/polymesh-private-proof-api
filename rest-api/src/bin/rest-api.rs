@@ -119,6 +119,8 @@ async fn start_server() -> anyhow::Result<()> {
         tx::accounts::tx_affirm_transactions,
         tx::accounts::tx_init_account,
         tx::accounts::tx_account_did,
+        tx::accounts::tx_apply_incoming_balances,
+        tx::accounts::get_incoming_balances,
         tx::account_assets::tx_sender_affirm_leg,
         tx::account_assets::tx_receiver_affirm_leg,
         tx::account_assets::tx_apply_incoming,
@@ -166,6 +168,9 @@ async fn start_server() -> anyhow::Result<()> {
           AffirmTransactionsRequest,
           BalanceUpdated,
           BalanceUpdateAction,
+          AccountAssetIncomingBalance,
+          AccountAssetBalanceUpdated,
+          AccountAssetBalancesUpdated,
         ),
       ),
       servers(

@@ -130,6 +130,10 @@ pub struct AccountWithSecret {
 
 #[cfg(feature = "backend")]
 impl AccountWithSecret {
+  pub fn match_public_key(&self, public_key: &PublicKey) -> bool {
+    self.public_key.as_slice() == &public_key.0[..]
+  }
+
   pub fn as_confidential_account(&self) -> Result<ConfidentialAccount> {
     Ok(ConfidentialAccount::decode(
       &mut self.public_key.as_slice(),
