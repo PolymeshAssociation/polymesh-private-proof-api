@@ -5,32 +5,13 @@ ISSUER_KEY=`./get_signer.sh issuer1 | grep public_key | sed -e 's/.*"public_key"
 INVESTOR_KEY=`./get_signer.sh investor1 | grep public_key | sed -e 's/.*"public_key" : "//g' -e 's/"//'`
 MEDIATOR_KEY=`./get_signer.sh mediator1 | grep public_key | sed -e 's/.*"public_key" : "//g' -e 's/"//'`
 # Alice
-DID=`./get_signer_did.sh Alice`
-if [[ "$DID" == "null" ]]; then
-	echo "Create admin: Alice"
-	./create-test-admins.sh $ALICE_KEY
-fi
+ALICE_DID=`./create-test-admins.sh Alice 2>/dev/null`
 # investor1
-INVESTOR_DID=`./get_signer_did.sh investor1 | sed -e 's/"//g'`
-if [[ "$INVESTOR_DID" == "null" ]]; then
-	echo "Onboard: investor1"
-	./create-test-accounts.sh $INVESTOR_KEY
-	INVESTOR_DID=`./get_signer_did.sh $INVESTOR_KEY | sed -e 's/"//g'`
-fi
+INVESTOR_DID=`./create-test-accounts.sh investor1 2>/dev/null`
 # mediator1
-MEDIATOR_DID=`./get_signer_did.sh mediator1 | sed -e 's/"//g'`
-if [[ "$MEDIATOR_DID" == "null" ]]; then
-	echo "Onboard: mediator1"
-	./create-test-accounts.sh $MEDIATOR_KEY
-	MEDIATOR_DID=`./get_signer_did.sh $MEDIATOR_KEY | sed -e 's/"//g'`
-fi
+MEDIATOR_DID=`./create-test-accounts.sh mediator1 2>/dev/null`
 # issuer1
-ISSUER_DID=`./get_signer_did.sh issuer1 | sed -e 's/"//g'`
-if [[ "$ISSUER_DID" == "null" ]]; then
-	echo "Onboard: issuer1"
-	./create-test-accounts.sh $ISSUER_KEY
-	ISSUER_DID=`./get_signer_did.sh $ISSUER_KEY | sed -e 's/"//g'`
-fi
+ISSUER_DID=`./create-test-accounts.sh issuer1 2>/dev/null`
 
 echo "Issuer: $ISSUER_KEY $ISSUER_DID"
 echo "Investor: $INVESTOR_KEY $INVESTOR_DID"
