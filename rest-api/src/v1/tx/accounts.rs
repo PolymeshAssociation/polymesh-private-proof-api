@@ -194,10 +194,14 @@ pub async fn tx_apply_incoming_balances(
     );
   }
 
+  if calls.len() == 0 {
+    Err(Error::other("No incoming balances to apply"))?;
+  }
+
   let res = api
     .call()
     .utility()
-    .batch(calls)
+    .batch_all(calls)
     .map_err(|err| Error::from(err))?
     .submit_and_watch(&mut signer)
     .await
@@ -237,12 +241,11 @@ pub async fn tx_affirm_transactions(
     .get_signer(&req.signer)
     .await?
     .ok_or_else(|| Error::not_found("Signer"))?;
-  let _account = repo
+  let account_with_secret = repo
     .get_account_with_secret(&public_key)
     .await?
     .ok_or_else(|| Error::not_found("Account"))?;
 
-  let mut updates = Vec::new();
   let mut affirms = Vec::new();
 
   for tx in &req.transactions {
@@ -298,12 +301,11 @@ pub async fn tx_affirm_transactions(
             let enc_balance = Some(scale_convert(&enc_balance));
 
             // Generate sender proof.
-            let (update, proof) =
+            let (_update, proof) =
               account_asset.create_send_proof(enc_balance, receiver, auditors, amount)?;
             transfers
               .proofs
               .insert(*asset_id.as_bytes(), SenderProof(proof.as_bytes()));
-            updates.push(update);
           }
           AffirmParty::Sender(transfers)
         }
@@ -330,12 +332,14 @@ pub async fn tx_affirm_transactions(
     .map_err(|err| Error::from(err))?;
 
   // Wait for transaction results.
-  let res = TransactionResult::wait_for_results(res, req.finalize).await?;
+  let mut res = TransactionResult::wait_for_results(res, req.finalize).await?;
 
   // Update account balance.
   if res.success {
-    for update in updates {
-      repo.update_account_asset(&update).await?;
+    if let Some(updates) = res.decrypt_balance_updates(&account_with_secret) {
+      for (_asset_id, update) in updates {
+        repo.update_account_asset(&update).await?;
+      }
     }
   }
 
