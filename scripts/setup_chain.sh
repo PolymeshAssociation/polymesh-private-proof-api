@@ -22,19 +22,21 @@ MEDIATOR=`./create_account.sh | grep public_key | sed -e 's/.*"public_key" : "//
 echo "MEDIATOR=${MEDIATOR}"
 INVESTOR=`./create_account.sh | grep public_key | sed -e 's/.*"public_key" : "//g' -e 's/",//'`
 echo "INVESTOR=${INVESTOR}"
+AUDITOR=`./create_account.sh | grep public_key | sed -e 's/.*"public_key" : "//g' -e 's/",//'`
+echo "AUDITOR=${AUDITOR}"
 
 # register accounts.
 ./init_account.sh issuer1 $ISSUER
 ./init_account.sh investor1 $INVESTOR
 
 # Create some assets.
-ASSET1=`./create_asset.sh issuer1 $MEDIATOR $MEDIATOR_DID | grep ConfidentialAssetCreated | sed -e 's/.*ConfidentialAssetCreated" : "//' -e 's/"//'`
+ASSET1=`./create_asset.sh issuer1 "$AUDITOR,$MEDIATOR" $MEDIATOR_DID | grep ConfidentialAssetCreated | sed -e 's/.*ConfidentialAssetCreated" : "//' -e 's/"//'`
 echo "ASSET1 = ${ASSET1}"
-ASSET2=`./create_asset.sh issuer1 $MEDIATOR $MEDIATOR_DID | grep ConfidentialAssetCreated | sed -e 's/.*ConfidentialAssetCreated" : "//' -e 's/"//'`
+ASSET2=`./create_asset.sh issuer1 "$AUDITOR,$MEDIATOR" $MEDIATOR_DID | grep ConfidentialAssetCreated | sed -e 's/.*ConfidentialAssetCreated" : "//' -e 's/"//'`
 echo "ASSET2 = ${ASSET2}"
-ASSET3=`./create_asset.sh issuer1 $MEDIATOR $MEDIATOR_DID | grep ConfidentialAssetCreated | sed -e 's/.*ConfidentialAssetCreated" : "//' -e 's/"//'`
+ASSET3=`./create_asset.sh issuer1 "$AUDITOR,$MEDIATOR" $MEDIATOR_DID | grep ConfidentialAssetCreated | sed -e 's/.*ConfidentialAssetCreated" : "//' -e 's/"//'`
 echo "ASSET3 = ${ASSET3}"
-ASSET4=`./create_asset.sh issuer1 $MEDIATOR $MEDIATOR_DID | grep ConfidentialAssetCreated | sed -e 's/.*ConfidentialAssetCreated" : "//' -e 's/"//'`
+ASSET4=`./create_asset.sh issuer1 "$AUDITOR,$MEDIATOR" $MEDIATOR_DID | grep ConfidentialAssetCreated | sed -e 's/.*ConfidentialAssetCreated" : "//' -e 's/"//'`
 echo "ASSET4 = ${ASSET4}"
 
 # mint

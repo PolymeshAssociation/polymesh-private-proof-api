@@ -2,7 +2,7 @@
 #
 POLYMESH_PROOF_REST_URL="${POLYMESH_PROOF_REST_URL:-http://localhost:8001/api/v1}"
 SIGNER="$1"
-AUDITOR="$2"
+AUDITOR=`echo $2 | sed -e 's/\(0x[a-fA-F0-9]*\)/"\1"/g'`
 MEDIATOR="$3"
 
 curl -s -X 'POST' \
@@ -13,7 +13,7 @@ curl -s -X 'POST' \
   \"signer\": \"$SIGNER\",
 	\"finalize\": false,
   \"auditors\": [
-		\"$AUDITOR\"
+		$AUDITOR
 	],
   \"mediators\": [
 		\"$MEDIATOR\"

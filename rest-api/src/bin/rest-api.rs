@@ -147,6 +147,7 @@ async fn start_server() -> anyhow::Result<()> {
           UpdateAccountAssetBalanceRequest,
 
           IdentityId,
+          TransactionLegDetails,
           TransactionCreated,
           TransactionAffirmed,
           TransactionParty,

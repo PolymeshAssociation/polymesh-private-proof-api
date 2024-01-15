@@ -143,6 +143,25 @@ impl SettlementEventRecord {
   }
 }
 
+/// Confidential asset transaction leg details.
+#[derive(Clone, Debug, Default, Deserialize, Serialize, ToSchema)]
+pub struct TransactionLegDetails {
+  /// Asset ids and auditors for each asset.
+  #[schema(example = json!({"3480b2c3-221f-de22-226f-a178e13ff916": ["0xceae8587b3e968b9669df8eb715f73bcf3f7a9cd3c61c515a4d80f2ca59c8114"]}))]
+  #[serde(default)]
+  pub assets_and_auditors: BTreeMap<Uuid, BTreeSet<PublicKey>>,
+  /// Sender's public key.
+  #[schema(value_type = String, format = Binary, example = "0xceae8587b3e968b9669df8eb715f73bcf3f7a9cd3c61c515a4d80f2ca59c8114")]
+  pub sender: PublicKey,
+  /// Receiver's public key.
+  #[schema(value_type = String, format = Binary, example = "0xceae8587b3e968b9669df8eb715f73bcf3f7a9cd3c61c515a4d80f2ca59c8114")]
+  pub receiver: PublicKey,
+  /// Set of mediator identities for this leg.
+  #[schema(example = json!([]))]
+  #[serde(default)]
+  pub mediators: BTreeSet<IdentityId>,
+}
+
 /// A Confidential asset transaction was created.
 #[derive(Clone, Debug, Default, Serialize, Deserialize, ToSchema)]
 pub struct TransactionCreated {
@@ -152,8 +171,8 @@ pub struct TransactionCreated {
   /// Confidential transaction id.
   #[schema(value_type = u64)]
   pub transaction_id: TransactionId,
-  /// Confidential transaction legs.
-  pub legs: Vec<ConfidentialSettlementLeg>,
+  /// Confidential transaction leg details.
+  pub legs: Vec<TransactionLegDetails>,
   /// Settlement memo.
   #[schema(example = "")]
   #[serde(default)]
@@ -400,12 +419,15 @@ impl ProcessedEvents {
         )) => {
           let legs = legs
             .into_iter()
-            .map(|l| ConfidentialSettlementLeg {
-              assets: l.auditors.keys().map(|id| Uuid::from_bytes(*id)).collect(),
-              sender: scale_convert(&l.sender),
-              receiver: scale_convert(&l.receiver),
-              mediators: l.mediators.clone().into(),
-              auditors: l.auditors.values().map(|k| scale_convert(k)).collect(),
+            .map(|l| {
+              TransactionLegDetails {
+                assets_and_auditors: l.auditors.iter().map(|(id, keys)| {
+                  (Uuid::from_bytes(*id), keys.iter().map(|k| scale_convert(k)).collect())
+                }).collect(),
+                sender: scale_convert(&l.sender),
+                receiver: scale_convert(&l.receiver),
+                mediators: l.mediators.clone().into(),
+              }
             })
             .collect();
           processed.push(ProcessedEvent::ConfidentialTransactionCreated(
@@ -777,15 +799,15 @@ pub struct ConfidentialSettlementLeg {
   pub assets: BTreeSet<Uuid>,
   /// Sender's public key.
   #[schema(value_type = String, format = Binary, example = "0xceae8587b3e968b9669df8eb715f73bcf3f7a9cd3c61c515a4d80f2ca59c8114")]
-  sender: PublicKey,
+  pub sender: PublicKey,
   /// Receiver's public key.
   #[schema(value_type = String, format = Binary, example = "0xceae8587b3e968b9669df8eb715f73bcf3f7a9cd3c61c515a4d80f2ca59c8114")]
-  receiver: PublicKey,
-  /// List of mediator identities.
+  pub receiver: PublicKey,
+  /// Set of venue mediator identities for this leg.
   #[schema(example = json!([]))]
   #[serde(default)]
   pub mediators: BTreeSet<IdentityId>,
-  /// List of auditor Elgamal public keys.
+  /// Set of venue auditor Elgamal public keys for this leg.
   #[schema(example = json!(["0xceae8587b3e968b9669df8eb715f73bcf3f7a9cd3c61c515a4d80f2ca59c8114"]))]
   #[serde(default)]
   pub auditors: BTreeSet<PublicKey>,
