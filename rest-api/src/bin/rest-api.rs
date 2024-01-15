@@ -29,7 +29,7 @@ pub fn v1_service(cfg: &mut web::ServiceConfig) {
 async fn get_db_pool() -> anyhow::Result<SqlitePool> {
   let conn_str = std::env::var("DATABASE_URL")?;
   let pool = SqlitePool::connect(&conn_str).await?;
-  sqlx::migrate!().run(&pool).await?;
+  //sqlx::migrate!().run(&pool).await?;
   Ok(pool)
 }
 
