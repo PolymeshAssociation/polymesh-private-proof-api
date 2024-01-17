@@ -13,7 +13,7 @@ use confidential_proof_api::repo::Repository;
 use confidential_proof_shared::{
   auditor_account_to_key, confidential_account_to_key, error::Error, scale_convert,
   AffirmTransactionLegRequest, DecryptedIncomingBalance, MintRequest, TransactionArgs,
-  TransactionResult, UpdateAccountAsset,
+  TransactionResult,
 };
 
 use crate::signing::AppSigningManager;
@@ -299,20 +299,12 @@ pub async fn tx_mint(
     .await?
     .ok_or_else(|| Error::not_found("Signer"))?;
   // Get the account.
-  let account = repo
-    .get_account(&public_key)
+  let account_with_secret = repo
+    .get_account_with_secret(&public_key)
     .await?
     .ok_or_else(|| Error::not_found("Account"))?;
-  // Get the account asset.
-  let account_asset = repo.get_account_asset(&public_key, asset_id).await?;
 
-  // Prepare to update account balance.
-  let update = match account_asset {
-    Some(account_asset) => account_asset.mint(req.amount)?,
-    None => UpdateAccountAsset::init_balance(account.account_id, asset_id, req.amount),
-  };
-
-  let account = account.as_confidential_account()?;
+  let account = account_with_secret.as_confidential_account()?;
   let res = api
     .call()
     .confidential_asset()
@@ -323,11 +315,15 @@ pub async fn tx_mint(
     .map_err(|err| Error::from(err))?;
 
   // Wait for transaction results.
-  let res = TransactionResult::wait_for_results(res, req.finalize).await?;
+  let mut res = TransactionResult::wait_for_results(res, req.finalize).await?;
 
   // Update account balance.
   if res.success {
-    repo.update_account_asset(&update).await?;
+    if let Some(updates) = res.decrypt_balance_updates(&account_with_secret) {
+      for (_asset_id, update) in updates {
+        repo.update_account_asset(&update).await?;
+      }
+    }
   }
 
   Ok(HttpResponse::Ok().json(res))
