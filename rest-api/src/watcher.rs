@@ -28,7 +28,7 @@ pub async fn start_chain_watcher(
               let rec = SettlementRecord::from_tx(created)?;
               tx_repo.add_settlement(rec).await?;
             }
-            ProcessedEvent::ConfidentialAssetCreated{asset_id} => {
+            ProcessedEvent::ConfidentialAssetCreated { asset_id } => {
               // Check if the asset exists.
               if repo.get_asset(*asset_id).await?.is_none() {
                 repo
