@@ -130,8 +130,8 @@ impl SettlementEventRecord {
           transaction_id,
           ..
         })
-        | ProcessedEvent::ConfidentialTransactionRejected(transaction_id)
-        | ProcessedEvent::ConfidentialTransactionExecuted(transaction_id) => events.push(Self {
+        | ProcessedEvent::ConfidentialTransactionRejected { transaction_id}
+        | ProcessedEvent::ConfidentialTransactionExecuted { transaction_id} => events.push(Self {
           settlement_id: transaction_id.0 as _,
           event: serde_json::to_string(ev)?,
           ..Default::default()
@@ -285,24 +285,36 @@ pub enum ProcessedEvent {
   #[schema(value_type = u64)]
   ScheduleCreated(ScheduleId),
   /// A Confidential asset was created.
-  ConfidentialAssetCreated(Uuid),
+  ConfidentialAssetCreated {
+    asset_id: Uuid
+  },
   /// A Confidential asset minted.
   ///
   /// (asset_id, amount minted, total_supply)
-  ConfidentialAssetMinted(Uuid, u64, u64),
+  ConfidentialAssetMinted {
+    asset_id: Uuid,
+    amount: u64,
+    total_supply: u64,
+  },
   /// A Confidential asset Venue was created.
-  #[schema(value_type = u64)]
-  ConfidentialVenueCreated(VenueId),
+  ConfidentialVenueCreated {
+    #[schema(value_type = u64)]
+    venue_id: VenueId
+  },
   /// A Confidential account's balance was updated.
   ConfidentialAccountBalanceUpdated(BalanceUpdated),
   /// A Confidential asset transaction was created.
   ConfidentialTransactionCreated(TransactionCreated),
   /// A Confidential asset transaction executed.
-  #[schema(value_type = u64)]
-  ConfidentialTransactionExecuted(TransactionId),
+  ConfidentialTransactionExecuted {
+    #[schema(value_type = u64)]
+    transaction_id: TransactionId,
+  },
   /// A Confidential asset transaction rejected.
-  #[schema(value_type = u64)]
-  ConfidentialTransactionRejected(TransactionId),
+  ConfidentialTransactionRejected {
+    #[schema(value_type = u64)]
+    transaction_id: TransactionId,
+  },
   /// A Confidential asset transaction was affirmed.
   ConfidentialTransactionAffirmed(TransactionAffirmed),
 }
@@ -339,16 +351,17 @@ impl ProcessedEvents {
           processed.push(ProcessedEvent::MultiSigCreated(*id));
         }
         RuntimeEvent::ConfidentialAsset(ConfidentialAssetEvent::VenueCreated(_, id)) => {
-          processed.push(ProcessedEvent::ConfidentialVenueCreated(*id));
+          processed.push(ProcessedEvent::ConfidentialVenueCreated{ venue_id: *id });
         }
         RuntimeEvent::ConfidentialAsset(ConfidentialAssetEvent::ConfidentialAssetCreated(
           _,
           asset_id,
           ..,
         )) => {
-          processed.push(ProcessedEvent::ConfidentialAssetCreated(Uuid::from_bytes(
+          processed.push(ProcessedEvent::ConfidentialAssetCreated {
+            asset_id: Uuid::from_bytes(
             *asset_id,
-          )));
+          )});
         }
         RuntimeEvent::ConfidentialAsset(ConfidentialAssetEvent::Issued(
           _,
@@ -356,11 +369,11 @@ impl ProcessedEvents {
           amount,
           total_supply,
         )) => {
-          processed.push(ProcessedEvent::ConfidentialAssetMinted(
-            Uuid::from_bytes(*asset_id),
-            *amount as _,
-            *total_supply as _,
-          ));
+          processed.push(ProcessedEvent::ConfidentialAssetMinted{
+            asset_id: Uuid::from_bytes(*asset_id),
+            amount: *amount as _,
+            total_supply: *total_supply as _,
+          });
         }
         RuntimeEvent::ConfidentialAsset(ConfidentialAssetEvent::AccountDeposit(
           account,
@@ -440,10 +453,10 @@ impl ProcessedEvents {
           ));
         }
         RuntimeEvent::ConfidentialAsset(ConfidentialAssetEvent::TransactionExecuted(_, id, ..)) => {
-          processed.push(ProcessedEvent::ConfidentialTransactionExecuted(*id));
+          processed.push(ProcessedEvent::ConfidentialTransactionExecuted{transaction_id: *id});
         }
         RuntimeEvent::ConfidentialAsset(ConfidentialAssetEvent::TransactionRejected(_, id, ..)) => {
-          processed.push(ProcessedEvent::ConfidentialTransactionRejected(*id));
+          processed.push(ProcessedEvent::ConfidentialTransactionRejected{transaction_id: *id});
         }
         RuntimeEvent::ConfidentialAsset(ConfidentialAssetEvent::TransactionAffirmed(
           _,
