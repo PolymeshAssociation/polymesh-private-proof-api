@@ -348,36 +348,35 @@ impl ProcessedEvents {
         RuntimeEvent::MultiSig(MultiSigEvent::MultiSigCreated(_, id, ..)) => {
           processed.push(ProcessedEvent::MultiSigCreated(*id));
         }
-        RuntimeEvent::ConfidentialAsset(ConfidentialAssetEvent::VenueCreated(_, id)) => {
-          processed.push(ProcessedEvent::ConfidentialVenueCreated { venue_id: *id });
+        RuntimeEvent::ConfidentialAsset(ConfidentialAssetEvent::VenueCreated{ venue_id, .. }) => {
+          processed.push(ProcessedEvent::ConfidentialVenueCreated { venue_id: *venue_id });
         }
-        RuntimeEvent::ConfidentialAsset(ConfidentialAssetEvent::ConfidentialAssetCreated(
-          _,
+        RuntimeEvent::ConfidentialAsset(ConfidentialAssetEvent::AssetCreated{
           asset_id,
-          ..,
-        )) => {
+          ..
+        }) => {
           processed.push(ProcessedEvent::ConfidentialAssetCreated {
             asset_id: Uuid::from_bytes(*asset_id),
           });
         }
-        RuntimeEvent::ConfidentialAsset(ConfidentialAssetEvent::Issued(
-          _,
+        RuntimeEvent::ConfidentialAsset(ConfidentialAssetEvent::Issued{
           asset_id,
           amount,
           total_supply,
-        )) => {
+          ..
+        }) => {
           processed.push(ProcessedEvent::ConfidentialAssetMinted {
             asset_id: Uuid::from_bytes(*asset_id),
             amount: *amount as _,
             total_supply: *total_supply as _,
           });
         }
-        RuntimeEvent::ConfidentialAsset(ConfidentialAssetEvent::AccountDeposit(
+        RuntimeEvent::ConfidentialAsset(ConfidentialAssetEvent::AccountDeposit{
           account,
           asset_id,
           amount,
           balance,
-        )) => {
+        }) => {
           processed.push(ProcessedEvent::ConfidentialAccountBalanceUpdated(
             BalanceUpdated {
               account: scale_convert(account),
@@ -388,28 +387,28 @@ impl ProcessedEvents {
             },
           ));
         }
-        RuntimeEvent::ConfidentialAsset(ConfidentialAssetEvent::AccountDepositIncoming(
+        RuntimeEvent::ConfidentialAsset(ConfidentialAssetEvent::AccountDepositIncoming{
           account,
           asset_id,
           amount,
-          balance,
-        )) => {
+          incoming_balance,
+        }) => {
           processed.push(ProcessedEvent::ConfidentialAccountBalanceUpdated(
             BalanceUpdated {
               account: scale_convert(account),
               asset_id: Uuid::from_bytes(*asset_id),
               action: BalanceUpdateAction::DepositIncoming,
               amount: scale_convert(amount),
-              balance: scale_convert(balance),
+              balance: scale_convert(incoming_balance),
             },
           ));
         }
-        RuntimeEvent::ConfidentialAsset(ConfidentialAssetEvent::AccountWithdraw(
+        RuntimeEvent::ConfidentialAsset(ConfidentialAssetEvent::AccountWithdraw{
           account,
           asset_id,
           amount,
           balance,
-        )) => {
+        }) => {
           processed.push(ProcessedEvent::ConfidentialAccountBalanceUpdated(
             BalanceUpdated {
               account: scale_convert(account),
@@ -420,13 +419,13 @@ impl ProcessedEvents {
             },
           ));
         }
-        RuntimeEvent::ConfidentialAsset(ConfidentialAssetEvent::TransactionCreated(
-          _,
+        RuntimeEvent::ConfidentialAsset(ConfidentialAssetEvent::TransactionCreated{
           venue_id,
-          id,
+          transaction_id,
           legs,
           memo,
-        )) => {
+          ..
+        }) => {
           let legs = legs
             .into_iter()
             .map(|l| TransactionLegDetails {
@@ -448,29 +447,29 @@ impl ProcessedEvents {
           processed.push(ProcessedEvent::ConfidentialTransactionCreated(
             TransactionCreated {
               venue_id: *venue_id,
-              transaction_id: *id,
+              transaction_id: *transaction_id,
               legs,
               memo: memo_to_string(memo),
             },
           ));
         }
-        RuntimeEvent::ConfidentialAsset(ConfidentialAssetEvent::TransactionExecuted(_, id, ..)) => {
+        RuntimeEvent::ConfidentialAsset(ConfidentialAssetEvent::TransactionExecuted{transaction_id, ..}) => {
           processed.push(ProcessedEvent::ConfidentialTransactionExecuted {
-            transaction_id: *id,
+            transaction_id: *transaction_id,
           });
         }
-        RuntimeEvent::ConfidentialAsset(ConfidentialAssetEvent::TransactionRejected(_, id, ..)) => {
+        RuntimeEvent::ConfidentialAsset(ConfidentialAssetEvent::TransactionRejected{transaction_id, ..}) => {
           processed.push(ProcessedEvent::ConfidentialTransactionRejected {
-            transaction_id: *id,
+            transaction_id: *transaction_id,
           });
         }
-        RuntimeEvent::ConfidentialAsset(ConfidentialAssetEvent::TransactionAffirmed(
-          _,
-          tx_id,
+        RuntimeEvent::ConfidentialAsset(ConfidentialAssetEvent::TransactionAffirmed{
+          transaction_id,
           leg_id,
           party,
-          pending,
-        )) => match party {
+          pending_affirms,
+          ..
+        }) => match party {
           AffirmParty::Sender(transfers) => {
             let transfers = TransferProofs {
               proofs: transfers
@@ -483,8 +482,8 @@ impl ProcessedEvents {
             };
             processed.push(ProcessedEvent::ConfidentialTransactionAffirmed(
               TransactionAffirmed {
-                transaction_id: *tx_id,
-                pending_affirms: *pending,
+                transaction_id: *transaction_id,
+                pending_affirms: *pending_affirms,
                 leg_id: *leg_id,
                 transfer_proofs: Some(transfers),
                 party: TransactionParty::Sender,
@@ -494,8 +493,8 @@ impl ProcessedEvents {
           AffirmParty::Receiver => {
             processed.push(ProcessedEvent::ConfidentialTransactionAffirmed(
               TransactionAffirmed {
-                transaction_id: *tx_id,
-                pending_affirms: *pending,
+                transaction_id: *transaction_id,
+                pending_affirms: *pending_affirms,
                 leg_id: *leg_id,
                 transfer_proofs: None,
                 party: TransactionParty::Receiver,
@@ -505,8 +504,8 @@ impl ProcessedEvents {
           AffirmParty::Mediator => {
             processed.push(ProcessedEvent::ConfidentialTransactionAffirmed(
               TransactionAffirmed {
-                transaction_id: *tx_id,
-                pending_affirms: *pending,
+                transaction_id: *transaction_id,
+                pending_affirms: *pending_affirms,
                 leg_id: *leg_id,
                 transfer_proofs: None,
                 party: TransactionParty::Mediator,

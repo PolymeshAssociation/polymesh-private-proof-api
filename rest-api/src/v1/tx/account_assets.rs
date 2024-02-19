@@ -308,7 +308,7 @@ pub async fn tx_mint(
   let res = api
     .call()
     .confidential_asset()
-    .mint_confidential_asset(*asset_id.as_bytes(), req.amount as _, account)
+    .mint(*asset_id.as_bytes(), req.amount as _, account)
     .map_err(|err| Error::from(err))?
     .submit_and_watch(&mut signer)
     .await

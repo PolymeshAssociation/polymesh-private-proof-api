@@ -128,7 +128,7 @@ pub async fn tx_create_asset(
   let res = api
     .call()
     .confidential_asset()
-    .create_confidential_asset(None, vec![], auditors)
+    .create_asset(vec![], auditors)
     .map_err(|err| Error::from(err))?
     .submit_and_watch(&mut signer)
     .await
