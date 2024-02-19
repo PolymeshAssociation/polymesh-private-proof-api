@@ -348,18 +348,21 @@ impl ProcessedEvents {
         RuntimeEvent::MultiSig(MultiSigEvent::MultiSigCreated(_, id, ..)) => {
           processed.push(ProcessedEvent::MultiSigCreated(*id));
         }
-        RuntimeEvent::ConfidentialAsset(ConfidentialAssetEvent::VenueCreated{ venue_id, .. }) => {
-          processed.push(ProcessedEvent::ConfidentialVenueCreated { venue_id: *venue_id });
+        RuntimeEvent::ConfidentialAsset(ConfidentialAssetEvent::VenueCreated {
+          venue_id, ..
+        }) => {
+          processed.push(ProcessedEvent::ConfidentialVenueCreated {
+            venue_id: *venue_id,
+          });
         }
-        RuntimeEvent::ConfidentialAsset(ConfidentialAssetEvent::AssetCreated{
-          asset_id,
-          ..
+        RuntimeEvent::ConfidentialAsset(ConfidentialAssetEvent::AssetCreated {
+          asset_id, ..
         }) => {
           processed.push(ProcessedEvent::ConfidentialAssetCreated {
             asset_id: Uuid::from_bytes(*asset_id),
           });
         }
-        RuntimeEvent::ConfidentialAsset(ConfidentialAssetEvent::Issued{
+        RuntimeEvent::ConfidentialAsset(ConfidentialAssetEvent::Issued {
           asset_id,
           amount,
           total_supply,
@@ -371,7 +374,7 @@ impl ProcessedEvents {
             total_supply: *total_supply as _,
           });
         }
-        RuntimeEvent::ConfidentialAsset(ConfidentialAssetEvent::AccountDeposit{
+        RuntimeEvent::ConfidentialAsset(ConfidentialAssetEvent::AccountDeposit {
           account,
           asset_id,
           amount,
@@ -387,7 +390,7 @@ impl ProcessedEvents {
             },
           ));
         }
-        RuntimeEvent::ConfidentialAsset(ConfidentialAssetEvent::AccountDepositIncoming{
+        RuntimeEvent::ConfidentialAsset(ConfidentialAssetEvent::AccountDepositIncoming {
           account,
           asset_id,
           amount,
@@ -403,7 +406,7 @@ impl ProcessedEvents {
             },
           ));
         }
-        RuntimeEvent::ConfidentialAsset(ConfidentialAssetEvent::AccountWithdraw{
+        RuntimeEvent::ConfidentialAsset(ConfidentialAssetEvent::AccountWithdraw {
           account,
           asset_id,
           amount,
@@ -419,7 +422,7 @@ impl ProcessedEvents {
             },
           ));
         }
-        RuntimeEvent::ConfidentialAsset(ConfidentialAssetEvent::TransactionCreated{
+        RuntimeEvent::ConfidentialAsset(ConfidentialAssetEvent::TransactionCreated {
           venue_id,
           transaction_id,
           legs,
@@ -453,17 +456,23 @@ impl ProcessedEvents {
             },
           ));
         }
-        RuntimeEvent::ConfidentialAsset(ConfidentialAssetEvent::TransactionExecuted{transaction_id, ..}) => {
+        RuntimeEvent::ConfidentialAsset(ConfidentialAssetEvent::TransactionExecuted {
+          transaction_id,
+          ..
+        }) => {
           processed.push(ProcessedEvent::ConfidentialTransactionExecuted {
             transaction_id: *transaction_id,
           });
         }
-        RuntimeEvent::ConfidentialAsset(ConfidentialAssetEvent::TransactionRejected{transaction_id, ..}) => {
+        RuntimeEvent::ConfidentialAsset(ConfidentialAssetEvent::TransactionRejected {
+          transaction_id,
+          ..
+        }) => {
           processed.push(ProcessedEvent::ConfidentialTransactionRejected {
             transaction_id: *transaction_id,
           });
         }
-        RuntimeEvent::ConfidentialAsset(ConfidentialAssetEvent::TransactionAffirmed{
+        RuntimeEvent::ConfidentialAsset(ConfidentialAssetEvent::TransactionAffirmed {
           transaction_id,
           leg_id,
           party,
