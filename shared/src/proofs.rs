@@ -494,7 +494,7 @@ impl AccountAssetWithProof {
   pub fn new_send_proof(account_asset: AccountAsset, proof: ConfidentialTransferProof) -> Self {
     Self {
       account_asset,
-      proof: proof.encode(),
+      proof: proof.as_bytes(),
     }
   }
 }
@@ -678,7 +678,7 @@ impl SenderProofVerifyRequest {
     let sender_balance = self.sender_balance()?;
     // Decode sender & receiver.
     let sender = self.sender()?;
-    let receiver = self.sender()?;
+    let receiver = self.receiver()?;
     let auditors = self.auditors()?.into_iter().collect();
 
     let mut rng = rand::thread_rng();
