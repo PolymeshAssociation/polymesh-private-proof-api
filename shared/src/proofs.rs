@@ -580,10 +580,6 @@ pub struct SenderProofRequest {
   /// Receiver's public key.
   #[schema(value_type = String, format = Binary, example = "0xceae8587b3e968b9669df8eb715f73bcf3f7a9cd3c61c515a4d80f2ca59c8114")]
   receiver: PublicKey,
-  /// List of mediators.
-  #[schema(example = json!(["0xceae8587b3e968b9669df8eb715f73bcf3f7a9cd3c61c515a4d80f2ca59c8114"]))]
-  #[serde(default)]
-  mediators: Vec<PublicKey>,
   /// List of auditors.
   #[schema(example = json!(["0xceae8587b3e968b9669df8eb715f73bcf3f7a9cd3c61c515a4d80f2ca59c8114"]))]
   #[serde(default)]
@@ -609,9 +605,6 @@ impl SenderProofRequest {
 
   pub fn auditors(&self) -> Result<BTreeSet<ElgamalPublicKey>> {
     let mut auditors = BTreeSet::new();
-    for k in &self.mediators {
-      auditors.insert(k.decode()?);
-    }
     for k in &self.auditors {
       auditors.insert(k.decode()?);
     }
@@ -632,10 +625,6 @@ pub struct SenderProofVerifyRequest {
   /// Receiver's public key.
   #[schema(value_type = String, format = Binary, example = "0xceae8587b3e968b9669df8eb715f73bcf3f7a9cd3c61c515a4d80f2ca59c8114")]
   receiver: PublicKey,
-  /// List of mediators.
-  #[schema(example = json!(["0xceae8587b3e968b9669df8eb715f73bcf3f7a9cd3c61c515a4d80f2ca59c8114"]))]
-  #[serde(default)]
-  mediators: Vec<PublicKey>,
   /// List of auditors.
   #[schema(example = json!(["0xceae8587b3e968b9669df8eb715f73bcf3f7a9cd3c61c515a4d80f2ca59c8114"]))]
   #[serde(default)]
@@ -660,9 +649,6 @@ impl SenderProofVerifyRequest {
 
   pub fn auditors(&self) -> Result<BTreeSet<ElgamalPublicKey>> {
     let mut auditors = BTreeSet::new();
-    for k in &self.mediators {
-      auditors.insert(k.decode()?);
-    }
     for k in &self.auditors {
       auditors.insert(k.decode()?);
     }
