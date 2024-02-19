@@ -1,27 +1,31 @@
+#[cfg(feature = "tx_backend")]
 use std::str::FromStr;
 
 use serde::{Deserialize, Serialize};
 
 use utoipa::ToSchema;
 
+#[cfg(feature = "tx_backend")]
 use zeroize::{Zeroize, ZeroizeOnDrop};
 
-#[cfg(feature = "backend")]
+#[cfg(feature = "tx_backend")]
 use sp_core::{crypto::Pair, sr25519};
 
 pub mod error;
 pub use error::*;
 
+#[cfg(feature = "tx_api")]
 mod tx;
+#[cfg(feature = "tx_api")]
 pub use tx::*;
 
 mod proofs;
 pub use proofs::*;
 
-#[cfg(feature = "backend")]
+#[cfg(feature = "tx_backend")]
 use polymesh_api::client::basic_types::AccountId;
 
-#[cfg_attr(feature = "backend", derive(sqlx::FromRow))]
+#[cfg_attr(feature = "tx_backend", derive(sqlx::FromRow))]
 #[derive(Clone, Debug, Default, Deserialize, Serialize, ToSchema)]
 pub struct SignerInfo {
   #[schema(example = "Alice")]
@@ -32,23 +36,23 @@ pub struct SignerInfo {
   pub created_at: chrono::NaiveDateTime,
 }
 
-#[cfg(feature = "backend")]
+#[cfg(feature = "tx_backend")]
 impl SignerInfo {
   pub fn account_id(&self) -> Result<AccountId> {
     Ok(AccountId::from_str(&self.public_key)?)
   }
 }
 
-#[cfg_attr(feature = "backend", derive(sqlx::FromRow))]
+#[cfg_attr(feature = "tx_backend", derive(sqlx::FromRow))]
 #[derive(Clone, Debug, Default, Zeroize, ZeroizeOnDrop)]
-#[cfg(feature = "backend")]
+#[cfg(feature = "tx_backend")]
 pub struct SignerWithSecret {
   pub name: String,
   pub public_key: String,
   pub secret_key: Vec<u8>,
 }
 
-#[cfg(feature = "backend")]
+#[cfg(feature = "tx_backend")]
 impl SignerWithSecret {
   pub fn keypair(&self) -> Result<sr25519::Pair> {
     Ok(sr25519::Pair::from_seed_slice(self.secret_key.as_slice())?)
@@ -56,6 +60,7 @@ impl SignerWithSecret {
 }
 
 #[derive(Clone, Debug, Default, Deserialize, Serialize, ToSchema, Zeroize, ZeroizeOnDrop)]
+#[cfg(feature = "tx_api")]
 pub struct CreateSigner {
   #[schema(example = "Alice")]
   pub name: String,
@@ -65,7 +70,7 @@ pub struct CreateSigner {
   pub secret_uri: Option<String>,
 }
 
-#[cfg(feature = "backend")]
+#[cfg(feature = "tx_backend")]
 impl CreateSigner {
   pub fn as_signer_with_secret(&self) -> Result<SignerWithSecret> {
     let pair = match &self.secret_uri {

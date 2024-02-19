@@ -6,10 +6,19 @@ edition = "2021"
 [features]
 default = [ "std", "backend", "simd_backend", "discrete_log" ]
 
+tx_api = [
+	"tx_backend",
+]
+
+tx_backend = [
+	"polymesh-api",
+	"sp-core",
+	"backend",
+]
+
 backend = [
 	"std",
 	"sqlx",
-	"sp-core",
 	"actix-web",
 	"confidential_assets",
 	"rand",
@@ -24,7 +33,7 @@ discrete_log = [ "confidential_assets?/rayon", "confidential_assets?/discrete_lo
 
 std = [
 	"sp-core?/std",
-	"polymesh-api/default",
+	"polymesh-api?/std",
 	"confidential_assets?/std",
 	"rand?/std",
 	"codec?/std"
@@ -43,7 +52,7 @@ utoipa = { workspace = true }
 confidential_assets = { workspace = true, default-features = false, optional = true }
 
 # Polymesh API
-polymesh-api = { workspace = true, default-features = false, features = ["download_metadata"] }
+polymesh-api = { workspace = true, default-features = false, optional = true }
 # For signing key pairs.
 sp-core = { workspace = true, default-features = false, optional = true }
 

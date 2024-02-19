@@ -7,7 +7,7 @@ use actix_web::{
   HttpResponse,
 };
 
-#[cfg(feature = "backend")]
+#[cfg(feature = "tx_backend")]
 use polymesh_api::client::Error as PolymeshClientError;
 
 #[derive(Error, Debug)]
@@ -17,7 +17,7 @@ pub enum Error {
   ConfidentialAssetError(#[from] confidential_assets::Error),
 
   #[error("Polymesh client error: {0}")]
-  #[cfg(feature = "backend")]
+  #[cfg(feature = "tx_backend")]
   PolymeshClientError(#[from] PolymeshClientError),
 
   #[error("other error: {0}")]
@@ -71,12 +71,14 @@ impl Error {
   }
 }
 
+#[cfg(feature = "tx_backend")]
 impl From<sp_core::crypto::SecretStringError> for Error {
   fn from(e: sp_core::crypto::SecretStringError) -> Self {
     Self::SecretStringError(format!("{e:?}"))
   }
 }
 
+#[cfg(feature = "tx_backend")]
 impl From<sp_core::crypto::PublicError> for Error {
   fn from(e: sp_core::crypto::PublicError) -> Self {
     Self::CoreCryptoError(format!("{e:?}"))

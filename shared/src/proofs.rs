@@ -12,7 +12,7 @@ use zeroize::{Zeroize, ZeroizeOnDrop};
 #[cfg(feature = "backend")]
 use codec::{Decode, Encode};
 
-#[cfg(feature = "backend")]
+#[cfg(feature = "tx_backend")]
 use polymesh_api::types::pallet_confidential_asset::{AuditorAccount, ConfidentialAccount};
 
 #[cfg(feature = "backend")]
@@ -84,7 +84,7 @@ pub struct Account {
   pub updated_at: chrono::NaiveDateTime,
 }
 
-#[cfg(feature = "backend")]
+#[cfg(feature = "tx_backend")]
 impl Account {
   pub fn as_confidential_account(&self) -> Result<ConfidentialAccount> {
     Ok(ConfidentialAccount::decode(
@@ -114,6 +114,7 @@ impl AccountWithSecret {
     self.public_key.as_slice() == &public_key.0[..]
   }
 
+  #[cfg(feature = "tx_backend")]
   pub fn as_confidential_account(&self) -> Result<ConfidentialAccount> {
     Ok(ConfidentialAccount::decode(
       &mut self.public_key.as_slice(),
@@ -535,10 +536,12 @@ impl PublicKey {
     Ok(ElgamalPublicKey::decode(&mut &self.0[..])?)
   }
 
+  #[cfg(feature = "tx_backend")]
   pub fn as_confidential_account(&self) -> Result<ConfidentialAccount> {
     Ok(ConfidentialAccount::decode(&mut &self.0[..])?)
   }
 
+  #[cfg(feature = "tx_backend")]
   pub fn as_auditor_account(&self) -> Result<AuditorAccount> {
     Ok(AuditorAccount::decode(&mut &self.0[..])?)
   }

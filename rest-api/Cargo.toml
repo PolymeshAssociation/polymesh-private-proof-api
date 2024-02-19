@@ -20,14 +20,14 @@ utoipa-redoc = { workspace = true }
 utoipa-rapidoc = { workspace = true }
 
 # internal
-confidential-proof-shared = { workspace = true, features = ["backend"] }
+confidential-proof-shared = { workspace = true, features = ["tx_api"] }
 confidential-proof-api = { workspace = true }
 
 # Confidential Assets
 confidential_assets = { workspace = true, default-features = false }
 
 # Polymesh API
-polymesh-api = { workspace = true, features = ["default"] }
+polymesh-api = { workspace = true, features = ["default", "download_metadata"] }
 polymesh-api-client = { workspace = true, default-features = false, features = ["utoipa"] }
 sp-core = { workspace = true, default-features = false }
 sp-runtime = { workspace = true }
