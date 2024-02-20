@@ -8,8 +8,9 @@ use polymesh_api::Api;
 
 use confidential_proof_api::repo::Repository;
 use confidential_proof_shared::{
-  error::Error, scale_convert, AllowVenues, ConfidentialAssetDetails, CreateConfidentialAsset,
-  CreateConfidentialSettlement, ExecuteConfidentialSettlement, TransactionArgs, TransactionResult,
+  error::Error, scale_convert, AddAsset, AllowVenues, ConfidentialAssetDetails,
+  CreateConfidentialAsset, CreateConfidentialSettlement, ExecuteConfidentialSettlement,
+  ProcessedEvent, TransactionArgs, TransactionResult,
 };
 
 use crate::signing::AppSigningManager;
@@ -113,6 +114,7 @@ pub async fn tx_allow_venues(
 #[post("/tx/assets/create_asset")]
 pub async fn tx_create_asset(
   req: web::Json<CreateConfidentialAsset>,
+  repo: Repository,
   signing: AppSigningManager,
   api: web::Data<Api>,
 ) -> Result<impl Responder> {
@@ -136,6 +138,22 @@ pub async fn tx_create_asset(
 
   // Wait for transaction results.
   let res = TransactionResult::wait_for_results(res, req.finalize).await?;
+
+  for event in &res.processed_events.0 {
+    match event {
+      ProcessedEvent::ConfidentialAssetCreated { asset_id, .. } => {
+        // Check if the asset exists.
+        if repo.get_asset(*asset_id).await?.is_none() {
+          repo
+            .create_asset(&AddAsset {
+              asset_id: *asset_id,
+            })
+            .await?;
+        }
+      }
+      _ => (),
+    }
+  }
 
   Ok(HttpResponse::Ok().json(res))
 }
