@@ -14,6 +14,7 @@ pub fn service(cfg: &mut web::ServiceConfig) {
     .service(get_account_asset)
     .service(create_account_asset)
     .service(request_sender_proof)
+    .service(request_burn_proof)
     .service(receiver_verify_request)
     .service(decrypt_request)
     .service(update_balance_request);
