@@ -5,11 +5,10 @@ use confidential_proof_shared::{
   CreateAccount, ReceiverVerifyRequest, SenderProof, SenderProofRequest,
 };
 
-use super::account_assets;
 use crate::repo::Repository;
 
 pub fn service(cfg: &mut web::ServiceConfig) {
-  cfg
+  let _cfg = cfg
     .service(get_all_accounts)
     .service(get_account)
     .service(create_account)
@@ -17,8 +16,10 @@ pub fn service(cfg: &mut web::ServiceConfig) {
     .service(request_sender_proof)
     .service(request_burn_proof)
     .service(receiver_verify_request)
-    .service(auditor_verify_request)
-    .configure(account_assets::service);
+    .service(auditor_verify_request);
+
+  #[cfg(feature = "track_balances")]
+  _cfg.configure(super::account_assets::service);
 }
 
 /// Get all accounts.

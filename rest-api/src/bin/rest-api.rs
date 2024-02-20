@@ -18,7 +18,7 @@ use confidential_rest_api::{repo::SqliteTransactionRepository, signing, v1::*};
 pub fn v1_service(cfg: &mut web::ServiceConfig) {
   cfg.service(
     web::scope("/v1")
-      .configure(users::service)
+      //.configure(users::service)
       .configure(assets::service)
       .configure(accounts::service)
       .configure(signers::service)
@@ -86,9 +86,9 @@ async fn start_server() -> anyhow::Result<()> {
   #[derive(OpenApi)]
   #[openapi(
       paths(
-        users::get_all_users,
-        users::get_user,
-        users::create_user,
+        //users::get_all_users,
+        //users::get_user,
+        //users::create_user,
         signers::get_all_signers,
         signers::get_signer,
         signers::create_signer,

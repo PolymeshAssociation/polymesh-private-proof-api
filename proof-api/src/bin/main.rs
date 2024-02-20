@@ -34,54 +34,91 @@ async fn start_server() -> anyhow::Result<()> {
   log::info!("🚀🚀🚀 Starting Actix server at {}", address);
 
   #[derive(OpenApi)]
-  #[openapi(
-      paths(
-        users::get_all_users,
-        users::get_user,
-        users::create_user,
-        assets::get_all_assets,
-        assets::get_asset,
-        assets::create_asset,
-        assets::sender_proof_verify,
-        accounts::get_all_accounts,
-        accounts::get_account,
-        accounts::create_account,
-        accounts::auditor_verify_request,
-        accounts::request_sender_proof,
-        accounts::request_burn_proof,
-        accounts::receiver_verify_request,
-        accounts::decrypt_request,
-        account_assets::get_all_account_assets,
-        account_assets::get_account_asset,
-        account_assets::create_account_asset,
-        account_assets::request_sender_proof,
-        account_assets::request_burn_proof,
-        account_assets::receiver_verify_request,
-        account_assets::update_balance_request,
-        account_assets::decrypt_request,
-      ),
-      components(
-        schemas(
-          User, CreateUser,
-          Asset, AddAsset,
-          Account,
-          AccountAsset, CreateAccountAsset,
-          AccountAssetWithProof,
-          PublicKey, BurnProof, SenderProof, TransferProofs,
-          AuditorVerifyRequest,
-          ReceiverVerifyRequest,
-          BurnProofRequest,
-          SenderProofRequest,
-          SenderProofVerifyRequest,
-          SenderProofVerifyResult,
-          AccountDecryptRequest,
-          DecryptedResponse,
-          UpdateAccountAssetBalanceRequest,
+  #[cfg_attr(not(feature = "track_balances"),
+    openapi(
+        paths(
+          //users::get_all_users,
+          //users::get_user,
+          //users::create_user,
+          accounts::get_all_accounts,
+          accounts::get_account,
+          accounts::create_account,
+          accounts::auditor_verify_request,
+          accounts::request_sender_proof,
+          accounts::request_burn_proof,
+          accounts::receiver_verify_request,
+          accounts::decrypt_request,
         ),
-      ),
-      servers(
-        (url = "/api/v1/"),
-      )
+        components(
+          schemas(
+            User, CreateUser,
+            Account,
+            PublicKey, BurnProof, SenderProof, TransferProofs,
+            AuditorVerifyRequest,
+            ReceiverVerifyRequest,
+            BurnProofRequest,
+            SenderProofRequest,
+            SenderProofVerifyRequest,
+            SenderProofVerifyResult,
+            AccountDecryptRequest,
+            DecryptedResponse,
+          ),
+        ),
+        servers(
+          (url = "/api/v1/"),
+        )
+    )
+  )]
+  #[cfg_attr(feature = "track_balances",
+    openapi(
+        paths(
+          //users::get_all_users,
+          //users::get_user,
+          //users::create_user,
+          assets::get_all_assets,
+          assets::get_asset,
+          assets::create_asset,
+          assets::sender_proof_verify,
+          accounts::get_all_accounts,
+          accounts::get_account,
+          accounts::create_account,
+          accounts::auditor_verify_request,
+          accounts::request_sender_proof,
+          accounts::request_burn_proof,
+          accounts::receiver_verify_request,
+          accounts::decrypt_request,
+          account_assets::get_all_account_assets,
+          account_assets::get_account_asset,
+          account_assets::create_account_asset,
+          account_assets::request_sender_proof,
+          account_assets::request_burn_proof,
+          account_assets::receiver_verify_request,
+          account_assets::update_balance_request,
+          account_assets::decrypt_request,
+        ),
+        components(
+          schemas(
+            User, CreateUser,
+            Asset, AddAsset,
+            Account,
+            AccountAsset, CreateAccountAsset,
+            AccountAssetWithProof,
+            PublicKey, BurnProof, SenderProof, TransferProofs,
+            AuditorVerifyRequest,
+            ReceiverVerifyRequest,
+            BurnProofRequest,
+            SenderProofRequest,
+            SenderProofVerifyRequest,
+            SenderProofVerifyResult,
+            AccountDecryptRequest,
+            DecryptedResponse,
+            UpdateAccountAssetBalanceRequest,
+          ),
+        ),
+        servers(
+          (url = "/api/v1/"),
+        )
+    )
   )]
   struct ApiDoc;
 
