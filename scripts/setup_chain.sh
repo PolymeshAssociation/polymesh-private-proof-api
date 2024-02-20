@@ -30,13 +30,13 @@ echo "AUDITOR=${AUDITOR}"
 ./init_account.sh investor1 $INVESTOR
 
 # Create some assets.
-ASSET1=`./create_asset.sh issuer1 "$AUDITOR,$MEDIATOR" $MEDIATOR_DID | grep ConfidentialAssetCreated | sed -e 's/.*ConfidentialAssetCreated" : "//' -e 's/"//'`
+ASSET1=`./create_asset.sh issuer1 "$AUDITOR,$MEDIATOR" $MEDIATOR_DID | grep asset_id | sed -e 's/.*asset_id" : "//' -e 's/"//'`
 echo "ASSET1 = ${ASSET1}"
-ASSET2=`./create_asset.sh issuer1 "$AUDITOR,$MEDIATOR" $MEDIATOR_DID | grep ConfidentialAssetCreated | sed -e 's/.*ConfidentialAssetCreated" : "//' -e 's/"//'`
+ASSET2=`./create_asset.sh issuer1 "$AUDITOR,$MEDIATOR" $MEDIATOR_DID | grep asset_id | sed -e 's/.*asset_id" : "//' -e 's/"//'`
 echo "ASSET2 = ${ASSET2}"
-ASSET3=`./create_asset.sh issuer1 "$AUDITOR,$MEDIATOR" $MEDIATOR_DID | grep ConfidentialAssetCreated | sed -e 's/.*ConfidentialAssetCreated" : "//' -e 's/"//'`
+ASSET3=`./create_asset.sh issuer1 "$AUDITOR,$MEDIATOR" $MEDIATOR_DID | grep asset_id | sed -e 's/.*asset_id" : "//' -e 's/"//'`
 echo "ASSET3 = ${ASSET3}"
-ASSET4=`./create_asset.sh issuer1 "$AUDITOR,$MEDIATOR" $MEDIATOR_DID | grep ConfidentialAssetCreated | sed -e 's/.*ConfidentialAssetCreated" : "//' -e 's/"//'`
+ASSET4=`./create_asset.sh issuer1 "$AUDITOR,$MEDIATOR" $MEDIATOR_DID | grep asset_id | sed -e 's/.*asset_id" : "//' -e 's/"//'`
 echo "ASSET4 = ${ASSET4}"
 
 # mint
