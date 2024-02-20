@@ -6,7 +6,7 @@ NAME="$1"
 KEY=`./get_signer.sh $NAME | grep public_key | sed -e 's/.*"public_key" : "//g' -e 's/"//'`
 
 DID=`./get_signer_did.sh $KEY | sed -e 's/"//g'`
-if [[ "$DID" == "null" ]]; then
+if [ "$DID" = "null" ]; then
 	curl -s -X 'POST' \
 	  "${POLYMESH_REST_URL}/developer-testing/create-test-accounts" \
 	  -H 'accept: application/json' \
