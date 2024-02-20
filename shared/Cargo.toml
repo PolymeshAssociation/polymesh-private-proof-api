@@ -6,6 +6,9 @@ edition = "2021"
 [features]
 default = [ "std", "backend", "simd_backend", "discrete_log" ]
 
+# Enable use of `account_assets` table to store unencrypted asset balances for accounts.
+track_balances = []
+
 tx_api = [
 	"tx_backend",
 ]

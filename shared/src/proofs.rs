@@ -187,6 +187,98 @@ impl AccountWithSecret {
       .map(|b| Some(b));
     Ok(SenderProofVerifyResult::from_result(res))
   }
+
+  pub fn create_send_proof(
+    &self,
+    enc_balance: CipherText,
+    balance: Option<Balance>,
+    receiver: ElgamalPublicKey,
+    auditors: BTreeSet<ElgamalPublicKey>,
+    amount: Balance,
+  ) -> Result<ConfidentialTransferProof> {
+    // Decode ConfidentialAccount from database.
+    let sender = self.encryption_keys()?;
+
+    // Decrypted balance.
+    let balance = match balance {
+      None => sender
+        .secret
+        .decrypt_with_hint(&enc_balance, 0, MAX_TOTAL_SUPPLY)
+        .ok_or_else(|| Error::other("Failed to decrypt balance."))?,
+      Some(balance) => balance,
+    };
+
+    let mut rng = rand::thread_rng();
+    let proof = ConfidentialTransferProof::new(
+      &sender,
+      &enc_balance,
+      balance,
+      &receiver,
+      &auditors,
+      amount,
+      &mut rng,
+    )?;
+
+    Ok(proof)
+  }
+
+  pub fn create_burn_proof(
+    &self,
+    enc_balance: CipherText,
+    balance: Option<Balance>,
+    amount: Balance,
+  ) -> Result<ConfidentialBurnProof> {
+    // Decode ConfidentialAccount from database.
+    let issuer = self.encryption_keys()?;
+
+    // Decrypted balance.
+    let balance = match balance {
+      None => issuer
+        .secret
+        .decrypt_with_hint(&enc_balance, 0, MAX_TOTAL_SUPPLY)
+        .ok_or_else(|| Error::other("Failed to decrypt balance."))?,
+      Some(balance) => balance,
+    };
+
+    let mut rng = rand::thread_rng();
+    Ok(ConfidentialBurnProof::new(
+      &issuer,
+      &enc_balance,
+      balance,
+      amount,
+      &mut rng,
+    )?)
+  }
+
+  pub fn receiver_verify_proof(
+    &self,
+    req: &ReceiverVerifyRequest,
+  ) -> Result<SenderProofVerifyResult> {
+    // Decode ConfidentialAccount from database.
+    let receiver = self.encryption_keys()?;
+
+    // Decode sender proof from request.
+    let sender_proof = req.sender_proof()?;
+
+    let res = sender_proof
+      .receiver_verify(receiver, req.amount)
+      .map(|b| Some(b));
+    Ok(SenderProofVerifyResult::from_result(res))
+  }
+
+  pub fn decrypt_request(&self, req: &AccountDecryptRequest) -> Result<DecryptedResponse> {
+    // Decode `req`.
+    let enc_value = req.encrypted_value()?;
+    // Decode ConfidentialAccount from database.
+    let keys = self.encryption_keys()?;
+    // Decrypt value.
+    let value = keys
+      .secret
+      .decrypt_with_hint(&enc_value, 0, MAX_TOTAL_SUPPLY)
+      .ok_or_else(|| Error::other("Failed to decrypt value."))?;
+    // Return the decrypted value.
+    Ok(DecryptedResponse { value })
+  }
 }
 
 /// Create a new account.  Not allowed to be serialized.
@@ -298,21 +390,13 @@ impl AccountAssetWithSecret {
     auditors: BTreeSet<ElgamalPublicKey>,
     amount: Balance,
   ) -> Result<(UpdateAccountAsset, ConfidentialTransferProof)> {
-    // Decode ConfidentialAccount from database.
-    let sender = self.account.encryption_keys()?;
     // Get sender's balance.
     let (enc_balance, balance) = self.account_balance(enc_balance)?;
+    let proof =
+      self
+        .account
+        .create_send_proof(enc_balance, Some(balance), receiver, auditors, amount)?;
 
-    let mut rng = rand::thread_rng();
-    let proof = ConfidentialTransferProof::new(
-      &sender,
-      &enc_balance,
-      balance,
-      &receiver,
-      &auditors,
-      amount,
-      &mut rng,
-    )?;
     // Update account balance.
     let update = UpdateAccountAsset {
       account_asset_id: Some(self.account_asset_id),
@@ -325,34 +409,17 @@ impl AccountAssetWithSecret {
     Ok((update, proof))
   }
 
-  pub fn receiver_verify_proof(
-    &self,
-    req: &ReceiverVerifyRequest,
-  ) -> Result<SenderProofVerifyResult> {
-    // Decode ConfidentialAccount from database.
-    let receiver = self.account.encryption_keys()?;
-
-    // Decode sender proof from request.
-    let sender_proof = req.sender_proof()?;
-
-    let res = sender_proof
-      .receiver_verify(receiver, req.amount)
-      .map(|b| Some(b));
-    Ok(SenderProofVerifyResult::from_result(res))
-  }
-
   pub fn create_burn_proof(
     &self,
     enc_balance: Option<CipherText>,
     amount: Balance,
   ) -> Result<(UpdateAccountAsset, ConfidentialBurnProof)> {
-    // Decode ConfidentialAccount from database.
-    let issuer = self.account.encryption_keys()?;
     // Get issuer's balance.
     let (enc_balance, balance) = self.account_balance(enc_balance)?;
 
-    let mut rng = rand::thread_rng();
-    let proof = ConfidentialBurnProof::new(&issuer, &enc_balance, balance, amount, &mut rng)?;
+    let proof = self
+      .account
+      .create_burn_proof(enc_balance, Some(balance), amount)?;
     // Update account balance.
     let enc_amount = CipherText::value(amount.into());
     let update = UpdateAccountAsset {
@@ -366,11 +433,18 @@ impl AccountAssetWithSecret {
     Ok((update, proof))
   }
 
+  pub fn receiver_verify_proof(
+    &self,
+    req: &ReceiverVerifyRequest,
+  ) -> Result<SenderProofVerifyResult> {
+    self.account.receiver_verify_proof(req)
+  }
+
   pub fn decrypt(&self, enc_value: &CipherText) -> Result<Balance> {
     self.account.decrypt(enc_value)
   }
 
-  pub fn decrypt_request(&self, req: &AccountAssetDecryptRequest) -> Result<DecryptedResponse> {
+  pub fn decrypt_request(&self, req: &AccountDecryptRequest) -> Result<DecryptedResponse> {
     // Decode `req`.
     let enc_value = req.encrypted_value()?;
     // Decode ConfidentialAccount from database.
@@ -466,7 +540,7 @@ impl UpdateAccountAsset {
 
 /// Decrypt a `CipherText` value request.
 #[derive(Clone, Serialize, Deserialize, ToSchema)]
-pub struct AccountAssetDecryptRequest {
+pub struct AccountDecryptRequest {
   /// Encrypted value.
   #[schema(value_type = String, format = Binary, example = "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000")]
   #[serde(default, with = "SerHexSeq::<StrictPfx>")]
@@ -474,7 +548,7 @@ pub struct AccountAssetDecryptRequest {
 }
 
 #[cfg(feature = "backend")]
-impl AccountAssetDecryptRequest {
+impl AccountDecryptRequest {
   pub fn encrypted_value(&self) -> Result<CipherText> {
     Ok(CipherText::decode(&mut self.encrypted_value.as_slice())?)
   }
@@ -603,6 +677,10 @@ pub struct SenderProof(
 
 #[cfg(feature = "backend")]
 impl SenderProof {
+  pub fn new(proof: ConfidentialTransferProof) -> Self {
+    Self(proof.as_bytes())
+  }
+
   pub fn decode(&self) -> Result<ConfidentialTransferProof> {
     Ok(ConfidentialTransferProof::from_bytes(
       &mut self.0.as_slice(),
@@ -613,7 +691,7 @@ impl SenderProof {
 /// Generate a new sender proof.
 #[derive(Clone, Serialize, Deserialize, ToSchema)]
 pub struct SenderProofRequest {
-  /// Current encrypted balance (optional).
+  /// Current encrypted balance.
   #[schema(value_type = String, format = Binary, example = "")]
   #[serde(default, with = "SerHexSeq::<StrictPfx>")]
   encrypted_balance: Vec<u8>,
@@ -796,6 +874,10 @@ pub struct BurnProof(
 
 #[cfg(feature = "backend")]
 impl BurnProof {
+  pub fn new(proof: ConfidentialBurnProof) -> Self {
+    Self(proof.as_bytes())
+  }
+
   pub fn decode(&self) -> Result<ConfidentialBurnProof> {
     Ok(ConfidentialBurnProof::from_bytes(&self.0)?)
   }
@@ -804,7 +886,7 @@ impl BurnProof {
 /// Generate a new burn proof.
 #[derive(Clone, Serialize, Deserialize, ToSchema)]
 pub struct BurnProofRequest {
-  /// Current encrypted balance (optional).
+  /// Current encrypted balance.
   #[schema(value_type = String, format = Binary, example = "")]
   #[serde(default, with = "SerHexSeq::<StrictPfx>")]
   encrypted_balance: Vec<u8>,

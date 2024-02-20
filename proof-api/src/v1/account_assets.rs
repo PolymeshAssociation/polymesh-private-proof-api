@@ -2,8 +2,8 @@ use actix_web::{get, post, web, HttpResponse, Responder, Result};
 use uuid::Uuid;
 
 use confidential_proof_shared::{
-  error::Error, AccountAssetDecryptRequest, AccountAssetWithProof, BurnProofRequest,
-  CreateAccountAsset, ReceiverVerifyRequest, SenderProofRequest, UpdateAccountAssetBalanceRequest,
+  error::Error, AccountAssetWithProof, AccountDecryptRequest, BurnProofRequest, CreateAccountAsset,
+  ReceiverVerifyRequest, SenderProofRequest, UpdateAccountAssetBalanceRequest,
 };
 
 use crate::repo::Repository;
@@ -187,7 +187,7 @@ pub async fn request_burn_proof(
 #[post("/accounts/{public_key}/assets/{asset_id}/decrypt")]
 pub async fn decrypt_request(
   path: web::Path<(String, Uuid)>,
-  req: web::Json<AccountAssetDecryptRequest>,
+  req: web::Json<AccountDecryptRequest>,
   repo: Repository,
 ) -> Result<impl Responder> {
   let (public_key, asset_id) = path.into_inner();

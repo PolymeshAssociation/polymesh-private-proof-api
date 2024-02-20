@@ -63,6 +63,11 @@ discrete_log = [
 	"confidential_assets/discrete_log",
 ]
 
+# Enable use of `account_assets` table to store unencrypted asset balances for accounts.
+track_balances = [
+	"confidential-proof-shared/track_balances"
+]
+
 std = [
 	"confidential_assets/std",
 	"rand/std",
