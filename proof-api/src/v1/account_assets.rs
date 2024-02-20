@@ -2,8 +2,8 @@ use actix_web::{get, post, web, HttpResponse, Responder, Result};
 use uuid::Uuid;
 
 use confidential_proof_shared::{
-  error::Error, AccountAssetDecryptRequest, AccountAssetWithProof, CreateAccountAsset,
-  ReceiverVerifyRequest, SenderProofRequest, UpdateAccountAssetBalanceRequest,
+  error::Error, AccountAssetDecryptRequest, AccountAssetWithProof, BurnProofRequest,
+  CreateAccountAsset, ReceiverVerifyRequest, SenderProofRequest, UpdateAccountAssetBalanceRequest,
 };
 
 use crate::repo::Repository;
@@ -142,6 +142,39 @@ pub async fn receiver_verify_request(
   // Verify the sender's proof.
   let res = account_asset.receiver_verify_proof(&req)?;
   Ok(HttpResponse::Ok().json(res))
+}
+
+/// Generate a burn proof.
+#[utoipa::path(
+  responses(
+    (status = 200, body = AccountAssetWithProof)
+  )
+)]
+#[post("/accounts/{public_key}/assets/{asset_id}/burn")]
+pub async fn request_burn_proof(
+  path: web::Path<(String, Uuid)>,
+  req: web::Json<BurnProofRequest>,
+  repo: Repository,
+) -> Result<impl Responder> {
+  let (public_key, asset_id) = path.into_inner();
+  // Get the account asset with account secret key.
+  let account_asset = repo
+    .get_account_asset_with_secret(&public_key, asset_id)
+    .await?
+    .ok_or_else(|| Error::not_found("Account Asset"))?;
+
+  let enc_balance = req.encrypted_balance()?;
+  let amount = req.amount;
+
+  // Generate burn proof.
+  let (update, proof) = account_asset.create_burn_proof(enc_balance, amount)?;
+
+  // Update account balance.
+  let account_asset = repo.update_account_asset(&update).await?;
+
+  // Return account_asset with burn proof.
+  let balance_with_proof = AccountAssetWithProof::new_burn_proof(account_asset, proof);
+  Ok(HttpResponse::Ok().json(balance_with_proof))
 }
 
 /// Decrypt a `CipherText` value.
