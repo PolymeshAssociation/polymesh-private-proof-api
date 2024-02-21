@@ -1,0 +1,37 @@
+version: 2.1
+
+jobs:
+  lint:
+    docker:
+      - image: polymeshassociation/rust:debian-nightly-2023-06-01
+    resource_class: small
+    environment:
+      VERBOSE: "1"
+    steps:
+      - checkout
+      - run:
+          name: Check formatting
+          command: .docker/scripts/rustfmt.sh
+
+  build-docker-debian:
+    environment:
+      IMAGE_NAME: polymeshassociation/polymesh-proof-api
+    docker:
+      - image: cimg/deploy:2023.12
+    resource_class: small
+    steps:
+      - setup_remote_docker
+      - checkout
+      - run: |
+          export VERSION=`.docker/scripts/version.sh "$CIRCLE_BRANCH" "$CIRCLE_SHA1"`
+          docker build -f ./.docker/Dockerfile.proofapi.debian --tag $IMAGE_NAME:latest-$CIRCLE_BRANCH-debian --tag $IMAGE_NAME:$VERSION-$CIRCLE_BRANCH-debian .
+          echo $DOCKERHUB_PASS | docker login -u $DOCKERHUB_USERNAME --password-stdin
+          docker push --all-tags $IMAGE_NAME
+
+workflows:
+  commit:
+    jobs:
+      - lint
+      - build-docker-debian:
+          context:
+            - DockerHub

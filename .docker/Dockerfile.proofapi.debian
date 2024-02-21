@@ -1,0 +1,43 @@
+FROM polymeshassociation/rust:debian-nightly-2023-06-01 as builder
+
+WORKDIR /build
+
+COPY . .
+
+RUN cargo install sqlx-cli --locked
+WORKDIR /build/proof-api
+
+ENV DATABASE_URL=sqlite:/build/proof-api/confidential_assets.db
+RUN sqlx database setup
+
+RUN cargo build --release
+
+FROM debian:stable-slim
+
+# explicitly set user/group IDs
+RUN set -eux; \
+	groupadd -r proofapi --gid=1000; \
+	useradd -r -g proofapi --uid=1000 -m -d /opt/proofapi proofapi; \
+	mkdir -p /opt/proofapi; \
+	chown -R proofapi:proofapi /opt/proofapi
+
+VOLUME ["/data", {"driver": "local", "driver_opts": {"o": "bind,uid=proofapi:proofapi"}}]
+
+COPY --from=builder --chown=root:root /build/target/release/main /usr/local/bin/proofapi
+COPY --from=builder --chown=proofapi:proofapi /build/proof-api/confidential_assets.db /data/confidential_assets.db
+
+RUN chmod 0755 /usr/local/bin/proofapi
+
+WORKDIR /opt/proofapi
+
+ENV PORT=${PORT:-8080}
+ENV DATABASE_URL=sqlite:/data/confidential_assets.db
+EXPOSE $PORT
+
+CMD ["/usr/local/bin/proofapi"]
+
+HEALTHCHECK \
+	--interval=20s \
+	--timeout=3s \
+	--retries=2 \
+  	CMD curl -f http://localhost:$PORT/api/health || exit 1
