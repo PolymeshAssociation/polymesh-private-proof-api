@@ -108,7 +108,7 @@ impl ConfidentialRepository for SqliteConfidentialRepository {
     Ok(
       sqlx::query_as!(
         Account,
-        r#"SELECT account_id, public_key, created_at, updated_at FROM accounts"#,
+        r#"SELECT account_id, public_key as confidential_account, created_at, updated_at FROM accounts"#,
       )
       .fetch_all(&self.pool)
       .await?,
@@ -120,7 +120,7 @@ impl ConfidentialRepository for SqliteConfidentialRepository {
     let key = pub_key.0.as_slice();
     Ok(sqlx::query_as!(
       Account,
-      r#"SELECT account_id, public_key, created_at, updated_at FROM accounts WHERE public_key = ?"#,
+      r#"SELECT account_id, public_key as confidential_account, created_at, updated_at FROM accounts WHERE public_key = ?"#,
       key
     )
     .fetch_optional(&self.pool)
@@ -133,7 +133,7 @@ impl ConfidentialRepository for SqliteConfidentialRepository {
     Ok(
       sqlx::query_as!(
         AccountWithSecret,
-        r#"SELECT account_id, public_key, secret_key FROM accounts WHERE public_key = ?"#,
+        r#"SELECT account_id, public_key as confidential_account, secret_key FROM accounts WHERE public_key = ?"#,
         key
       )
       .fetch_optional(&self.pool)
@@ -148,9 +148,9 @@ impl ConfidentialRepository for SqliteConfidentialRepository {
         r#"
       INSERT INTO accounts (public_key, secret_key)
       VALUES (?, ?)
-      RETURNING account_id, public_key, created_at, updated_at
+      RETURNING account_id, public_key as confidential_account, created_at, updated_at
       "#,
-        account.public_key,
+        account.confidential_account,
         account.secret_key,
       )
       .fetch_one(&self.pool)
