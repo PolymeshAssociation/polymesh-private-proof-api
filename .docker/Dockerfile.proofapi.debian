@@ -22,8 +22,6 @@ RUN set -eux; \
 	mkdir -p /opt/proofapi; \
 	chown -R proofapi:proofapi /opt/proofapi
 
-VOLUME ["/data", {"driver": "local", "driver_opts": {"o": "bind,uid=proofapi:proofapi"}}]
-
 COPY --from=builder --chown=root:root /build/target/release/main /usr/local/bin/proofapi
 COPY --from=builder --chown=proofapi:proofapi /build/proof-api/confidential_assets.db /data/confidential_assets.db
 
