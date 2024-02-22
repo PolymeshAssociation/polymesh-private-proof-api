@@ -4,6 +4,7 @@ WORKDIR /build
 
 COPY . .
 
+# Setup Database file
 RUN cargo install sqlx-cli --locked
 WORKDIR /build/proof-api
 
