@@ -1,5 +1,12 @@
 FROM debian:bullseye-slim
 
+RUN apt update && \
+  DEBIAN_FRONTEND=noninteractive apt install \
+  curl \
+  -y --no-install-recommends && \
+  apt autoremove -y && \
+  apt clean
+
 # explicitly set user/group IDs
 RUN set -eux; \
 	groupadd -r proofapi --gid=1000; \
@@ -16,6 +23,7 @@ WORKDIR /opt/proofapi
 
 ENV PORT=${PORT:-8080}
 ENV DATABASE_URL=sqlite:/data/confidential_assets.db
+ENV BIND_ADDRESS=0.0.0.0
 EXPOSE $PORT
 
 USER proofapi
@@ -26,4 +34,4 @@ HEALTHCHECK \
 	--interval=20s \
 	--timeout=3s \
 	--retries=2 \
-  	CMD curl -f http://localhost:$PORT/api/health || exit 1
+  	CMD curl -f http://$BIND_ADDRESS:$PORT/api/health || exit 1
