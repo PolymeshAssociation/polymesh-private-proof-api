@@ -22,7 +22,7 @@ pub fn service(cfg: &mut web::ServiceConfig) {
   _cfg.configure(super::account_assets::service);
 }
 
-/// Get all accounts.
+/// Get all confidential accounts.
 #[utoipa::path(
   responses(
     (status = 200, body = [Account])
@@ -34,25 +34,27 @@ pub async fn get_all_accounts(repo: Repository) -> Result<impl Responder> {
   Ok(HttpResponse::Ok().json(accounts))
 }
 
-/// Get one account.
+/// Get one confidential account.
 #[utoipa::path(
   responses(
     (status = 200, body = Account)
   )
 )]
-#[get("/accounts/{public_key}")]
+#[get("/accounts/{confidential_account}")]
 pub async fn get_account(
-  public_key: web::Path<String>,
+  confidential_account: web::Path<String>,
   repo: Repository,
 ) -> Result<impl Responder> {
   let account = repo
-    .get_account(&public_key)
+    .get_account(&confidential_account)
     .await?
     .ok_or_else(|| Error::not_found("Account"))?;
   Ok(HttpResponse::Ok().json(account))
 }
 
-/// Create a new account.
+/// Create a new confidential account.
+///
+/// A confidential account is an Elgamal keypair.
 #[utoipa::path(
   responses(
     (status = 200, body = Account)
@@ -71,15 +73,15 @@ pub async fn create_account(repo: Repository) -> Result<impl Responder> {
     (status = 200, body = SenderProof)
   )
 )]
-#[post("/accounts/{public_key}/send")]
+#[post("/accounts/{confidential_account}/send")]
 pub async fn request_sender_proof(
-  public_key: web::Path<String>,
+  confidential_account: web::Path<String>,
   req: web::Json<SenderProofRequest>,
   repo: Repository,
 ) -> Result<impl Responder> {
   // Get the account asset with account secret key.
   let account = repo
-    .get_account_with_secret(&public_key)
+    .get_account_with_secret(&confidential_account)
     .await?
     .ok_or_else(|| Error::not_found("Account"))?;
 
@@ -102,15 +104,15 @@ pub async fn request_sender_proof(
     (status = 200, body = SenderProofVerifyResult)
   )
 )]
-#[post("/accounts/{public_key}/receiver_verify")]
+#[post("/accounts/{confidential_account}/receiver_verify")]
 pub async fn receiver_verify_request(
-  public_key: web::Path<String>,
+  confidential_account: web::Path<String>,
   req: web::Json<ReceiverVerifyRequest>,
   repo: Repository,
 ) -> Result<impl Responder> {
   // Get the account asset with account secret key.
   let account = repo
-    .get_account_with_secret(&public_key)
+    .get_account_with_secret(&confidential_account)
     .await?
     .ok_or_else(|| Error::not_found("Account"))?;
 
@@ -125,15 +127,15 @@ pub async fn receiver_verify_request(
     (status = 200, body = BurnProof)
   )
 )]
-#[post("/accounts/{public_key}/burn")]
+#[post("/accounts/{confidential_account}/burn")]
 pub async fn request_burn_proof(
-  public_key: web::Path<String>,
+  confidential_account: web::Path<String>,
   req: web::Json<BurnProofRequest>,
   repo: Repository,
 ) -> Result<impl Responder> {
   // Get the account asset with account secret key.
   let account = repo
-    .get_account_with_secret(&public_key)
+    .get_account_with_secret(&confidential_account)
     .await?
     .ok_or_else(|| Error::not_found("Account"))?;
 
@@ -154,15 +156,15 @@ pub async fn request_burn_proof(
     (status = 200, body = DecryptedResponse)
   )
 )]
-#[post("/accounts/{public_key}/decrypt")]
+#[post("/accounts/{confidential_account}/decrypt")]
 pub async fn decrypt_request(
-  public_key: web::Path<String>,
+  confidential_account: web::Path<String>,
   req: web::Json<AccountDecryptRequest>,
   repo: Repository,
 ) -> Result<impl Responder> {
   // Get the account asset with account secret key.
   let account = repo
-    .get_account_with_secret(&public_key)
+    .get_account_with_secret(&confidential_account)
     .await?
     .ok_or_else(|| Error::not_found("Account"))?;
 
@@ -179,15 +181,15 @@ pub async fn decrypt_request(
     (status = 200, body = SenderProofVerifyResult)
   )
 )]
-#[post("/accounts/{public_key}/auditor_verify")]
+#[post("/accounts/{confidential_account}/auditor_verify")]
 pub async fn auditor_verify_request(
-  public_key: web::Path<String>,
+  confidential_account: web::Path<String>,
   req: web::Json<AuditorVerifyRequest>,
   repo: Repository,
 ) -> Result<impl Responder> {
   // Get the account with secret key.
   let account = repo
-    .get_account_with_secret(&public_key)
+    .get_account_with_secret(&confidential_account)
     .await?
     .ok_or_else(|| Error::not_found("Account"))?;
 

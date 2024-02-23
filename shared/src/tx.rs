@@ -150,10 +150,10 @@ pub struct TransactionLegDetails {
   #[schema(example = json!({"3480b2c3-221f-de22-226f-a178e13ff916": ["0xceae8587b3e968b9669df8eb715f73bcf3f7a9cd3c61c515a4d80f2ca59c8114"]}))]
   #[serde(default)]
   pub assets_and_auditors: BTreeMap<Uuid, BTreeSet<PublicKey>>,
-  /// Sender's public key.
+  /// Sender's confidential account.
   #[schema(value_type = String, format = Binary, example = "0xceae8587b3e968b9669df8eb715f73bcf3f7a9cd3c61c515a4d80f2ca59c8114")]
   pub sender: PublicKey,
-  /// Receiver's public key.
+  /// Receiver's confidential account.
   #[schema(value_type = String, format = Binary, example = "0xceae8587b3e968b9669df8eb715f73bcf3f7a9cd3c61c515a4d80f2ca59c8114")]
   pub receiver: PublicKey,
   /// Set of mediator identities for this leg.
@@ -246,7 +246,7 @@ impl BalanceUpdated {
 
   pub fn try_decrypt(&self, account: &AccountWithSecret) -> Option<AccountAssetBalanceUpdated> {
     // Only try decrypting our updates.
-    if !account.match_public_key(&self.account) {
+    if !account.match_confidential_account(&self.account) {
       return None;
     }
     let amount = self.amount().ok()?;
@@ -824,10 +824,10 @@ pub struct TransactionArgs {
 pub struct ConfidentialSettlementLeg {
   /// Asset id.
   pub assets: BTreeSet<Uuid>,
-  /// Sender's public key.
+  /// Sender's confidential account.
   #[schema(value_type = String, format = Binary, example = "0xceae8587b3e968b9669df8eb715f73bcf3f7a9cd3c61c515a4d80f2ca59c8114")]
   pub sender: PublicKey,
-  /// Receiver's public key.
+  /// Receiver's confidential account.
   #[schema(value_type = String, format = Binary, example = "0xceae8587b3e968b9669df8eb715f73bcf3f7a9cd3c61c515a4d80f2ca59c8114")]
   pub receiver: PublicKey,
   /// Set of venue mediator identities for this leg.

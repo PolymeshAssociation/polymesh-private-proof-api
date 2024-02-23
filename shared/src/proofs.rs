@@ -76,10 +76,10 @@ pub struct Account {
   #[serde(skip)]
   pub account_id: i64,
 
-  /// Account public key (Elgamal public key).
+  /// Confidential account (Elgamal public key).
   #[schema(example = "0xdeadbeef00000000000000000000000000000000000000000000000000000000")]
   #[serde(with = "SerHexSeq::<StrictPfx>")]
-  pub public_key: Vec<u8>,
+  pub confidential_account: Vec<u8>,
 
   pub created_at: chrono::NaiveDateTime,
   pub updated_at: chrono::NaiveDateTime,
@@ -89,12 +89,14 @@ pub struct Account {
 impl Account {
   pub fn as_confidential_account(&self) -> Result<ConfidentialAccount> {
     Ok(ConfidentialAccount::decode(
-      &mut self.public_key.as_slice(),
+      &mut self.confidential_account.as_slice(),
     )?)
   }
 
   pub fn as_auditor_account(&self) -> Result<AuditorAccount> {
-    Ok(AuditorAccount::decode(&mut self.public_key.as_slice())?)
+    Ok(AuditorAccount::decode(
+      &mut self.confidential_account.as_slice(),
+    )?)
   }
 }
 
@@ -105,26 +107,26 @@ impl Account {
 pub struct AccountWithSecret {
   pub account_id: i64,
 
-  pub public_key: Vec<u8>,
+  pub confidential_account: Vec<u8>,
   pub secret_key: Vec<u8>,
 }
 
 #[cfg(feature = "backend")]
 impl AccountWithSecret {
-  pub fn match_public_key(&self, public_key: &PublicKey) -> bool {
-    self.public_key.as_slice() == &public_key.0[..]
+  pub fn match_confidential_account(&self, confidential_account: &PublicKey) -> bool {
+    self.confidential_account.as_slice() == &confidential_account.0[..]
   }
 
   #[cfg(feature = "tx_backend")]
   pub fn as_confidential_account(&self) -> Result<ConfidentialAccount> {
     Ok(ConfidentialAccount::decode(
-      &mut self.public_key.as_slice(),
+      &mut self.confidential_account.as_slice(),
     )?)
   }
 
   pub fn encryption_keys(&self) -> Result<ElgamalKeys> {
     Ok(ElgamalKeys {
-      public: ElgamalPublicKey::decode(&mut self.public_key.as_slice())?,
+      public: ElgamalPublicKey::decode(&mut self.confidential_account.as_slice())?,
       secret: ElgamalSecretKey::decode(&mut self.secret_key.as_slice())?,
     })
   }
@@ -284,7 +286,7 @@ impl AccountWithSecret {
 /// Create a new account.  Not allowed to be serialized.
 #[derive(Clone, Debug, Default, Zeroize, ZeroizeOnDrop)]
 pub struct CreateAccount {
-  pub public_key: Vec<u8>,
+  pub confidential_account: Vec<u8>,
   pub secret_key: Vec<u8>,
 }
 
@@ -301,7 +303,7 @@ impl CreateAccount {
     let enc_keys = Self::create_secret_account();
 
     Self {
-      public_key: enc_keys.public.encode(),
+      confidential_account: enc_keys.public.encode(),
       secret_key: enc_keys.secret.encode(),
     }
   }
@@ -695,7 +697,7 @@ pub struct SenderProofRequest {
   #[schema(value_type = String, format = Binary, example = "")]
   #[serde(default, with = "SerHexSeq::<StrictPfx>")]
   encrypted_balance: Vec<u8>,
-  /// Receiver's public key.
+  /// Receiver's confidential account.
   #[schema(value_type = String, format = Binary, example = "0xceae8587b3e968b9669df8eb715f73bcf3f7a9cd3c61c515a4d80f2ca59c8114")]
   receiver: PublicKey,
   /// List of auditors.
@@ -737,10 +739,10 @@ pub struct SenderProofVerifyRequest {
   #[schema(value_type = String, format = Binary, example = "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000")]
   #[serde(default, with = "SerHexSeq::<StrictPfx>")]
   sender_balance: Vec<u8>,
-  /// Sender's public key.
+  /// Sender's confidential account.
   #[schema(value_type = String, format = Binary, example = "0xceae8587b3e968b9669df8eb715f73bcf3f7a9cd3c61c515a4d80f2ca59c8114")]
   sender: PublicKey,
-  /// Receiver's public key.
+  /// Receiver's confidential account.
   #[schema(value_type = String, format = Binary, example = "0xceae8587b3e968b9669df8eb715f73bcf3f7a9cd3c61c515a4d80f2ca59c8114")]
   receiver: PublicKey,
   /// List of auditors.
