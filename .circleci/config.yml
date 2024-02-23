@@ -81,3 +81,7 @@ workflows:
             - DockerHub
           requires:
             - build
+          filters:
+            branches:
+              only:
+                - main
