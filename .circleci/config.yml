@@ -31,10 +31,14 @@ jobs:
           command: cargo install sqlx-cli --locked
       - run:
           name: SQLX Database Setup
-          command: sqlx database setup
+          command: |
+            cd ./proof-api
+            sqlx database setup
       - run:
           name: Build release
-          command: cargo build --release
+          command: |
+            cd ./proof-api
+            cargo build --release
           no_output_timeout: 30m
       - run:
           name: Create assets directory for releases
@@ -58,9 +62,9 @@ jobs:
     resource_class: small
     steps:
       - setup_remote_docker
+      - checkout
       - attach_workspace:
           at: ./assets
-      - checkout
       - run: |
           export VERSION=`.docker/scripts/version.sh "$CIRCLE_BRANCH" "$CIRCLE_SHA1"`
           docker build -f ./.docker/Dockerfile.proofapi.debian --tag $IMAGE_NAME:latest-$CIRCLE_BRANCH-debian --tag $IMAGE_NAME:$VERSION-$CIRCLE_BRANCH-debian .
@@ -71,6 +75,9 @@ workflows:
   commit:
     jobs:
       - lint
+      - build
       - build-docker-debian:
           context:
             - DockerHub
+          requires:
+            - build
