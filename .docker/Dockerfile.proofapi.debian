@@ -1,17 +1,17 @@
-FROM polymeshassociation/rust:debian-nightly-2023-06-01 as builder
+# FROM polymeshassociation/rust:debian-nightly-2023-06-01 as builder
 
-WORKDIR /build
+# WORKDIR /build
 
-COPY . .
+# COPY . .
 
-# Setup Database file
-RUN cargo install sqlx-cli --locked
-WORKDIR /build/proof-api
+# # Setup Database file
+# RUN cargo install sqlx-cli --locked
+# WORKDIR /build/proof-api
 
-ENV DATABASE_URL=sqlite:/build/proof-api/confidential_assets.db
-RUN sqlx database setup
+# ENV DATABASE_URL=sqlite:/build/proof-api/confidential_assets.db
+# RUN sqlx database setup
 
-RUN cargo build --release
+# RUN cargo build --release
 
 FROM debian:stable-slim
 
@@ -22,8 +22,11 @@ RUN set -eux; \
 	mkdir -p /opt/proofapi; \
 	chown -R proofapi:proofapi /opt/proofapi
 
-COPY --from=builder --chown=root:root /build/target/release/main /usr/local/bin/proofapi
-COPY --from=builder --chown=proofapi:proofapi /build/proof-api/confidential_assets.db /data/confidential_assets.db
+#COPY --from=builder --chown=root:root /build/target/release/main /usr/local/bin/proofapi
+#COPY --from=builder --chown=proofapi:proofapi /build/proof-api/confidential_assets.db /data/confidential_assets.db
+
+COPY --chown=root:root ./assets/main /usr/local/bin/proofapi
+COPY --chown=proofapi:proofapi ./assets/confidential_assets.db /data/confidential_assets.db
 
 RUN chmod 0755 /usr/local/bin/proofapi
 
