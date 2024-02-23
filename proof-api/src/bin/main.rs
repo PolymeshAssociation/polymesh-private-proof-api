@@ -22,7 +22,8 @@ async fn get_db_pool() -> anyhow::Result<SqlitePool> {
 async fn start_server() -> anyhow::Result<()> {
   // building address
   let port = std::env::var("PORT").unwrap_or("8080".to_string());
-  let address = format!("0.0.0.0:{}", port);
+  let bind_address = std::env::var("BIND_ADDRESS").unwrap_or("0.0.0.0".to_string());
+  let address = format!("{}:{}", bind_address, port);
 
   // Open database.
   let pool = get_db_pool().await?;

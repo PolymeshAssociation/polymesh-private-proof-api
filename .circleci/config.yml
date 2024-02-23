@@ -1,0 +1,87 @@
+version: 2.1
+
+jobs:
+  lint:
+    docker:
+      - image: polymeshassociation/rust:debian-nightly-2023-06-01
+    resource_class: small
+    environment:
+      VERBOSE: "1"
+    steps:
+      - checkout
+      - run:
+          name: Check formatting
+          command: .docker/scripts/rustfmt.sh
+
+  build:
+    docker:
+      - image: polymeshassociation/rust:debian-nightly-2023-06-01
+    resource_class: xlarge
+    environment:
+      VERBOSE: "1"
+      RUSTFLAGS: -D warnings
+      DATABASE_URL: "sqlite:/data/confidential_assets.db"
+    steps:
+      - checkout
+      - run:
+          name: Create data directory
+          command: mkdir -p /data
+      - run:
+          name: Install sqlx-cli
+          command: cargo install sqlx-cli --locked
+      - run:
+          name: SQLX Database Setup
+          command: |
+            cd ./proof-api
+            sqlx database setup
+      - run:
+          name: Build release
+          command: |
+            cd ./proof-api
+            cargo build --release
+          no_output_timeout: 30m
+      - run:
+          name: Create assets directory for releases
+          command: mkdir ./assets
+      - run:
+          name: Copy binary to assets
+          command: cp ./target/release/main ./assets/proofapi
+      - run:
+          name: Copy db file to assets
+          command: cp /data/confidential_assets.db ./assets/
+      - persist_to_workspace:
+          root: ./assets
+          paths:
+              - .
+
+  build-docker-debian:
+    environment:
+      IMAGE_NAME: polymeshassociation/polymesh-proof-api
+    docker:
+      - image: cimg/deploy:2023.12
+    resource_class: small
+    steps:
+      - setup_remote_docker
+      - checkout
+      - attach_workspace:
+          at: ./assets
+      - run: |
+          export VERSION=`.docker/scripts/version.sh "$CIRCLE_BRANCH" "$CIRCLE_SHA1"`
+          docker build -f ./.docker/Dockerfile.proofapi.debian --tag $IMAGE_NAME:latest-$CIRCLE_BRANCH-debian --tag $IMAGE_NAME:$VERSION-$CIRCLE_BRANCH-debian .
+          echo $DOCKERHUB_PASS | docker login -u $DOCKERHUB_USERNAME --password-stdin
+          docker push --all-tags $IMAGE_NAME
+
+workflows:
+  commit:
+    jobs:
+      - lint
+      - build
+      - build-docker-debian:
+          context:
+            - DockerHub
+          requires:
+            - build
+          filters:
+            branches:
+              only:
+                - main
