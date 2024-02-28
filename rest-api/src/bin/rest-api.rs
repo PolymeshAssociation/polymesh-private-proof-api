@@ -195,6 +195,7 @@ async fn start_server() -> anyhow::Result<()> {
 
     App::new()
       .wrap(cors)
+      .service(web::redirect("/", "/swagger-ui/"))
       .service(
         web::scope("/api")
           .app_data(repo.clone())
