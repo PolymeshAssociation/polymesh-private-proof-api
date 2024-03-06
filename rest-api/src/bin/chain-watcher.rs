@@ -2,7 +2,7 @@ use sqlx::sqlite::SqlitePool;
 
 use polymesh_api::Api;
 
-use polymesh-private-proof-api::repo::SqliteConfidentialRepository;
+use polymesh_private_proof_api::repo::SqliteConfidentialRepository;
 
 use polymesh-private-rest-api::repo::SqliteTransactionRepository;
 use polymesh-private-rest-api::watcher::*;

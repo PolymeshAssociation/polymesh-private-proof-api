@@ -1,7 +1,7 @@
 use actix_web::{get, post, web, HttpResponse, Responder, Result};
 use uuid::Uuid;
 
-use polymesh-private-proof-shared::{
+use polymesh_private_proof_shared::{
   error::Error, AccountAssetWithProof, AccountDecryptRequest, BurnProofRequest, CreateAccountAsset,
   ReceiverVerifyRequest, SenderProofRequest, UpdateAccountAssetBalanceRequest,
 };

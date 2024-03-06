@@ -1,7 +1,7 @@
 use polymesh_api::*;
 
-use polymesh-private-proof-api::repo::Repository;
-use polymesh-private-proof-shared::*;
+use polymesh_private_proof_api::repo::Repository;
+use polymesh_private_proof_shared::*;
 
 use crate::repo::TransactionRepository;
 

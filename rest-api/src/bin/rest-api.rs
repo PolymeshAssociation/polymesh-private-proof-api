@@ -10,9 +10,9 @@ use utoipa_swagger_ui::SwaggerUi;
 
 use polymesh_api::{client::IdentityId, Api};
 
-use polymesh-private-proof-api as proof_api;
-use polymesh-private-proof-api::{repo::SqliteConfidentialRepository, v1::*};
-use polymesh-private-proof-shared::*;
+use polymesh_private_proof_api as proof_api;
+use polymesh_private_proof_api::{repo::SqliteConfidentialRepository, v1::*};
+use polymesh_private_proof_shared::*;
 use polymesh-private-rest-api::{repo::SqliteTransactionRepository, signing, v1::*};
 
 pub fn v1_service(cfg: &mut web::ServiceConfig) {

@@ -6,8 +6,8 @@ use polymesh_api::types::{
 };
 use polymesh_api::Api;
 
-use polymesh-private-proof-api::repo::Repository;
-use polymesh-private-proof-shared::{
+use polymesh_private_proof_api::repo::Repository;
+use polymesh_private_proof_shared::{
   error::Error, scale_convert, AddAsset, AllowVenues, ConfidentialAssetDetails,
   CreateConfidentialAsset, CreateConfidentialSettlement, ExecuteConfidentialSettlement,
   ProcessedEvent, TransactionArgs, TransactionResult,

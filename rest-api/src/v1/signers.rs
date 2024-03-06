@@ -1,7 +1,7 @@
 use actix_web::{get, post, rt::pin, web, HttpResponse, Responder, Result};
 use futures_util::StreamExt;
 
-use polymesh-private-proof-shared::{error::Error, CreateSigner};
+use polymesh_private_proof_shared::{error::Error, CreateSigner};
 
 use polymesh_api::Api;
 use polymesh_api::{

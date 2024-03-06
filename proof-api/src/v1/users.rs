@@ -1,6 +1,6 @@
 use actix_web::{get, post, web, HttpResponse, Responder, Result};
 
-use polymesh-private-proof-shared::{error::Error, CreateUser};
+use polymesh_private_proof_shared::{error::Error, CreateUser};
 
 use crate::repo::Repository;
 

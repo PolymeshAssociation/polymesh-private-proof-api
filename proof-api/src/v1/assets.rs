@@ -1,7 +1,7 @@
 use actix_web::{get, post, web, HttpResponse, Responder, Result};
 use uuid::Uuid;
 
-use polymesh-private-proof-shared::{AddAsset, SenderProofVerifyRequest};
+use polymesh_private_proof_shared::{AddAsset, SenderProofVerifyRequest};
 
 use crate::repo::Repository;
 

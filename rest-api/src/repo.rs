@@ -1,7 +1,7 @@
 use actix_web::web::Data;
 
 use async_trait::async_trait;
-use polymesh-private-proof-shared::{
+use polymesh_private_proof_shared::{
   error::Result, BlockTransactionRecord, SettlementEventRecord, SettlementRecord,
 };
 

@@ -8,9 +8,9 @@ use utoipa_rapidoc::RapiDoc;
 use utoipa_redoc::{Redoc, Servable};
 use utoipa_swagger_ui::SwaggerUi;
 
-use polymesh-private-proof-api as proof_api;
-use polymesh-private-proof-api::{repo, v1::*};
-use polymesh-private-proof-shared::*;
+use polymesh_private_proof_api as proof_api;
+use polymesh_private_proof_api::{repo, v1::*};
+use polymesh_private_proof_shared::*;
 
 async fn get_db_pool() -> anyhow::Result<SqlitePool> {
   let conn_str = std::env::var("DATABASE_URL")?;

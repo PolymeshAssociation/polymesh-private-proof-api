@@ -9,8 +9,8 @@ use polymesh_api::types::{
 };
 use polymesh_api::Api;
 
-use polymesh-private-proof-api::repo::Repository;
-use polymesh-private-proof-shared::{
+use polymesh_private_proof_api::repo::Repository;
+use polymesh_private_proof_shared::{
   auditor_account_to_key, confidential_account_to_key, error::Error, scale_convert,
   AffirmTransactionLegRequest, DecryptedIncomingBalance, MintRequest, TransactionArgs,
   TransactionResult,
