@@ -1,6 +1,6 @@
 [package]
-name = "confidential-proof-api"
-version = "0.1.0"
+name = "polymesh-private-proof-api"
+version = "1.0.0"
 authors = [ "Polymesh Association" ]
 edition = "2021"
 
@@ -17,7 +17,7 @@ utoipa-redoc = { workspace = true }
 utoipa-rapidoc = { workspace = true }
 
 # internal
-confidential-proof-shared = { workspace = true, features = ["backend"] }
+polymesh-private-proof-shared = { workspace = true, features = ["backend"] }
 
 # Confidential Assets
 confidential_assets = { workspace = true, default-features = false }
@@ -65,7 +65,7 @@ discrete_log = [
 
 # Enable use of `account_assets` table to store unencrypted asset balances for accounts.
 track_balances = [
-	"confidential-proof-shared/track_balances"
+	"polymesh-private-proof-shared/track_balances"
 ]
 
 std = [

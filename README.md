@@ -1,7 +1,7 @@
 [![Discord](https://img.shields.io/badge/Discord-Join_our_server-blue.svg?style=social&logo=discord)](https://discord.com/invite/ud2deWAnyt) 
 ![Twitter Follow](https://img.shields.io/twitter/follow/PolymeshNetwork?style=social)
 
-# Confidential Asset Server
+# Polymesh Private Proof Server
 
 This repository provides functionality to interact with Confidential Assets on Polymesh.
 

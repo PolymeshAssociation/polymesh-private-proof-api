@@ -15,9 +15,9 @@ bulletproofs = { version = "4.0.0", git = "https://github.com/PolymeshAssociatio
 
 [workspace.dependencies]
 # internal
-confidential-proof-shared = { path = "./shared/" }
-confidential-proof-api = { path = "./proof-api/" }
-confidential-reset-api = { path = "./reset-api/" }
+polymesh-private-proof-shared = { path = "./shared/" }
+polymesh-private-proof-api = { path = "./proof-api/" }
+polymesh-private-rest-api = { path = "./reset-api/" }
 
 # Confidential Assets
 confidential_assets = { version = "1.0.0", default-features = false }

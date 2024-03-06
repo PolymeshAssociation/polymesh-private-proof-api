@@ -1,5 +1,5 @@
 [package]
-name = "confidential-rest-api"
+name = "polymesh-private-rest-api"
 version = "0.1.0"
 authors = [ "Polymesh Association" ]
 edition = "2021"
@@ -20,8 +20,8 @@ utoipa-redoc = { workspace = true }
 utoipa-rapidoc = { workspace = true }
 
 # internal
-confidential-proof-shared = { workspace = true, features = ["tx_api"] }
-confidential-proof-api = { workspace = true, features = ["track_balances"] }
+polymesh-private-proof-shared = { workspace = true, features = ["tx_api"] }
+polymesh-private-proof-api = { workspace = true, features = ["track_balances"] }
 
 # Confidential Assets
 confidential_assets = { workspace = true, default-features = false }
