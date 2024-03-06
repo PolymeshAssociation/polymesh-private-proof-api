@@ -4,8 +4,8 @@ use polymesh_api::Api;
 
 use polymesh_private_proof_api::repo::SqliteConfidentialRepository;
 
-use polymesh-private-rest-api::repo::SqliteTransactionRepository;
-use polymesh-private-rest-api::watcher::*;
+use polymesh_private_rest_api::repo::SqliteTransactionRepository;
+use polymesh_private_rest_api::watcher::*;
 
 async fn get_db_pool() -> anyhow::Result<SqlitePool> {
   let conn_str = std::env::var("DATABASE_URL")?;
