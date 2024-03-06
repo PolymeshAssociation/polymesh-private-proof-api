@@ -56,7 +56,7 @@ jobs:
 
   build-docker-debian:
     environment:
-      IMAGE_NAME: polymeshassociation/polymesh-proof-api
+      IMAGE_NAME: polymeshassociation/polymesh-private-proof-api
     docker:
       - image: cimg/deploy:2023.12
     resource_class: small
