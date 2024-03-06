@@ -2,7 +2,7 @@ use actix_web::web::Data;
 use uuid::Uuid;
 
 use async_trait::async_trait;
-use confidential_proof_shared::{
+use polymesh-private-proof-shared::{
   error::Result, Account, AccountAsset, AccountAssetWithSecret, AccountWithSecret, AddAsset, Asset,
   CreateAccount, CreateUser, UpdateAccountAsset, User,
 };

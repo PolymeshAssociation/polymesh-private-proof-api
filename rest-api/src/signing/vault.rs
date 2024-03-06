@@ -13,7 +13,7 @@ use reqwest::{header, Client, Method, Url};
 use dashmap::DashMap;
 
 use async_trait::async_trait;
-use confidential_proof_shared::{error::*, CreateSigner, SignerInfo};
+use polymesh-private-proof-shared::{error::*, CreateSigner, SignerInfo};
 
 use polymesh_api::client::{AccountId, Error as ClientError, Signer};
 use sp_core::ed25519::Signature;

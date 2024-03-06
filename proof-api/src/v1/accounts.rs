@@ -1,6 +1,6 @@
 use actix_web::{get, post, web, HttpResponse, Responder, Result};
 
-use confidential_proof_shared::{
+use polymesh-private-proof-shared::{
   error::Error, AccountDecryptRequest, AuditorVerifyRequest, BurnProof, BurnProofRequest,
   CreateAccount, ReceiverVerifyRequest, SenderProof, SenderProofRequest,
 };

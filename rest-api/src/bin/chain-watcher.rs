@@ -2,10 +2,10 @@ use sqlx::sqlite::SqlitePool;
 
 use polymesh_api::Api;
 
-use confidential_proof_api::repo::SqliteConfidentialRepository;
+use polymesh-private-proof-api::repo::SqliteConfidentialRepository;
 
-use confidential_rest_api::repo::SqliteTransactionRepository;
-use confidential_rest_api::watcher::*;
+use polymesh-private-rest-api::repo::SqliteTransactionRepository;
+use polymesh-private-rest-api::watcher::*;
 
 async fn get_db_pool() -> anyhow::Result<SqlitePool> {
   let conn_str = std::env::var("DATABASE_URL")?;

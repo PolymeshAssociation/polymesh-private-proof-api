@@ -1,7 +1,7 @@
 use actix_web::web::Data;
 
 use async_trait::async_trait;
-use confidential_proof_shared::{error::Result, CreateSigner, SignerInfo};
+use polymesh-private-proof-shared::{error::Result, CreateSigner, SignerInfo};
 
 use polymesh_api::client::Signer;
 

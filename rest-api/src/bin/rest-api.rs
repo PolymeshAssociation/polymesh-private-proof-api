@@ -10,10 +10,10 @@ use utoipa_swagger_ui::SwaggerUi;
 
 use polymesh_api::{client::IdentityId, Api};
 
-use confidential_proof_api as proof_api;
-use confidential_proof_api::{repo::SqliteConfidentialRepository, v1::*};
-use confidential_proof_shared::*;
-use confidential_rest_api::{repo::SqliteTransactionRepository, signing, v1::*};
+use polymesh-private-proof-api as proof_api;
+use polymesh-private-proof-api::{repo::SqliteConfidentialRepository, v1::*};
+use polymesh-private-proof-shared::*;
+use polymesh-private-rest-api::{repo::SqliteTransactionRepository, signing, v1::*};
 
 pub fn v1_service(cfg: &mut web::ServiceConfig) {
   cfg.service(
@@ -69,7 +69,7 @@ async fn start_server() -> anyhow::Result<()> {
   /*
   {
     use actix_web::rt;
-    use confidential_rest_api::watcher;
+    use polymesh-private-rest-api::watcher;
     let repo = repo.clone();
     let tx_repo = tx_repo.clone();
     let api = (**polymesh_api).clone();
