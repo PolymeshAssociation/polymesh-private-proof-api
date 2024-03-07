@@ -49,6 +49,9 @@ jobs:
       - run:
           name: Copy db file to assets
           command: cp /data/confidential_assets.db ./assets/
+      - run:
+          name: Copy Cargo.toml to assets, for the version.sh script
+          command: cp ./proof-api/Cargo.toml ./assets/
       - persist_to_workspace:
           root: ./assets
           paths:
