@@ -815,104 +815,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "confidential-proof-api"
-version = "0.1.0"
-dependencies = [
- "actix-cors",
- "actix-web",
- "actix-web-lab",
- "anyhow",
- "async-trait",
- "chrono",
- "confidential-proof-shared",
- "confidential_assets",
- "dotenv",
- "env_logger",
- "hex",
- "log",
- "parity-scale-codec",
- "rand 0.8.5",
- "rust_decimal",
- "rust_decimal_macros",
- "serde",
- "serde_json",
- "sqlx",
- "utoipa",
- "utoipa-rapidoc",
- "utoipa-redoc",
- "utoipa-swagger-ui",
- "uuid",
-]
-
-[[package]]
-name = "confidential-proof-shared"
-version = "0.1.0"
-dependencies = [
- "actix-web",
- "base64 0.21.6",
- "chrono",
- "confidential_assets",
- "hex",
- "http",
- "parity-scale-codec",
- "polymesh-api",
- "rand 0.8.5",
- "reqwest",
- "rust_decimal",
- "rust_decimal_macros",
- "serde",
- "serde-hex",
- "serde_json",
- "sp-core",
- "sqlx",
- "thiserror",
- "url",
- "utoipa",
- "uuid",
- "zeroize",
-]
-
-[[package]]
-name = "confidential-rest-api"
-version = "0.1.0"
-dependencies = [
- "actix-cors",
- "actix-web",
- "actix-web-lab",
- "anyhow",
- "async-trait",
- "base64 0.21.6",
- "chrono",
- "confidential-proof-api",
- "confidential-proof-shared",
- "confidential_assets",
- "dashmap",
- "dotenv",
- "env_logger",
- "futures-util",
- "hex",
- "log",
- "parity-scale-codec",
- "polymesh-api",
- "polymesh-api-client",
- "rand 0.8.5",
- "reqwest",
- "rust_decimal",
- "rust_decimal_macros",
- "serde",
- "serde_json",
- "serde_with",
- "sp-core",
- "sp-runtime",
- "sqlx",
- "utoipa",
- "utoipa-rapidoc",
- "utoipa-redoc",
- "utoipa-swagger-ui",
- "uuid",
-]
-
-[[package]]
 name = "confidential_assets"
 version = "1.0.0"
 source = "git+ssh://git@github.com/PolymeshAssociation/confidential_assets.git?branch=MESH-2112-improve_proofs#30e9ab6f25f03ad5e49d91a03296df961a9102a6"
@@ -3316,6 +3218,104 @@ dependencies = [
  "scale-info",
  "sp-arithmetic",
  "sp-weights",
+]
+
+[[package]]
+name = "polymesh-private-proof-api"
+version = "1.0.0"
+dependencies = [
+ "actix-cors",
+ "actix-web",
+ "actix-web-lab",
+ "anyhow",
+ "async-trait",
+ "chrono",
+ "confidential_assets",
+ "dotenv",
+ "env_logger",
+ "hex",
+ "log",
+ "parity-scale-codec",
+ "polymesh-private-proof-shared",
+ "rand 0.8.5",
+ "rust_decimal",
+ "rust_decimal_macros",
+ "serde",
+ "serde_json",
+ "sqlx",
+ "utoipa",
+ "utoipa-rapidoc",
+ "utoipa-redoc",
+ "utoipa-swagger-ui",
+ "uuid",
+]
+
+[[package]]
+name = "polymesh-private-proof-shared"
+version = "0.1.0"
+dependencies = [
+ "actix-web",
+ "base64 0.21.6",
+ "chrono",
+ "confidential_assets",
+ "hex",
+ "http",
+ "parity-scale-codec",
+ "polymesh-api",
+ "rand 0.8.5",
+ "reqwest",
+ "rust_decimal",
+ "rust_decimal_macros",
+ "serde",
+ "serde-hex",
+ "serde_json",
+ "sp-core",
+ "sqlx",
+ "thiserror",
+ "url",
+ "utoipa",
+ "uuid",
+ "zeroize",
+]
+
+[[package]]
+name = "polymesh-private-rest-api"
+version = "0.1.0"
+dependencies = [
+ "actix-cors",
+ "actix-web",
+ "actix-web-lab",
+ "anyhow",
+ "async-trait",
+ "base64 0.21.6",
+ "chrono",
+ "confidential_assets",
+ "dashmap",
+ "dotenv",
+ "env_logger",
+ "futures-util",
+ "hex",
+ "log",
+ "parity-scale-codec",
+ "polymesh-api",
+ "polymesh-api-client",
+ "polymesh-private-proof-api",
+ "polymesh-private-proof-shared",
+ "rand 0.8.5",
+ "reqwest",
+ "rust_decimal",
+ "rust_decimal_macros",
+ "serde",
+ "serde_json",
+ "serde_with",
+ "sp-core",
+ "sp-runtime",
+ "sqlx",
+ "utoipa",
+ "utoipa-rapidoc",
+ "utoipa-redoc",
+ "utoipa-swagger-ui",
+ "uuid",
 ]
 
 [[package]]
