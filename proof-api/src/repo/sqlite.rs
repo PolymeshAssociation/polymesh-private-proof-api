@@ -212,7 +212,7 @@ impl ConfidentialRepository for SqliteConfidentialRepository {
       sqlx::query_as(
         r#"
           SELECT aa.account_asset_id, aa.asset_id, aa.balance, aa.enc_balance,
-            acc.account_id, acc.public_key, acc.secret_key
+            acc.account_id, acc.public_key as confidential_account, acc.secret_key
           FROM account_assets as aa
           JOIN accounts as acc using(account_id)
           WHERE acc.public_key = ? AND aa.asset_id = ?
