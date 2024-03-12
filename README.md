@@ -1,6 +1,8 @@
 [![Discord](https://img.shields.io/badge/Discord-Join_our_server-blue.svg?style=social&logo=discord)](https://discord.com/invite/ud2deWAnyt) 
 ![Twitter Follow](https://img.shields.io/twitter/follow/PolymeshNetwork?style=social)
 
+<img src="Polymesh-logo.svg" width="70%" alt="Polymesh"/>
+
 # Polymesh Private Proof Server
 
 This repository provides functionality to interact with Confidential Assets on Polymesh.
@@ -37,6 +39,12 @@ Once the database is initialised, you can run the Proof API via:
 ```bash
 cargo run --release
 ```
+
+# License
+
+[LICENSE](https://github.com/PolymeshAssociation/Polymesh-private/blob/main/LICENSE.pdf)
+
+Use of the software is governed by the license in, LICENSE.pdf. Commercial licenses are available, for inquires relating to commercial licenses please contact info@polymesh.network.
 
 # REST API
 
