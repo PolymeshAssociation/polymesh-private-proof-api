@@ -42,7 +42,7 @@ cargo run --release
 
 # License
 
-[LICENSE](https://github.com/PolymeshAssociation/Polymesh-private/blob/main/LICENSE.pdf)
+[LICENSE](https://github.com/PolymeshAssociation/polymesh-private-proof-api/blob/main/LICENSE.pdf)
 
 Use of the software is governed by the license in, LICENSE.pdf. Commercial licenses are available, for inquires relating to commercial licenses please contact info@polymesh.network.
 
