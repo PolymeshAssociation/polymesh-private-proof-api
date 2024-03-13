@@ -16,7 +16,7 @@ RUN set -eux; \
 
 COPY --chown=root:root ./assets/proofapi /usr/local/bin/proofapi
 COPY --chown=proofapi:proofapi ./assets/confidential_assets.db /data/confidential_assets.db
-COPY --chown=proofapi:proofapi ./LICENSE.pdf /opt/polymesh-private/LICENSE.pdf
+COPY --chown=proofapi:proofapi ./LICENSE.pdf /opt/proofapi/LICENSE.pdf
 
 RUN chmod 0755 /usr/local/bin/proofapi
 
