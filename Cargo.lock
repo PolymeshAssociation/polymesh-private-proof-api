@@ -817,7 +817,7 @@ dependencies = [
 [[package]]
 name = "confidential_assets"
 version = "1.0.0"
-source = "git+ssh://git@github.com/PolymeshAssociation/confidential_assets.git?branch=MESH-2112-improve_proofs#30e9ab6f25f03ad5e49d91a03296df961a9102a6"
+source = "git+ssh://git@github.com/PolymeshAssociation/confidential_assets.git#3a354e2d992f523212b6f10935034e5a8f91d2e4"
 dependencies = [
  "bincode",
  "bulletproofs",
@@ -5545,7 +5545,7 @@ checksum = "97fee6b57c6a41524a810daee9286c02d7752c4253064d0b05472833a438f675"
 dependencies = [
  "cfg-if",
  "digest 0.10.7",
- "rand 0.8.5",
+ "rand 0.7.3",
  "static_assertions",
 ]
 
