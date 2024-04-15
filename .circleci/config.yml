@@ -141,6 +141,7 @@ jobs:
     resource_class: small
     steps:
       - setup_remote_docker
+      - checkout
       - attach_workspace:
           at: .
       - run: |
