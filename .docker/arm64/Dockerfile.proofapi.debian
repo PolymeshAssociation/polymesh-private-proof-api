@@ -1,0 +1,38 @@
+FROM debian:bullseye-slim
+
+RUN apt update && \
+  DEBIAN_FRONTEND=noninteractive apt install \
+  curl \
+  -y --no-install-recommends && \
+  apt autoremove -y && \
+  apt clean
+
+# explicitly set user/group IDs
+RUN set -eux; \
+	groupadd -r proofapi --gid=1000; \
+	useradd -r -g proofapi --uid=1000 -m -d /opt/proofapi proofapi; \
+	mkdir -p /opt/proofapi; \
+	chown -R proofapi:proofapi /opt/proofapi
+
+COPY --chown=root:root ./assets/proofapi-arm64 /usr/local/bin/proofapi
+COPY --chown=proofapi:proofapi ./assets/confidential_assets_arm64.db /data/confidential_assets.db
+COPY --chown=proofapi:proofapi ./LICENSE.pdf /opt/proofapi/LICENSE.pdf
+
+RUN chmod 0755 /usr/local/bin/proofapi
+
+WORKDIR /opt/proofapi
+
+ENV PORT=${PORT:-8080}
+ENV DATABASE_URL=${DATABASE_URL:-sqlite:/data/confidential_assets.db}
+ENV BIND_ADDRESS=${BIND_ADDRESS:-0.0.0.0}
+EXPOSE $PORT
+
+USER proofapi
+
+CMD ["/usr/local/bin/proofapi"]
+
+HEALTHCHECK \
+	--interval=20s \
+	--timeout=3s \
+	--retries=2 \
+  	CMD curl -f http://$BIND_ADDRESS:$PORT/api/health || exit 1

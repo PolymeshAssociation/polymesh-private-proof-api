@@ -57,6 +57,47 @@ jobs:
           paths:
               - .
 
+  build-arm64:
+    docker:
+      - image: polymeshassociation/rust-arm64:debian-nightly-2023-06-01
+    resource_class: arm.xlarge
+    environment:
+      VERBOSE: "1"
+      RUSTFLAGS: -D warnings
+      DATABASE_URL: "sqlite:/data/confidential_assets.db"
+    steps:
+      - checkout
+      - run:
+          name: Create data directory
+          command: mkdir -p /data
+      - run:
+          name: Install sqlx-cli
+          command: cargo install sqlx-cli --version 0.7.3 --locked
+      - run:
+          name: SQLX Database Setup
+          command: |
+            cd ./proof-api
+            sqlx database setup
+      - run:
+          name: Build release
+          command: |
+            cd ./proof-api
+            cargo build --release
+          no_output_timeout: 30m
+      - run:
+          name: Create assets directory for releases
+          command: mkdir ./assets
+      - run:
+          name: Copy binary to assets
+          command: cp ./target/release/main ./assets/proofapi-arm64
+      - run:
+          name: Copy db file to assets
+          command: cp /data/confidential_assets.db ./assets/confidential_assets_arm64.db
+      - persist_to_workspace:
+          root: ./assets
+          paths:
+              - .
+
   build-docker-debian:
     environment:
       IMAGE_NAME: polymeshassociation/polymesh-private-proof-api
@@ -70,15 +111,64 @@ jobs:
           at: ./assets
       - run: |
           export VERSION=`.docker/scripts/version.sh "$CIRCLE_BRANCH" "$CIRCLE_SHA1"`
-          docker build -f ./.docker/Dockerfile.proofapi.debian --tag $IMAGE_NAME:latest-$CIRCLE_BRANCH-debian --tag $IMAGE_NAME:$VERSION-$CIRCLE_BRANCH-debian .
+          docker build -f ./.docker/Dockerfile.proofapi.debian --tag $IMAGE_NAME:latest-$CIRCLE_BRANCH-debian-amd64 --tag $IMAGE_NAME:$VERSION-$CIRCLE_BRANCH-debian-amd64 .
           echo $DOCKERHUB_PASS | docker login -u $DOCKERHUB_USERNAME --password-stdin
           docker push --all-tags $IMAGE_NAME
+
+  build-docker-arm64-debian:
+    environment:
+      IMAGE_NAME: polymeshassociation/polymesh-private-proof-api
+    docker:
+      - image: cimg/deploy:2023.12
+    # this is the smallest resource class that supports arm64
+    resource_class: arm.medium
+    steps:
+      - setup_remote_docker
+      - checkout
+      - attach_workspace:
+          at: ./assets
+      - run: |
+          export VERSION=`.docker/scripts/version.sh "$CIRCLE_BRANCH" "$CIRCLE_SHA1"`
+          docker build -f ./.docker/arm64/Dockerfile.proofapi.debian --tag $IMAGE_NAME:latest-$CIRCLE_BRANCH-debian-arm64 --tag $IMAGE_NAME:$VERSION-$CIRCLE_BRANCH-debian-arm64 .
+          echo $DOCKERHUB_PASS | docker login -u $DOCKERHUB_USERNAME --password-stdin
+          docker push --all-tags $IMAGE_NAME
+
+  push-multiarch-image:
+    environment:
+      IMAGE_NAME: polymeshassociation/polymesh-private-proof-api
+    docker:
+      - image: cimg/deploy:2023.12
+    resource_class: small
+    steps:
+      - setup_remote_docker
+      - attach_workspace:
+          at: .
+      - run: |
+          export VERSION=`.docker/scripts/version.sh "$CIRCLE_BRANCH" "$CIRCLE_SHA1"`
+          echo $DOCKERHUB_PASS | docker login -u $DOCKERHUB_USERNAME --password-stdin
+          docker manifest create $IMAGE_NAME:$VERSION-$CIRCLE_BRANCH-debian --amend $IMAGE_NAME:$VERSION-$CIRCLE_BRANCH-debian-amd64 --amend $IMAGE_NAME:$VERSION-$CIRCLE_BRANCH-debian-arm64
+          docker manifest create $IMAGE_NAME:$VERSION-$CIRCLE_BRANCH --amend $IMAGE_NAME:$VERSION-$CIRCLE_BRANCH-debian-amd64 --amend $IMAGE_NAME:$VERSION-$CIRCLE_BRANCH-debian-arm64
+          docker manifest push $IMAGE_NAME:$VERSION-$CIRCLE_BRANCH-debian
+          docker manifest push $IMAGE_NAME:$VERSION-$CIRCLE_BRANCH
+          # If the branch is main, add manifests with $IMAGE_NAME:$VERSION and $IMAGE_NAME:latest tags
+          if [ "$CIRCLE_BRANCH" == "main" ]; then
+            docker manifest create $IMAGE_NAME:$VERSION --amend $IMAGE_NAME:$VERSION-$CIRCLE_BRANCH-debian-amd64 --amend $IMAGE_NAME:$VERSION-$CIRCLE_BRANCH-debian-arm64
+            docker manifest create $IMAGE_NAME:latest --amend $IMAGE_NAME:$VERSION-$CIRCLE_BRANCH-debian-amd64 --amend $IMAGE_NAME:$VERSION-$CIRCLE_BRANCH-debian-arm64
+            docker manifest push $IMAGE_NAME:$VERSION
+            docker manifest push $IMAGE_NAME:latest
+          fi
 
 workflows:
   commit:
     jobs:
       - lint
       - build
+      - build-arm64:
+          filters:
+            branches:
+              only:
+                - main
+                - build_multiarch_images
       - build-docker-debian:
           context:
             - DockerHub
@@ -88,3 +178,27 @@ workflows:
             branches:
               only:
                 - main
+                - build_multiarch_images
+      - build-docker-arm64-debian:
+          context:
+            - DockerHub
+          requires:
+            # this job requires the build job to make sure it has access to all required artifacts in its workspace.
+            - build
+            - build-arm64
+          filters:
+            branches:
+              only:
+                - main
+                - build_multiarch_images
+      - push-multiarch-image:
+          context:
+            - DockerHub
+          requires:
+            - build-docker-debian
+            - build-docker-arm64-debian
+          filters:
+            branches:
+              only:
+                - main
+                - build_multiarch_images
