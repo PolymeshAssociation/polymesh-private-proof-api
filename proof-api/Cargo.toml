@@ -1,6 +1,6 @@
 [package]
 name = "polymesh-private-proof-api"
-version = "1.0.0"
+version = "1.0.1"
 authors = [ "Polymesh Association" ]
 edition = "2021"
 
