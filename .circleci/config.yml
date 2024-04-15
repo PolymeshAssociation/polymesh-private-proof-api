@@ -68,17 +68,6 @@ jobs:
     steps:
       - checkout
       - run:
-          name: Create data directory
-          command: mkdir -p /data
-      - run:
-          name: Install sqlx-cli
-          command: cargo install sqlx-cli --version 0.7.3 --locked
-      - run:
-          name: SQLX Database Setup
-          command: |
-            cd ./proof-api
-            sqlx database setup
-      - run:
           name: Build release
           command: |
             cd ./proof-api
@@ -90,9 +79,6 @@ jobs:
       - run:
           name: Copy binary to assets
           command: cp ./target/release/main ./assets/proofapi-arm64
-      - run:
-          name: Copy db file to assets
-          command: cp /data/confidential_assets.db ./assets/confidential_assets_arm64.db
       - persist_to_workspace:
           root: ./assets
           paths:
