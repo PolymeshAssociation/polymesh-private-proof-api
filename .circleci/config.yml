@@ -169,7 +169,6 @@ workflows:
             branches:
               only:
                 - main
-                - build_multiarch_images
       - build-docker-debian:
           context:
             - DockerHub
@@ -179,7 +178,6 @@ workflows:
             branches:
               only:
                 - main
-                - build_multiarch_images
       - build-docker-arm64-debian:
           context:
             - DockerHub
@@ -191,7 +189,6 @@ workflows:
             branches:
               only:
                 - main
-                - build_multiarch_images
       - push-multiarch-image:
           context:
             - DockerHub
@@ -202,4 +199,3 @@ workflows:
             branches:
               only:
                 - main
-                - build_multiarch_images
